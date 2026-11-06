@@ -9,7 +9,7 @@ for walking NPCs, HUD fonts, XAudio2 sounds, settings menu and CI.
 - `main` is built by CI (Windows: xmake + Dear-Modding CommonLibF4 at ef995295; Caprica for the scripts; the ESL
   from `tools/make_esl.py`). Each push to `main` publishes the `Data` folder to the `builds` branch.
 - Meshes and textures are in `dist/Data` (the model is CC BY 4.0: credit it). They're made on the user's PC:
-  - model: `C:\Users\Dan\Desktop\table\model\RuletMasası.obj` + `textures\` (Sketchfab "Roulette Table 2")
+  - model: `C:\Users\Dan\Desktop\table\model\RuletMasası.obj` + `textures\` (Sketchfab "Roulette Table 2" by Dudzy, CC BY 4.0)
   - `C:\Users\Dan\Desktop\table\work\build_meshes.py` (= `tools/build_meshes.py`), run in Blender 5.2 with PyNifly:
     writes `work\Data\Meshes\fo4roulette\*.nif`. Uses vanilla `PoolTable01.nif` (extracted to `work\`) only as a
     shader template.

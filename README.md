@@ -95,7 +95,7 @@ g++ -std=c++20 -O2 -Isrc tests/layout_test.cpp src/rl/Layout.cpp src/rl/Wheel.cp
 
 ## Credits
 
-- Roulette table model: ["Roulette Table 2"](https://sketchfab.com/3d-models/roulette-table-2-downloadable-b1d33eebb4f54b8aa250be2f49e87fbb) on Sketchfab, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Changed for the game: split into parts, scaled, given collision, the rotor and layout repainted (European and American).
+- Roulette table model: ["Roulette Table 2"](https://sketchfab.com/3d-models/roulette-table-2-downloadable-b1d33eebb4f54b8aa250be2f49e87fbb) by [Dudzy](https://sketchfab.com/Dudzy) on Sketchfab, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Changed for the game: split into parts, scaled, given collision, the rotor and layout repainted (European and American).
 - HUD fonts: Chakra Petch and Share Tech Mono (SIL Open Font License).
 - CommonLibF4 (Dear-Modding), F4SE, F4SE Menu Framework.
 
