@@ -602,7 +602,9 @@ namespace fr
 			return;
 		}
 		const std::size_t i = std::min<std::size_t>(static_cast<std::size_t>(_playT * 60.0f), smp.size() - 1);
-		_rotorAngle = smp[i].rotor;
+		const std::size_t j = std::min(i + 1, smp.size() - 1);
+		const double      u = std::clamp(static_cast<double>(_playT * 60.0f - static_cast<float>(i)), 0.0, 1.0);
+		_rotorAngle = smp[i].rotor + std::remainder(static_cast<double>(smp[j].rotor) - smp[i].rotor, 6.283185307) * u;
 		const auto   wheel = ToWorld(a_frame, kWheelX, kWheelY, kRotorEdgeZ);
 		// clicks: each time the ball comes off the surface (a diamond, a fret)
 		const double off = smp[i].z - (rl::SurfaceZ(smp[i].r) + kBallRadius);
