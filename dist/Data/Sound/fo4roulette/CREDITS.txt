@@ -1,0 +1,1 @@
+Real Roulette's sounds are synthesised by tools/make_sounds.py (no recordings): free to use with the mod.

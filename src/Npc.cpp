@@ -1,0 +1,244 @@
+#include "Npc.h"
+
+#include "Forms.h"
+
+// The base class's destructor is declared in CommonLibF4 but not defined there; our functors need one to link.
+RE::BSScript::IStackCallbackFunctor::~IStackCallbackFunctor() = default;
+
+namespace fr::Npc
+{
+	namespace
+	{
+		// logs what a Papyrus call returned (on the script thread, later)
+		class LogResult final : public RE::BSScript::IStackCallbackFunctor
+		{
+		public:
+			explicit LogResult(std::string a_what) :
+				_what(std::move(a_what))
+			{}
+
+			void CallQueued() override {}
+			void CallCanceled() override { log::info("papyrus {}: canceled", _what); }
+			void StartMultiDispatch() override {}
+			void EndMultiDispatch() override {}
+			void operator()(RE::BSScript::Variable a_result) override
+			{
+				if (a_result.is<bool>()) {
+					log::info("papyrus {} -> {}", _what, RE::BSScript::get<bool>(a_result));
+				} else if (a_result.is<RE::BSFixedString>()) {
+					log::info("papyrus {} -> {}", _what, RE::BSScript::get<RE::BSFixedString>(a_result).c_str());
+				}
+			}
+
+		private:
+			std::string _what;
+		};
+
+		std::mutex                        g_joinedMutex;
+		std::unordered_set<RE::TESFormID> g_joined;
+
+		// Join's answer: "in ..." if the collection holds them
+		class JoinDone final : public RE::BSScript::IStackCallbackFunctor
+		{
+		public:
+			JoinDone(std::string a_what, RE::TESFormID a_id) :
+				_what(std::move(a_what)),
+				_id(a_id)
+			{}
+
+			void CallQueued() override {}
+			void CallCanceled() override { log::warn("papyrus {}: canceled (is fo4rouletteQuest.pex installed?)", _what); }
+			void StartMultiDispatch() override {}
+			void EndMultiDispatch() override {}
+			void operator()(RE::BSScript::Variable a_result) override
+			{
+				std::string text = a_result.is<RE::BSFixedString>() ? RE::BSScript::get<RE::BSFixedString>(a_result).c_str() : "";
+				if (text.empty()) {
+					text = "nothing (the call failed before Join ran to the end)";
+				}
+				log::info("papyrus {} -> {}", _what, text);
+				if (text.starts_with("in")) {
+					std::scoped_lock lock(g_joinedMutex);
+					g_joined.insert(_id);
+				}
+			}
+
+		private:
+			std::string   _what;
+			RE::TESFormID _id;
+		};
+
+		// a form as the script's Int argument (it does Game.GetForm): an NPC with other scripts on them can come through
+		// as an object Papyrus won't take as an Actor
+		std::int32_t FormArg(const RE::TESForm* a_form)
+		{
+			return a_form ? static_cast<std::int32_t>(a_form->GetFormID()) : 0;
+		}
+
+		std::string What(RE::Actor* a_actor, const char* a_function)
+		{
+			return a_actor ? std::format("{} ({:08X}).{}", a_actor->GetDisplayFullName(), a_actor->GetFormID(), a_function) : std::string(a_function);
+		}
+
+		template <class... Args>
+		bool CallQuest(const char* a_function, const std::string& a_what, const RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor>& a_callback,
+			Args... a_args)
+		{
+			auto* game = RE::GameVM::GetSingleton();
+			auto  vm = game ? game->GetVM() : nullptr;
+			auto* quest = Forms::Quest();
+			if (!vm || !quest) {
+				return false;
+			}
+			auto&      handles = vm->GetObjectHandlePolicy();
+			const auto handle = handles.GetHandleForObject(RE::BSScript::GetVMTypeID<RE::TESQuest>(), quest);
+			if (handle == handles.EmptyHandle()) {
+				log::warn("{}: no script handle for the quest", a_what);
+				return false;
+			}
+			const RE::BSFixedString script{ "fo4rouletteQuest" };
+			const RE::BSFixedString function{ a_function };
+			const bool              ok = vm->DispatchMethodCall(
+                handle, script, function,
+                [&](RE::BSScrapArray<RE::BSScript::Variable>& a_out) {
+                    a_out = RE::BSScript::detail::PackVariables(a_args...);
+                    return true;
+                },
+                a_callback);
+			log::info("{} {}", a_what, ok ? "sent" : "failed (is fo4rouletteQuest.pex installed?)");
+			return ok;
+		}
+
+		template <class... Args>
+		bool CallActor(RE::Actor* a_actor, const char* a_function, Args... a_args)
+		{
+			auto* game = RE::GameVM::GetSingleton();
+			auto  vm = game ? game->GetVM() : nullptr;
+			if (!vm || !a_actor) {
+				return false;
+			}
+			auto&      handles = vm->GetObjectHandlePolicy();
+			const auto handle = handles.GetHandleForObject(RE::BSScript::kActor, a_actor);
+			if (handle == handles.EmptyHandle()) {
+				log::warn("{}: no script handle for {:08X}", a_function, a_actor->GetFormID());
+				return false;
+			}
+			const RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> callback{ new LogResult(What(a_actor, a_function)) };
+			const RE::BSFixedString script{ "Actor" };
+			const RE::BSFixedString function{ a_function };
+			return vm->DispatchMethodCall(
+				handle, script, function,
+				[&](RE::BSScrapArray<RE::BSScript::Variable>& a_out) {
+					a_out = RE::BSScript::detail::PackVariables(a_args...);
+					return true;
+				},
+				callback);
+		}
+	}
+
+	bool Ready()
+	{
+		return Forms::Quest() && Forms::LinkKeyword();
+	}
+
+	void Join(RE::Actor* a_actor, RE::TESObjectREFR* a_target, bool a_dealer)
+	{
+		if (!a_actor || !a_target || !Ready()) {
+			return;
+		}
+		const std::string what = std::format("{} to {:08X}", What(a_actor, a_dealer ? "JoinDealers" : "JoinBettors"), a_target->GetFormID());
+		const RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> done{ new JoinDone(what, a_actor->GetFormID()) };
+		CallQuest("Join", what, done, FormArg(a_actor), FormArg(a_target), FormArg(Forms::LinkKeyword()), a_dealer);
+	}
+
+	bool Joined(const RE::Actor* a_actor)
+	{
+		std::scoped_lock lock(g_joinedMutex);
+		return a_actor && g_joined.contains(a_actor->GetFormID());
+	}
+
+	void Walk(RE::Actor* a_actor, RE::TESObjectREFR* a_target, bool a_reset)
+	{
+		if (!a_actor || !a_target || !Ready()) {
+			return;
+		}
+		const std::string what = std::format("{} to {:08X}{}", What(a_actor, "Walk"), a_target->GetFormID(), a_reset ? " (AI reset)" : "");
+		const RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> logged{ new LogResult(what) };
+		CallQuest("Walk", what, logged, FormArg(a_actor), FormArg(a_target), FormArg(Forms::LinkKeyword()), a_reset);
+	}
+
+	void Arrived(RE::Actor* a_actor)
+	{
+		if (!a_actor || !Ready()) {
+			return;
+		}
+		const std::string what = What(a_actor, "Arrived");
+		const RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> logged{ new LogResult(what) };
+		CallQuest("Arrived", what, logged, FormArg(a_actor), FormArg(Forms::LinkKeyword()));
+	}
+
+	void Leave(RE::Actor* a_actor)
+	{
+		if (!a_actor) {
+			return;
+		}
+		{
+			std::scoped_lock lock(g_joinedMutex);
+			g_joined.erase(a_actor->GetFormID());
+		}
+		if (!Ready()) {
+			return;
+		}
+		if (auto* keyword = Forms::LinkKeyword()) {
+			a_actor->SetLinkedRef(nullptr, keyword);
+		}
+		const std::string what = What(a_actor, "Leave");
+		const RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> logged{ new LogResult(what) };
+		CallQuest("Leave", what, logged, FormArg(a_actor), FormArg(Forms::LinkKeyword()));
+	}
+
+	void ClearAll()
+	{
+		{
+			std::scoped_lock lock(g_joinedMutex);
+			g_joined.clear();
+		}
+		if (!Ready()) {
+			return;
+		}
+		const RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> logged{ new LogResult("ClearAll") };
+		CallQuest("ClearAll", "fo4rouletteQuest.ClearAll", logged, FormArg(Forms::LinkKeyword()));
+	}
+
+	bool MoveTo(RE::Actor* a_actor, RE::TESObjectREFR* a_target)
+	{
+		// ObjectReference.MoveTo(ObjectReference akTarget, float afXOffset, float afYOffset, float afZOffset, bool abMatchRotation)
+		return CallActor(a_actor, "MoveTo", a_target, 0.0f, 0.0f, 0.0f, true);
+	}
+
+	bool SetRestrained(RE::Actor* a_actor, bool a_on)
+	{
+		return CallActor(a_actor, "SetRestrained", a_on);
+	}
+
+	bool LookAt(RE::Actor* a_actor, RE::TESObjectREFR* a_target)
+	{
+		return CallActor(a_actor, "SetLookAt", a_target, false);
+	}
+
+	bool ClearLookAt(RE::Actor* a_actor)
+	{
+		return CallActor(a_actor, "ClearLookAt");
+	}
+
+	std::string PackageName(RE::Actor* a_actor)
+	{
+		auto* proc = a_actor ? a_actor->currentProcess : nullptr;
+		auto* pkg = proc ? proc->currentPackage.package : nullptr;
+		if (!pkg) {
+			return "none";
+		}
+		auto* file = pkg->GetFile(0);
+		return std::format("{:08X} ({})", pkg->GetFormID(), file ? std::string(file->GetFilename()) : std::string("?"));
+	}
+}

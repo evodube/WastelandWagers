@@ -1,0 +1,130 @@
+#!/usr/bin/env python3
+"""Writes fo4roulette's sounds (Data/Sound/fo4roulette/<bank>_<n>.wav, mono 16-bit 44.1 kHz), synthesised here so
+they're ours to ship: chips, the ball's clicks and its roll round the track, the rotor's whirr, the caps paid out.
+
+    python tools/make_sounds.py <out Data folder>
+"""
+
+import os
+import sys
+import wave
+
+import numpy as np
+
+RATE = 44100
+rng = np.random.default_rng(7)
+
+
+def t(seconds):
+    return np.arange(int(seconds * RATE)) / RATE
+
+
+def bandpass(x, lo, hi):
+    """a crude band-pass: FFT mask with soft edges"""
+    n = len(x)
+    f = np.fft.rfftfreq(n, 1 / RATE)
+    X = np.fft.rfft(x)
+    mask = 1 / (1 + ((lo / np.maximum(f, 1)) ** 4)) * 1 / (1 + ((f / hi) ** 4))
+    return np.fft.irfft(X * mask, n)
+
+
+def click(freq, decay, length=0.08, noise=0.5):
+    tt = t(length)
+    tone = np.sin(2 * np.pi * freq * tt + rng.uniform(0, 6.28)) * np.exp(-tt / decay)
+    hiss = bandpass(rng.normal(0, 1, len(tt)), freq * 0.5, freq * 2.0) * np.exp(-tt / (decay * 0.6))
+    return tone * (1 - noise) + hiss * noise * 0.6
+
+
+def place(buf, sound, at, gain=1.0):
+    i = int(at * RATE)
+    n = min(len(sound), len(buf) - i)
+    if n > 0:
+        buf[i:i + n] += sound[:n] * gain
+
+
+def write(path, x, peak=0.85):
+    x = x / max(1e-9, np.max(np.abs(x))) * peak
+    data = (np.clip(x, -1, 1) * 32767).astype("<i2")
+    with wave.open(path, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(RATE)
+        w.writeframes(data.tobytes())
+
+
+def chip():
+    buf = np.zeros(int(0.15 * RATE))
+    place(buf, click(rng.uniform(2600, 3400), 0.012, noise=0.7), 0.0)
+    place(buf, click(rng.uniform(3000, 4200), 0.008, noise=0.8), rng.uniform(0.02, 0.04), 0.5)
+    return buf
+
+
+def rattle():
+    buf = np.zeros(int(0.25 * RATE))
+    at, g = 0.0, 1.0
+    for _ in range(rng.integers(1, 4)):
+        place(buf, click(rng.uniform(4500, 6500), 0.006, noise=0.4), at, g)
+        at += rng.uniform(0.03, 0.07)
+        g *= 0.5
+    return buf
+
+
+def settle():
+    buf = np.zeros(int(0.6 * RATE))
+    place(buf, click(5200, 0.01, noise=0.5), 0.0)
+    at, g = 0.05, 0.6
+    for _ in range(5):
+        place(buf, click(rng.uniform(5000, 6200), 0.004, noise=0.5), at, g)
+        at += rng.uniform(0.03, 0.06) * (1 - g * 0.3)
+        g *= 0.6
+    return buf
+
+
+def roll(seconds=9.0):
+    tt = t(seconds)
+    noise = bandpass(rng.normal(0, 1, len(tt)), 400, 3200)
+    # the ball passing over the track's seams: a pulse that slows as the ball does
+    rate = 9.0 * np.exp(-tt / 7.0) + 2.0
+    phase = np.cumsum(rate) / RATE
+    pulse = 0.7 + 0.3 * np.sin(2 * np.pi * phase) ** 2
+    env = np.minimum(1, tt / 0.15) * (0.6 + 0.4 * np.exp(-tt / 5.0))
+    whir = np.sin(2 * np.pi * np.cumsum(180 + 120 * np.exp(-tt / 4.0)) / RATE) * 0.15
+    return (noise * pulse + whir) * env
+
+
+def spin():
+    tt = t(1.6)
+    noise = bandpass(rng.normal(0, 1, len(tt)), 150, 1200)
+    env = np.minimum(1, tt / 0.08) * np.exp(-tt / 0.7)
+    knock = click(900, 0.02, 0.1, noise=0.3)
+    out = noise * env * 0.7
+    place(out, knock, 0.0, 1.5)
+    return out
+
+
+def win():
+    buf = np.zeros(int(1.2 * RATE))
+    for _ in range(9):
+        at = rng.uniform(0.0, 0.5)
+        f = rng.uniform(2800, 5200)
+        tt = t(0.4)
+        ring = (np.sin(2 * np.pi * f * tt) + 0.4 * np.sin(2 * np.pi * f * 2.7 * tt)) * np.exp(-tt / rng.uniform(0.05, 0.15))
+        place(buf, ring, at, rng.uniform(0.3, 1.0))
+    return buf
+
+
+def main() -> int:
+    out = os.path.join(sys.argv[1], "Sound", "fo4roulette")
+    os.makedirs(out, exist_ok=True)
+    banks = {"chip": (chip, 4), "rattle": (rattle, 6), "settle": (settle, 2), "roll": (roll, 1), "spin": (spin, 2), "win": (win, 1)}
+    for name, (make, n) in banks.items():
+        for i in range(1, n + 1):
+            write(os.path.join(out, f"{name}_{i}.wav"), make())
+    with open(os.path.join(out, "CREDITS.txt"), "w") as f:
+        f.write("Real Roulette's sounds are synthesised by tools/make_sounds.py (no recordings): free to use with the mod.\n")
+    print("wrote", len(os.listdir(out)), "files to", out)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
