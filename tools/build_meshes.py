@@ -333,7 +333,7 @@ def main():
 
     disc = by("bek1")[0]
     turret = by(" Kol")
-    diamonds = by("Süs")
+    diamonds = by("pSuperShape")  # the eight diamonds on the bowl
     layout = [o for o in objs if o.name.endswith("Masa2")][0]
     body_parts = [o for o in objs if o not in turret and o not in diamonds and o is not disc and o is not layout]
     base_parts = [o for o in body_parts if "Masaalt" in o.name or "Masaevre" in o.name or "Masaçevre" in o.name]

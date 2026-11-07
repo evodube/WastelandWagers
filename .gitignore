@@ -1,8 +1,8 @@
-build/
-.xmake/
-vsxmake*/
 *.user
 .vs/
-compile_commands.json
-build/test/
+.xmake/
 __pycache__/
+build/
+build/test/
+compile_commands.json
+vsxmake*/
