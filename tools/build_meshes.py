@@ -132,6 +132,7 @@ def node(name, loc=(0, 0, 0), parent=None, flags=None):
 
 def parent_keep(child, parent):
     """parent without moving: the mesh's vertices are made relative to the parent"""
+    bpy.context.view_layer.update()  # a new empty's matrix_world is identity until the scene updates
     child.data.transform(parent.matrix_world.inverted())
     child.parent = parent
     child.matrix_parent_inverse = Matrix.Identity(4)
