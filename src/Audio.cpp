@@ -91,6 +91,7 @@ namespace fr::Audio
 			case Bank::kChip: return L"chip";
 			case Bank::kRattle: return L"rattle";
 			case Bank::kSettle: return L"settle";
+			case Bank::kDrop: return L"drop";
 			case Bank::kRoll: return L"roll";
 			case Bank::kSpin: return L"spin";
 			case Bank::kWin: return L"win";

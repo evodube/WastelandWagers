@@ -54,7 +54,7 @@ to land on the drawn number), the dealer's and bettors' walks.
   walks NPCs to the table), `Scripts\fo4rouletteQuest.pex` and `fo4rouletteGroupAlias.pex`.
 - `Meshes\fo4roulette`, `Textures\fo4roulette`: the table (from a Sketchfab model; see Credits), its two rotors and
   layouts (European and American, painted by `tools/make_textures.py`), ball and chips.
-- `Sound\fo4roulette`: synthesised by `tools/make_sounds.py`.
+- `Sound\fo4roulette`: the ball's roll and drop cut from a recording by Maxwell Dufresne (gfxsounds.com); the rest synthesised by `tools/make_sounds.py`.
 - `F4SE\Plugins\fo4roulette\hud`: the HUD's fonts (Chakra Petch, Share Tech Mono; OFL).
 
 ## Building
@@ -96,6 +96,7 @@ g++ -std=c++20 -O2 -Isrc tests/layout_test.cpp src/rl/Layout.cpp src/rl/Wheel.cp
 ## Credits
 
 - Roulette table model: ["Roulette Table 2"](https://sketchfab.com/3d-models/roulette-table-2-downloadable-b1d33eebb4f54b8aa250be2f49e87fbb) by [Dudzy](https://sketchfab.com/Dudzy) on Sketchfab, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Changed for the game: split into parts, scaled, given collision, the rotor and layout repainted (European and American).
+- Roulette ball sound: recorded by [Maxwell Dufresne](https://gfxsounds.com/blog/maxwell-dufresne/), [GFXSounds](https://gfxsounds.com) (Standard licence).
 - HUD fonts: Chakra Petch and Share Tech Mono (SIL Open Font License).
 - CommonLibF4 (Dear-Modding), F4SE, F4SE Menu Framework.
 

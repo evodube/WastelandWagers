@@ -6,7 +6,8 @@ namespace fr::Audio
 	{
 		kChip,    // a chip put down or picked up
 		kRattle,  // the ball hitting a diamond or a fret
-		kSettle,  // the ball dropping into its pocket
+		kSettle,  // the ball dropping into its pocket (synthesised; only used without the drop recording)
+		kDrop,    // the ball dropping onto the rotor and clattering into a pocket (recorded)
 		kRoll,    // the ball running round the track
 		kSpin,    // the rotor turned by hand
 		kWin,     // a winning bet paid (HUD sound)

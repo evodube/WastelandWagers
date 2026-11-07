@@ -581,7 +581,7 @@ namespace fr
 		_bannerTitle = "NO MORE BETS";
 		_bannerSub = dealer ? std::format("{} SPINS", Upper(_dealer.name)) : std::string("YOU SPIN");
 		_bannerTime = std::chrono::steady_clock::now();
-		Audio::Play(Audio::Bank::kRoll, ToWorld(frame, rl::table::kWheelX, rl::table::kWheelY, rl::table::kTrackZ), 0.7f, _plan.dropTime + 0.6f);
+		Audio::Play(Audio::Bank::kRoll, ToWorld(frame, rl::table::kWheelX, rl::table::kWheelY, rl::table::kTrackZ), 0.7f, _plan.rotorTime + 0.3f);  // round the track and down the cone, up to the drop
 		if (_seated && Settings::Get().wheelViewOnSpin) {
 			_wheelView = true;
 			_viewBackIn = -1.0f;
@@ -608,17 +608,22 @@ namespace fr
 		const double      u = std::clamp(static_cast<double>(_playT * 60.0f - static_cast<float>(i)), 0.0, 1.0);
 		_rotorAngle = smp[i].rotor + std::remainder(static_cast<double>(smp[j].rotor) - smp[i].rotor, 6.283185307) * u;
 		const auto   wheel = ToWorld(a_frame, kWheelX, kWheelY, kRotorEdgeZ);
-		// clicks: each time the ball comes off the surface (a diamond, a fret)
+		// clicks off the diamonds while it's on the cone; once it reaches the rotor, the recorded drop and clatter
+		// (cut to how long it bounces about there)
 		const double off = smp[i].z - (rl::SurfaceZ(smp[i].r) + kBallRadius);
-		if (off > 0.25 && !_hopping) {
-			_hopping = true;
-			Audio::Play(Audio::Bank::kRattle, wheel, std::clamp(static_cast<float>(off) / 2.0f, 0.3f, 1.0f));
-		} else if (off < 0.05) {
-			_hopping = false;
+		if (_playT < _plan.rotorTime) {
+			if (off > 0.25 && !_hopping) {
+				_hopping = true;
+				Audio::Play(Audio::Bank::kRattle, wheel, std::clamp(static_cast<float>(off) / 2.0f, 0.3f, 1.0f));
+			} else if (off < 0.05) {
+				_hopping = false;
+			}
 		}
-		if (!_settleHeard && _playT >= _plan.settleTime && _plan.settleTime > 0.0f) {
+		if (!_settleHeard && _plan.rotorTime > 0.0f && _playT >= _plan.rotorTime) {
 			_settleHeard = true;
-			Audio::Play(Audio::Bank::kSettle, wheel, 0.9f);
+			const float bouncing = std::max(0.5f, _plan.settleTime - _plan.rotorTime);
+			Audio::Play(Audio::Bank::kDrop, wheel, 0.9f, bouncing + 1.2f);
+			Audio::Play(Audio::Bank::kSettle, wheel, 0.6f);  // (only there when the recording isn't)
 		}
 		if (_playT >= smp.back().t) {
 			Settle();

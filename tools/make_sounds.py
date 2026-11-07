@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
-"""Writes fo4roulette's sounds (Data/Sound/fo4roulette/<bank>_<n>.wav, mono 16-bit 44.1 kHz), synthesised here so
-they're ours to ship: chips, the ball's clicks and its roll round the track, the rotor's whirr, the caps paid out.
+"""Writes fo4roulette's sounds (Data/Sound/fo4roulette/<bank>_<n>.wav, mono 16-bit 44.1 kHz).
 
     python tools/make_sounds.py <out Data folder>
+
+The ball running round the track (roll) and dropping onto the rotor and clattering into a pocket (drop) are cut from
+a real recording, tools/source_sounds/roulette_gfxsounds.wav (Maxwell Dufresne, gfxsounds.com, Standard licence):
+its first 3.95 s are the roll (looped out to cover a long spin), the rest the drop. The rest are synthesised here:
+chips, the ball's clicks off the diamonds, the rotor's whirr, the caps paid out.
 """
 
 import os
@@ -113,15 +117,54 @@ def win():
     return buf
 
 
+SOURCE = os.path.join(os.path.dirname(__file__), "source_sounds", "roulette_gfxsounds.wav")
+SPLIT = 3.95  # seconds: the roll ends and the drop begins
+
+
+def recording():
+    with wave.open(SOURCE, "rb") as w:
+        x = np.frombuffer(w.readframes(w.getnframes()), "<i2").astype(np.float64) / 32768
+        x = x.reshape(-1, w.getnchannels()).mean(axis=1)
+    return x
+
+
+def real_roll(seconds=10.0):
+    """the recorded roll, looped with crossfades to last a whole spin's time on the track (the plugin cuts it short)"""
+    x = recording()[int(0.05 * RATE):int(SPLIT * RATE)]
+    fade = int(0.4 * RATE)
+    out = x.copy()
+    ramp = np.linspace(0, 1, fade)
+    while len(out) < seconds * RATE:
+        out[-fade:] = out[-fade:] * (1 - ramp) + x[:fade] * ramp
+        out = np.concatenate([out, x[fade:]])
+    out = out[:int(seconds * RATE)]
+    out[:int(0.05 * RATE)] *= np.linspace(0, 1, int(0.05 * RATE))
+    return out
+
+
+def real_drop():
+    x = recording()[int((SPLIT - 0.03) * RATE):]
+    x[:int(0.03 * RATE)] *= np.linspace(0, 1, int(0.03 * RATE))
+    return x
+
+
 def main() -> int:
     out = os.path.join(sys.argv[1], "Sound", "fo4roulette")
     os.makedirs(out, exist_ok=True)
-    banks = {"chip": (chip, 4), "rattle": (rattle, 6), "settle": (settle, 2), "roll": (roll, 1), "spin": (spin, 2), "win": (win, 1)}
+    banks = {"chip": (chip, 4), "rattle": (rattle, 6), "spin": (spin, 2), "win": (win, 1)}
+    if os.path.exists(SOURCE):
+        banks["roll"] = (real_roll, 1)
+        banks["drop"] = (real_drop, 1)
+    else:
+        banks["roll"] = (roll, 1)
+        banks["settle"] = (settle, 2)
     for name, (make, n) in banks.items():
         for i in range(1, n + 1):
             write(os.path.join(out, f"{name}_{i}.wav"), make())
     with open(os.path.join(out, "CREDITS.txt"), "w") as f:
-        f.write("Real Roulette's sounds are synthesised by tools/make_sounds.py (no recordings): free to use with the mod.\n")
+        f.write("roll_1.wav, drop_1.wav: cut from a roulette recording by Maxwell Dufresne, gfxsounds.com (https://gfxsounds.com), "
+                "Standard licence.\n"
+                "The other sounds are synthesised by tools/make_sounds.py.\n")
     print("wrote", len(os.listdir(out)), "files to", out)
     return 0
 
