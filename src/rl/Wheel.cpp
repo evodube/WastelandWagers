@@ -16,6 +16,8 @@ namespace rl
 		constexpr int    kSampleEvery = 4;      // 60 samples a second
 		constexpr double kMaxSeconds = 30.0;
 		constexpr double kAfterSettle = 1.0;    // recorded after the ball comes to rest
+		constexpr float  kMinOnRotor = 2.5f;    // seconds a shown spin bounces about on the rotor, at least
+		constexpr int    kMinFrets = 3;         // ...and frets it hits
 
 		const std::vector<int> kEuropean{ 0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20,
 			14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26 };
@@ -168,6 +170,9 @@ namespace rl
 		plan.samples.reserve(static_cast<std::size_t>(20.0 * 60.0));
 		int    stepNo = 0;
 		double t = 0.0;
+		auto event = [&](SpinEvent::Kind a_kind, double a_strength) {
+			plan.events.push_back({ static_cast<float>(t), a_kind, static_cast<float>(std::clamp(a_strength, 0.0, 1.0)) });
+		};
 		auto record = [&]() {
 			plan.samples.push_back({ static_cast<float>(t), static_cast<float>(r), static_cast<float>(Wrap(th)),
 				static_cast<float>(SurfaceZ(r) + kBallRadius + h), static_cast<float>(Wrap(phi)) });
@@ -204,12 +209,15 @@ namespace rl
 				h += vz * dt;
 				if (h <= 0.0) {
 					h = 0.0;
+					if (std::abs(vz) > 8.0) {
+						event(SpinEvent::Kind::kLand, std::abs(vz) / 110.0);
+					}
 					// landing: a few smaller bounces, each knocking it about a little on the rotor
 					if (!onTrack && descent >= 1.0 && std::abs(vz) > 25.0) {
-						w += uni(-1.2, 1.2);
-						vr += uni(-12.0, 12.0);
+						w += uni(-1.6, 1.6);
+						vr += uni(-14.0, 14.0);
 					}
-					vz = std::abs(vz) > 12.0 ? -vz * 0.45 : 0.0;
+					vz = std::abs(vz) > 10.0 ? -vz * 0.5 : 0.0;
 				}
 			}
 
@@ -234,6 +242,7 @@ namespace rl
 				if (std::abs(r - kDiamondR) < kDiamondHalf + kBallRadius + 0.5 && h < 1.0) {
 					const double eighth = kPi / 4.0;
 					if (std::floor(Wrap(thBefore) / eighth) != std::floor(Wrap(th) / eighth) && U(a_noise) < diamondChance) {
+						event(SpinEvent::Kind::kDiamond, std::min(1.0, std::abs(w) / 6.0));
 						w *= uni(-0.25, 0.55);
 						vz = uni(45.0, 110.0);
 						descent = std::max(0.3, descent - uni(0.05, 0.25));  // thrown back up the cone a little
@@ -242,6 +251,8 @@ namespace rl
 				if (descent >= 1.0) {
 					plan.rotorTime = static_cast<float>(t);
 					vr = -2.0 * (rTrack - kRotorEdge) / descentTime;
+					event(SpinEvent::Kind::kLand, 0.7);
+					vz = std::max(vz, uni(30.0, 60.0));  // it comes off the cone's foot onto the rotor with a skip
 				}
 			} else {
 				const double thBefore = th;
@@ -253,7 +264,7 @@ namespace rl
 				// angular: dragged towards the rotor's speed, hard once it's down among the pockets
 				const bool onRotor = r < kRotorEdge;
 				if (onRotor) {
-					const double drag = r < kNumberInner ? 0.6 : 0.35;
+					const double drag = r < kNumberInner ? 0.4 : 0.3;
 					w = wr + Slow(w - wr, drag, dt);
 				} else {
 					w = Slow(w, 0.8, dt);
@@ -278,6 +289,8 @@ namespace rl
 					if (fBefore != fNow) {
 						const double rel = w - wr;
 						th = thBefore + wr * dt;  // stays in its pocket this step...
+						event(SpinEvent::Kind::kFret, std::abs(rel) / 3.0);
+						++plan.frets;
 						w = wr - rel * uni(0.55, 0.9);  // ...bouncing back off the fret
 						vr += uni(-15.0, 75.0) * std::min(1.0, std::abs(rel) / 2.5);
 						vz = uni(35.0, 85.0) * std::min(1.0, std::abs(rel) / 0.8);  // up off the fret
@@ -290,6 +303,7 @@ namespace rl
 				if (still > 0.3 || t >= kMaxSeconds) {
 					settled = true;
 					plan.settleTime = static_cast<float>(t);
+					event(SpinEvent::Kind::kSettle, 0.5);
 					plan.pocket = PocketAt(a_type, th - phi);
 					restAngle = Wrap(th - phi);
 				}
@@ -311,19 +325,30 @@ namespace rl
 		const int target = std::uniform_int_distribution<int>(0, n - 1)(a_rng);
 		std::uniform_real_distribution<double> U(0.0, 1.0);
 		SpinPlan last;
-		for (int tries = 0; tries < 600; ++tries) {
+		SpinPlan fallback;  // the best run that ended in the drawn pocket, if none bounced about long enough
+		for (int tries = 0; tries < 2500; ++tries) {
 			SpinParams p = a_base;
 			p.ballSpeed = a_base.ballSpeed * (0.9 + 0.2 * U(a_rng));
 			p.throwAngle = a_base.throwAngle + (U(a_rng) - 0.5) * 0.3;
 			std::mt19937 noise(a_rng());
 			last = SimulateSpin(a_type, p, noise);
-			if (last.pocket == target) {
-				last.tries = tries;
-				last.drawn = true;
+			if (last.pocket != target) {
+				continue;
+			}
+			last.tries = tries;
+			last.drawn = true;
+			// a proper finish: a few seconds bouncing about on the rotor, off several frets, before it sits down
+			if (last.settleTime - last.rotorTime >= kMinOnRotor && last.frets >= kMinFrets) {
 				return last;
 			}
+			if (fallback.samples.empty() || last.settleTime - last.rotorTime > fallback.settleTime - fallback.rotorTime) {
+				fallback = std::move(last);
+			}
 		}
-		last.tries = 600;
+		if (!fallback.samples.empty()) {
+			return fallback;
+		}
+		last.tries = 2500;
 		last.drawn = false;
 		return last;
 	}

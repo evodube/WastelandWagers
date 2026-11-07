@@ -228,9 +228,9 @@ namespace fr
 		float                             _spinIn{ -1.0f };  // seconds to the wheel spinning itself (-1: no bets yet)
 		rl::SpinPlan                      _plan;
 		float                             _playT{ 0.0f };
+		std::size_t                       _eventIdx{ 0 };      // the next of the spin's events to sound
+		float                             _lastKnock{ -1.0f };
 		std::size_t                       _playIdx{ 0 };
-		bool                              _hopping{ false };
-		bool                              _settleHeard{ false };
 		bool                              _dropSaid{ false };
 		int                               _restPocket{ -1 };  // the ball's pocket between spins (-1: no ball yet)
 		RE::ObjectRefHandle               _ball;

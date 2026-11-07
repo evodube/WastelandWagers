@@ -101,7 +101,8 @@ int main()
 		const int n = PocketCount(type);
 		std::mt19937 rng(99);
 		std::vector<int> counts(n, 0);
-		int undrawn = 0, maxTries = 0;
+		int undrawn = 0, maxTries = 0, shortFinish = 0;
+		double onRotor = 0, frets = 0, lands = 0;
 		const int runs = 3000;
 		for (int i = 0; i < runs; ++i) {
 			SpinParams p;
@@ -111,14 +112,27 @@ int main()
 			++counts[plan.pocket];
 			undrawn += !plan.drawn;
 			maxTries = std::max(maxTries, plan.tries);
+			const double rot = plan.settleTime - plan.rotorTime;
+			onRotor += rot;
+			frets += plan.frets;
+			for (const auto& ev : plan.events) {
+				lands += ev.kind == SpinEvent::Kind::kLand && ev.t > plan.rotorTime;
+			}
+			shortFinish += rot < 2.5 || plan.frets < 3;
+			// events in order, inside the spin
+			for (std::size_t k = 1; k < plan.events.size(); ++k) {
+				Check(plan.events[k].t >= plan.events[k - 1].t && plan.events[k].t <= plan.samples.back().t, "events in order");
+			}
 		}
 		double chi = 0;
 		const double e = runs / double(n);
 		for (int c : counts) {
 			chi += (c - e) * (c - e) / e;
 		}
-		std::printf("%s drawn: chi-square %.1f over %d pockets, %d not drawn, most tries %d\n",
-			type == WheelType::kEuropean ? "European" : "American", chi, n, undrawn, maxTries);
+		std::printf("%s drawn: chi-square %.1f over %d pockets, %d not drawn, most tries %d; on the rotor %.1fs, %.1f frets, %.1f bounces avg; %d short\n",
+			type == WheelType::kEuropean ? "European" : "American", chi, n, undrawn, maxTries, onRotor / runs, frets / runs, lands / runs,
+			shortFinish);
+		Check(shortFinish * 50 < runs, "nearly every spin bounces about on the rotor before it sits down");
 		Check(undrawn == 0, "every draw is reached");
 		Check(chi < 80.0, "results look uniform");
 	}

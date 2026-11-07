@@ -5,9 +5,9 @@ namespace fr::Audio
 	enum class Bank
 	{
 		kChip,    // a chip put down or picked up
-		kRattle,  // the ball hitting a diamond or a fret
-		kSettle,  // the ball dropping into its pocket (synthesised; only used without the drop recording)
-		kDrop,    // the ball dropping onto the rotor and clattering into a pocket (recorded)
+		kRattle,  // the ball hitting a diamond or a fret hard
+		kSettle,  // the ball rocking into place in its pocket
+		kTick,    // the ball's small knocks: bouncing about the rotor and the pockets
 		kRoll,    // the ball running round the track
 		kSpin,    // the rotor turned by hand
 		kWin,     // a winning bet paid (HUD sound)
@@ -21,6 +21,10 @@ namespace fr::Audio
 	// Plays one of the bank's sounds at a_pos in the world, quieter with distance from the camera. a_gain 0..1.
 	// a_seconds > 0 plays only that much of it, fading out at the end.
 	void Play(Bank a_bank, const RE::NiPoint3& a_pos, float a_gain, float a_seconds = 0.0f);
+
+	// As Play, with the loudness following a_keys over time: (seconds from the start, gain 0..1) pairs, in order,
+	// joined by straight lines; the sound stops at the last one.
+	void PlayShaped(Bank a_bank, const RE::NiPoint3& a_pos, float a_gain, const std::vector<std::pair<float, float>>& a_keys);
 
 	// At the listener: no position.
 	void PlayUI(Bank a_bank, float a_gain);

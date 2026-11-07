@@ -472,6 +472,7 @@ namespace fr
 			}
 		}
 
+		_rotorAngle = std::remainder(_rotorAngle, 6.283185307179586);  // (kept small: the spin plans are in floats)
 		TurnRotor(frame);
 		PlaceBall(frame);
 		MakeStacks(frame);
@@ -582,8 +583,6 @@ namespace fr
 		_phase = Phase::kSpinning;
 		_phaseTime = 0.0f;
 		_playT = 0.0f;
-		_hopping = false;
-		_settleHeard = false;
 		_dropSaid = false;
 		_restPocket = -1;
 		_hudBanner = 1;
@@ -591,7 +590,33 @@ namespace fr
 		_bannerSub = a_byPlayer ? std::string("YOU SPIN") : std::string("THE WHEEL SPINS");
 		_spinIn = -1.0f;
 		_bannerTime = std::chrono::steady_clock::now();
-		Audio::Play(Audio::Bank::kRoll, ToWorld(frame, rl::table::kWheelX, rl::table::kWheelY, rl::table::kTrackZ), 0.7f, _plan.rotorTime + 0.3f);  // round the track and down the cone, up to the drop
+		// the roll: as loud as the ball is fast, round the track and down the cone, gone as it reaches the rotor
+		{
+			std::vector<std::pair<float, float>> keys;
+			const auto& smp = _plan.samples;
+			double      fastest = 0.0;
+			auto speedAt = [&](std::size_t a_i) {
+				const std::size_t j = std::min(a_i + 15, smp.size() - 1);
+				const std::size_t i = j > 15 ? j - 15 : 0;
+				const double      dt = std::max(1e-3, static_cast<double>(smp[j].t - smp[i].t));
+				return std::abs(std::remainder(static_cast<double>(smp[j].theta) - smp[i].theta, 6.283185307)) * smp[i].r / dt;
+			};
+			for (std::size_t i = 0; i < smp.size() && smp[i].t <= _plan.rotorTime; i += 15) {
+				fastest = std::max(fastest, speedAt(i));
+			}
+			for (std::size_t i = 0; i < smp.size() && smp[i].t <= _plan.rotorTime; i += 15) {
+				const double v = fastest > 0.0 ? speedAt(i) / fastest : 0.0;
+				keys.emplace_back(smp[i].t, static_cast<float>(std::pow(std::clamp(v, 0.0, 1.0), 0.7) * (smp[i].t < _plan.dropTime ? 1.0 : 0.8)));
+			}
+			if (!keys.empty()) {
+				keys.front().second = 0.0f;
+				keys.insert(keys.begin() + 1, { 0.08f, keys.size() > 1 ? keys[1].second : 1.0f });
+				keys.emplace_back(_plan.rotorTime + 0.12f, 0.0f);
+				Audio::PlayShaped(Audio::Bank::kRoll, ToWorld(frame, rl::table::kWheelX, rl::table::kWheelY, rl::table::kTrackZ), 0.75f, keys);
+			}
+		}
+		_eventIdx = 0;
+		_lastKnock = -1.0f;
 		if (_seated && Settings::Get().wheelViewOnSpin) {
 			_wheelView = true;
 			_viewBackIn = -1.0f;
@@ -611,23 +636,37 @@ namespace fr
 		const std::size_t j = std::min(i + 1, smp.size() - 1);
 		const double      u = std::clamp(static_cast<double>(_playT * 60.0f - static_cast<float>(i)), 0.0, 1.0);
 		_rotorAngle = smp[i].rotor + std::remainder(static_cast<double>(smp[j].rotor) - smp[i].rotor, 6.283185307) * u;
-		const auto   wheel = ToWorld(a_frame, kWheelX, kWheelY, kRotorEdgeZ);
-		// clicks off the diamonds while it's on the cone; once it reaches the rotor, the recorded drop and clatter
-		// (cut to how long it bounces about there)
-		const double off = smp[i].z - (rl::SurfaceZ(smp[i].r) + kBallRadius);
-		if (_playT < _plan.rotorTime) {
-			if (off > 0.25 && !_hopping) {
-				_hopping = true;
-				Audio::Play(Audio::Bank::kRattle, wheel, std::clamp(static_cast<float>(off) / 2.0f, 0.3f, 1.0f));
-			} else if (off < 0.05) {
-				_hopping = false;
+		// each knock as it happens: off a diamond, a fret, coming down from a bounce, rocking into place
+		const auto wheel = ToWorld(a_frame, kWheelX, kWheelY, kRotorEdgeZ);
+		while (_eventIdx < _plan.events.size() && _plan.events[_eventIdx].t <= _playT) {
+			const auto& ev = _plan.events[_eventIdx++];
+			using Kind = rl::SpinEvent::Kind;
+			const float s = ev.strength;
+			if (ev.kind != Kind::kSettle && ev.t - _lastKnock < 0.03f && s < 0.5f) {
+				continue;  // (two in the same instant sound as one)
 			}
-		}
-		if (!_settleHeard && _plan.rotorTime > 0.0f && _playT >= _plan.rotorTime) {
-			_settleHeard = true;
-			const float bouncing = std::max(0.5f, _plan.settleTime - _plan.rotorTime);
-			Audio::Play(Audio::Bank::kDrop, wheel, 0.9f, bouncing + 1.2f);
-			Audio::Play(Audio::Bank::kSettle, wheel, 0.6f);  // (only there when the recording isn't)
+			switch (ev.kind) {
+			case Kind::kDiamond:
+				Audio::Play(Audio::Bank::kRattle, wheel, 0.5f + 0.5f * s);
+				break;
+			case Kind::kFret:
+				if (s > 0.45f) {
+					Audio::Play(Audio::Bank::kRattle, wheel, 0.3f + 0.5f * s);
+				} else {
+					Audio::Play(Audio::Bank::kTick, wheel, 0.25f + 0.75f * s);
+				}
+				break;
+			case Kind::kLand:
+				if (s < 0.07f) {
+					continue;
+				}
+				Audio::Play(Audio::Bank::kTick, wheel, std::min(1.0f, 0.15f + 0.85f * s));
+				break;
+			case Kind::kSettle:
+				Audio::Play(Audio::Bank::kSettle, wheel, 0.45f);
+				break;
+			}
+			_lastKnock = ev.t;
 		}
 		if (_playT >= smp.back().t) {
 			Settle();

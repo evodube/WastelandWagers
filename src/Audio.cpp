@@ -91,7 +91,7 @@ namespace fr::Audio
 			case Bank::kChip: return L"chip";
 			case Bank::kRattle: return L"rattle";
 			case Bank::kSettle: return L"settle";
-			case Bank::kDrop: return L"drop";
+			case Bank::kTick: return L"tick";
 			case Bank::kRoll: return L"roll";
 			case Bank::kSpin: return L"spin";
 			case Bank::kWin: return L"win";
@@ -207,6 +207,12 @@ namespace fr::Audio
 
 	void Play(Bank a_bank, const RE::NiPoint3& a_pos, float a_gain, float a_seconds)
 	{
+		PlayShaped(a_bank, a_pos, a_gain, a_seconds > 0.0f ? std::vector<std::pair<float, float>>{ { 0.0f, 1.0f }, { std::max(0.0f, a_seconds - 0.4f), 1.0f }, { a_seconds, 0.0f } } :
+		                                                      std::vector<std::pair<float, float>>{});
+	}
+
+	void PlayShaped(Bank a_bank, const RE::NiPoint3& a_pos, float a_gain, const std::vector<std::pair<float, float>>& a_keys)
+	{
 		const auto& s = Settings::Get();
 		if (!s.sound || a_gain <= 0.001f) {
 			return;
@@ -266,19 +272,30 @@ namespace fr::Audio
 		const auto& clip = clips[static_cast<std::size_t>(Random01() * static_cast<float>(clips.size())) % clips.size()];
 		const std::uint8_t* data = clip.data.data();
 		std::size_t         bytes = clip.data.size();
-		const std::size_t   wanted = a_seconds > 0.0f ? static_cast<std::size_t>(a_seconds * kRate) * 2 : bytes;
-		if (wanted < bytes) {
-			// the voice is idle (FreeVoice stopped it if it wasn't), so its copy can be replaced
-			v->cut.assign(clip.data.begin(), clip.data.begin() + wanted);
-			auto*             samples = reinterpret_cast<std::int16_t*>(v->cut.data());
-			const std::size_t count = wanted / 2;
-			const std::size_t fade = std::min<std::size_t>(count, kRate * 2 / 5);  // 0.4 s
-			for (std::size_t i = 0; i < fade; ++i) {
-				auto& sample = samples[count - fade + i];
-				sample = static_cast<std::int16_t>(sample * (1.0f - static_cast<float>(i + 1) / static_cast<float>(fade)));
+		if (!a_keys.empty()) {
+			// the voice is idle (FreeVoice stopped it if it wasn't), so its copy can be replaced: the clip up to the last
+			// key, its loudness following the keys
+			const std::size_t wanted = std::min(bytes, static_cast<std::size_t>(std::max(0.0f, a_keys.back().first) * kRate) * 2);
+			v->cut.assign(clip.data.begin(), clip.data.begin() + static_cast<std::ptrdiff_t>(wanted));
+			auto*       samples = reinterpret_cast<std::int16_t*>(v->cut.data());
+			std::size_t k = 0;
+			for (std::size_t i = 0; i < wanted / 2; ++i) {
+				const float at = static_cast<float>(i) / static_cast<float>(kRate);
+				while (k + 1 < a_keys.size() && a_keys[k + 1].first <= at) {
+					++k;
+				}
+				float g = a_keys[k].second;
+				if (k + 1 < a_keys.size()) {
+					const float span = std::max(1e-4f, a_keys[k + 1].first - a_keys[k].first);
+					g += (a_keys[k + 1].second - a_keys[k].second) * std::clamp((at - a_keys[k].first) / span, 0.0f, 1.0f);
+				}
+				samples[i] = static_cast<std::int16_t>(static_cast<float>(samples[i]) * std::clamp(g, 0.0f, 1.0f));
 			}
 			data = v->cut.data();
 			bytes = v->cut.size();
+			if (bytes == 0) {
+				return;
+			}
 		}
 		XAUDIO2_BUFFER buffer{};
 		buffer.Flags = XAUDIO2_END_OF_STREAM;

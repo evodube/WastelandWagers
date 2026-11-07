@@ -56,14 +56,31 @@ namespace rl
 		float rotor;   // the rotor's angle
 	};
 
+	// Something the ball did that makes a sound, for the plugin to play at the moment it happens.
+	struct SpinEvent
+	{
+		enum class Kind : std::uint8_t
+		{
+			kDiamond,  // knocked off a diamond on the cone
+			kLand,     // came down off a hop (on the cone, the rotor or into a pocket)
+			kFret,     // hit a fret between pockets
+			kSettle,   // came to rest in its pocket
+		};
+		float t;         // seconds since the throw
+		Kind  kind;
+		float strength;  // 0..1, how hard
+	};
+
 	struct SpinPlan
 	{
-		std::vector<Sample> samples;  // every 1/60 s
+		std::vector<Sample>    samples;  // every 1/60 s
+		std::vector<SpinEvent> events;   // in time order
 		int                 pocket{ 0 };
 		int                 number{ 0 };
 		float               dropTime{ 0.0f };    // the ball left the track
 		float               rotorTime{ 0.0f };   // the ball reached the rotor
 		float               settleTime{ 0.0f };  // the ball came to rest in its pocket
+		int                 frets{ 0 };          // frets it hit on the way
 		double              rotorSpeed{ 0.0 };   // the rotor's speed (rad/s) when the plan ends, for carrying on
 		int                 tries{ 0 };          // spins thrown away before one landed in the drawn pocket
 		bool                drawn{ true };       // landed in the pocket drawn at random (false: the sim's own pocket)

@@ -3,10 +3,14 @@
 
     python tools/make_sounds.py <out Data folder>
 
-The ball running round the track (roll) and dropping onto the rotor and clattering into a pocket (drop) are cut from
-a real recording, tools/source_sounds/roulette_gfxsounds.wav (Maxwell Dufresne, gfxsounds.com, Standard licence):
-its first 3.95 s are the roll (looped out to cover a long spin), the rest the drop. The rest are synthesised here:
-chips, the ball's clicks off the diamonds, the rotor's whirr, the caps paid out.
+The ball's sounds are cut from a real recording, tools/source_sounds/roulette_gfxsounds.wav (Maxwell Dufresne,
+gfxsounds.com, Standard licence), into pieces the plugin plays as the ball does each thing:
+  roll     its first 3.95 s, the ball running round the track, looped out to cover a long spin (the plugin shapes
+           its loudness to the ball's speed and stops it as the ball reaches the rotor)
+  rattle   the three hard hits in the drop (a diamond, a fret)
+  tick     the small knocks after them (the ball's little bounces about the rotor and pockets)
+  settle   the last rattles as it rocks into place
+The rest are synthesised here: chips, the rotor's whirr, the caps paid out.
 """
 
 import os
@@ -142,27 +146,67 @@ def real_roll(seconds=10.0):
     return out
 
 
-def real_drop():
-    x = recording()[int((SPLIT - 0.03) * RATE):]
-    x[:int(0.03 * RATE)] *= np.linspace(0, 1, int(0.03 * RATE))
-    return x
+HITS = [(4.190, 0.120), (4.370, 0.080), (5.543, 0.088)]   # (onset, length) seconds
+TICKS = [4.454, 4.571, 4.717, 4.765, 4.855, 4.987, 5.376, 5.633, 5.837, 6.085, 6.133]
+
+
+def cut(x, at, length, pre=0.003):
+    """one knock: from just before its onset, faded out at the end, levelled"""
+    a = int((at - pre) * RATE)
+    piece = x[a:a + int((length + pre) * RATE)].copy()
+    piece -= np.mean(piece)
+    fi = int(0.002 * RATE)
+    piece[:fi] *= np.linspace(0, 1, fi)
+    fo = min(len(piece) // 2, int(0.025 * RATE))
+    piece[-fo:] *= np.linspace(1, 0, fo) ** 2
+    return piece
+
+
+def real_hits():
+    x = recording()
+    return [cut(x, a, n) for a, n in HITS]
+
+
+def real_ticks():
+    x = recording()
+    out = []
+    for k, a in enumerate(TICKS):
+        nxt = TICKS[k + 1] if k + 1 < len(TICKS) else a + 0.1
+        out.append(cut(x, a, min(0.075, nxt - a - 0.004)))
+    return out
+
+
+def real_settle():
+    x = recording()
+    piece = x[int(5.80 * RATE):int(6.50 * RATE)].copy()
+    piece[:int(0.01 * RATE)] *= np.linspace(0, 1, int(0.01 * RATE))
+    piece[-int(0.2 * RATE):] *= np.linspace(1, 0, int(0.2 * RATE))
+    return piece
 
 
 def main() -> int:
     out = os.path.join(sys.argv[1], "Sound", "fo4roulette")
     os.makedirs(out, exist_ok=True)
-    banks = {"chip": (chip, 4), "rattle": (rattle, 6), "spin": (spin, 2), "win": (win, 1)}
+    for old in os.listdir(out):
+        if old.endswith(".wav"):
+            os.remove(os.path.join(out, old))
+    banks = {"chip": (chip, 4), "spin": (spin, 2), "win": (win, 1)}
     if os.path.exists(SOURCE):
         banks["roll"] = (real_roll, 1)
-        banks["drop"] = (real_drop, 1)
+        sets = {"rattle": real_hits(), "tick": real_ticks(), "settle": [real_settle()]}
     else:
         banks["roll"] = (roll, 1)
+        banks["rattle"] = (rattle, 6)
         banks["settle"] = (settle, 2)
+        sets = {}
     for name, (make, n) in banks.items():
         for i in range(1, n + 1):
             write(os.path.join(out, f"{name}_{i}.wav"), make())
+    for name, pieces in sets.items():
+        for i, piece in enumerate(pieces, 1):
+            write(os.path.join(out, f"{name}_{i}.wav"), piece, peak=0.9)
     with open(os.path.join(out, "CREDITS.txt"), "w") as f:
-        f.write("roll_1.wav, drop_1.wav: cut from a roulette recording by Maxwell Dufresne, gfxsounds.com (https://gfxsounds.com), "
+        f.write("roll, rattle, tick and settle: cut from a roulette recording by Maxwell Dufresne, gfxsounds.com (https://gfxsounds.com), "
                 "Standard licence.\n"
                 "The other sounds are synthesised by tools/make_sounds.py.\n")
     print("wrote", len(os.listdir(out)), "files to", out)
