@@ -119,12 +119,14 @@ namespace fr
 		if (!ui) {
 			return false;
 		}
-		if (ui->menuMode != 0 || ui->freezeFramePause != 0) {
+		// talking to someone doesn't stop the world (or the wheel): the game counts the conversation as a menu, so
+		// with only that open, menu mode is ignored
+		static const RE::BSFixedString dialogue("DialogueMenu");
+		if (ui->freezeFramePause != 0 || (ui->menuMode != 0 && !ui->GetMenuOpen(dialogue))) {
 			return true;
 		}
-		static const std::array<RE::BSFixedString, 7> menus{ RE::BSFixedString("PauseMenu"), RE::BSFixedString("PipboyMenu"),
-			RE::BSFixedString("LoadingMenu"), RE::BSFixedString("MainMenu"), RE::BSFixedString("Console"), RE::BSFixedString("WorkshopMenu"),
-			RE::BSFixedString("DialogueMenu") };
+		static const std::array<RE::BSFixedString, 6> menus{ RE::BSFixedString("PauseMenu"), RE::BSFixedString("PipboyMenu"),
+			RE::BSFixedString("LoadingMenu"), RE::BSFixedString("MainMenu"), RE::BSFixedString("Console"), RE::BSFixedString("WorkshopMenu") };
 		return std::ranges::any_of(menus, [&](const RE::BSFixedString& a_name) { return ui->GetMenuOpen(a_name); });
 	}
 
@@ -163,7 +165,7 @@ namespace fr
 			}
 		}
 		if (IsGamePaused()) {
-			return;  // (menus, the workshop, talking: everything holds still)
+			return;  // (menus, the Pip-Boy, the workshop: everything holds still; a conversation doesn't)
 		}
 		if (auto* map = RE::ControlMap::GetSingleton()) {
 			// keyboard bindings are virtual-key codes in Fallout 4
