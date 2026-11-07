@@ -62,16 +62,16 @@ namespace fr::SettingsMenu
 		{
 			auto& s = S();
 			static std::vector<Page> pages{
-				{ "Table", "The wheel, the limits, and whether you need a dealer.",
+				{ "Table", "The wheel, the limits, and how long bets stay open.",
 					{
 						{ L"Table", L"iWheel", "Wheel", Kind::kChoice, &s.wheel, 0, 0, nullptr,
 							"European: one zero. American: 0 and 00 (and the top line bet). Changes the layout and the wheel on every table",
 							{ { "European (single 0)", 0 }, { "American (0 and 00)", 1 } } },
-						{ L"Table", L"bRequireDealer", "Needs a dealer", Kind::kBool, &s.requireDealer, 0, 0, nullptr,
-							"off: with no dealer at the table you spin yourself" },
+						{ L"Table", L"fSpinDelay", "Wheel spins after", Kind::kFloat, &s.spinDelay, 3.0f, 300.0f, "%.0f s",
+							"counted from the round's first bet (yours or a settler's); the spin key spins sooner" },
 						{ L"Table", L"iMaxBet", "Most on one bet", Kind::kInt, &s.maxBet, 1, 100000, nullptr, "caps" },
 						{ L"Table", L"fActiveDistance", "Table in play within", Kind::kFloat, &s.activeDistance, 500.0f, 20000.0f, "%.0f",
-							"the dealer and NPCs come to a table this close to you" },
+							"NPCs come to a table this close to you" },
 					} },
 				{ "Camera", "The view while you're at the table.",
 					{
@@ -81,23 +81,22 @@ namespace fr::SettingsMenu
 							"the camera goes over the wheel while the ball's going round, and back after" },
 						{ L"Camera", L"fCursorSpeed", "Cursor speed", Kind::kFloat, &s.cursorSpeed, 0.005f, 0.5f, "%.3f" },
 					} },
-				{ "Dealer & NPCs", "Look at a settler and press the dealer key to have them run the nearest table. Settlers nearby come over to bet.",
+				{ "NPCs", "Settlers nearby come over to bet with their own caps.",
 					{
-						{ L"Dealer", L"fWalkTimeout", "Dealer walk time limit", Kind::kFloat, &s.dealerWalkTimeout, 5.0f, 300.0f, "%.0f s",
-							"seconds to get to the table before they're put there" },
-						{ L"Dealer", L"bWatchBall", "Dealer watches the ball", Kind::kBool, &s.dealerWatchesBall },
 						{ L"Bettors", L"bEnabled", "Settlers come and bet", Kind::kBool, &s.bettors },
-						{ L"Bettors", L"iMax", "Most at the table", Kind::kInt, &s.maxBettors, 0, 6, nullptr },
+						{ L"Bettors", L"iMax", "Most at the table", Kind::kInt, &s.maxBettors, 0, 5, nullptr },
+						{ L"Bettors", L"bIdles", "Idles and reactions", Kind::kBool, &s.bettorIdles, 0, 0, nullptr,
+							"they look the layout over, reach in to bet, cheer or shake their heads at the result" },
 						{ L"Bettors", L"fEvery", "Look for someone every", Kind::kFloat, &s.bettorEvery, 2.0f, 120.0f, "%.0f s" },
 						{ L"Bettors", L"fRange", "From up to", Kind::kFloat, &s.bettorRange, 200.0f, 6000.0f, "%.0f", "how far from the table" },
 						{ L"Bettors", L"iMinRounds", "Rounds they stay (fewest)", Kind::kInt, &s.bettorMinRounds, 1, 50, nullptr },
 						{ L"Bettors", L"iMaxRounds", "Rounds they stay (most)", Kind::kInt, &s.bettorMaxRounds, 1, 100, nullptr },
-						{ L"Bettors", L"fAutoSpin", "Dealer spins for them after", Kind::kFloat, &s.autoSpin, 5.0f, 300.0f, "%.0f s",
-							"with you away from the table" },
 					} },
 				{ "HUD & sound", "The HUD sizes itself to your screen height; the scale makes it bigger or smaller on top of that.",
 					{
 						{ L"HUD", L"fScale", "HUD scale", Kind::kFloat, &s.hudScale, 0.3f, 3.0f, "%.2fx" },
+						{ L"HUD", L"fRange", "HUD shows within", Kind::kFloat, &s.hudRange, 0.0f, 5000.0f, "%.0f",
+							"away from the table, how close you have to be to see its HUD (350 = about 5 m)" },
 						{ L"HUD", L"bNotifications", "Corner messages too", Kind::kBool, &s.notifications, 0, 0, nullptr,
 							"results also as the game's corner notifications" },
 						{ L"Sound", L"bEnabled", "Sounds on", Kind::kBool, &s.sound, 0, 0, nullptr, "switching them on takes a game restart" },
@@ -114,7 +113,6 @@ namespace fr::SettingsMenu
 						{ L"Keys", L"iChip5", "5 cap chip", Kind::kKey, &s.keyChip[1] },
 						{ L"Keys", L"iChip25", "25 cap chip", Kind::kKey, &s.keyChip[2] },
 						{ L"Keys", L"iChip100", "100 cap chip", Kind::kKey, &s.keyChip[3] },
-						{ L"Keys", L"iDealer", "Make a settler the dealer", Kind::kKey, &s.keyDealer },
 					} },
 			};
 			return pages;

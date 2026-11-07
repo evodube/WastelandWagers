@@ -1,5 +1,5 @@
 // The table in play: finding it, its wheel and ball, the round (bets, spin, result) and the chips on the layout.
-// You at the table (the camera, the cursor) are in Seat.cpp; the dealer and the settlers who bet in Npcs.cpp; the
+// You at the table (the camera, the cursor) are in Seat.cpp; the settlers who bet in Npcs.cpp; the
 // co-save in Save.cpp.
 
 #include "Game.h"
@@ -60,14 +60,14 @@ namespace fr
 		const bool  focus = util::GameHasFocus();
 		const bool  seated = _seated.load();
 		const int   spin = s.keySpin > 0 ? s.keySpin : _activateVk.load();
-		const std::array<int, 10> keys{ spin, s.keyLeave, s.keyView, s.keyRebet, s.keyClear, s.keyChip[0], s.keyChip[1], s.keyChip[2],
-			s.keyChip[3], s.keyDealer };
+		const std::array<int, 9> keys{ spin, s.keyLeave, s.keyView, s.keyRebet, s.keyClear, s.keyChip[0], s.keyChip[1], s.keyChip[2],
+			s.keyChip[3] };
 		auto* tasks = F4SE::GetTaskInterface();
 		for (std::size_t i = 0; i < keys.size(); ++i) {
 			const bool down = focus && keys[i] > 0 && (::GetAsyncKeyState(keys[i]) & 0x8000) != 0;
 			const bool pressed = down && !_keyWasDown[i];
 			_keyWasDown[i] = down;  // (tracked always, so the press that sat you down isn't also a spin)
-			if (!pressed || !tasks || (i < 9 && !seated)) {
+			if (!pressed || !tasks || !seated) {
 				continue;
 			}
 			if (i >= 5 && i <= 8) {
@@ -93,7 +93,6 @@ namespace fr
 						Say("YOUR CHIPS ARE BACK");
 					}
 					break;
-				case 9: AssignDealer(); break;
 				default: break;
 				}
 			});
@@ -377,11 +376,9 @@ namespace fr
 		_restPocket = -1;
 		_stakes.clear();
 		_seatTimer = 3.0f;
-		_dealer = {};
 		_history.clear();
 		ApplyWheel(a_table, _wheel);
 		log::info("table {:08X} in play ({} wheel)", a_table->GetFormID(), _wheel == rl::WheelType::kAmerican ? "American" : "European");
-		LoadDealerFor(a_table);
 	}
 
 	void Game::EndSession(const char* a_why)
@@ -400,8 +397,6 @@ namespace fr
 			ReleaseSeat(seat, nullptr);
 		}
 		_seats.clear();
-		ReleaseDealer();
-		_dealer = {};
 		_table = {};
 		_phase = Phase::kBetting;
 		_hudBanner = 0;
@@ -430,9 +425,16 @@ namespace fr
 			_bettingTime += a_dt;
 			_rotorSpeed = rl::RotorDrag(_rotorSpeed, a_dt);
 			_rotorAngle += _rotorSpeed * a_dt;
-			if (!_seated && DealerReady() && _bettingTime > Settings::Get().autoSpin &&
-				std::ranges::any_of(_stakes, [](const Stake& s) { return s.owner != 0; })) {
-				StartSpin(false);  // the NPCs have bet and you're not sitting in: the dealer spins for them
+			// the wheel spins itself a while after the round's first bet (yours or anyone's)
+			if (_stakes.empty()) {
+				_spinIn = -1.0f;
+			} else if (_spinIn < 0.0f) {
+				_spinIn = Settings::Get().spinDelay;
+			} else {
+				_spinIn -= a_dt;
+				if (_spinIn <= 0.0f) {
+					StartSpin(false);
+				}
 			}
 			break;
 		case Phase::kSpinning:
@@ -473,7 +475,6 @@ namespace fr
 		TurnRotor(frame);
 		PlaceBall(frame);
 		MakeStacks(frame);
-		TickDealer(frame, a_dt);
 		TickSeats(frame, a_dt);
 		if (_seated) {
 			// the cursor: mouse right is the table's +X (the camera's right), mouse forward its +Y (up the screen)
@@ -559,24 +560,19 @@ namespace fr
 			}
 			return;
 		}
-		const bool dealer = DealerReady();
-		if (a_byPlayer && !dealer && Settings::Get().requireDealer) {
-			Say(std::format("NO DEALER: LOOK AT A SETTLER AND PRESS {}", Upper(Settings::Key(Settings::Get().keyDealer))), 2);
-			return;
-		}
 		auto  table = _table.get();
 		Frame frame;
 		if (!table || !FrameOf(table.get(), frame)) {
 			return;
 		}
-		// a push on the rotor if it's slowed right down, and the ball thrown the other way, from the dealer's side
+		// a push on the rotor if it's slowed right down, and the ball thrown the other way, from the wheel's end
 		std::uniform_real_distribution<double> U(0.0, 1.0);
 		if (_rotorSpeed < 1.4) {
 			_rotorSpeed = 1.6 + 0.6 * U(_rng);
 			Audio::Play(Audio::Bank::kSpin, ToWorld(frame, rl::table::kWheelX, rl::table::kWheelY, rl::table::kFeltZ), 0.8f);
 		}
 		rl::SpinParams p;
-		p.throwAngle = 3.14159265;  // the dealer stands at the wheel's end (-X)
+		p.throwAngle = 3.14159265;  // from the wheel's end (-X)
 		p.ballSpeed = -(15.0 + 3.0 * U(_rng));
 		p.rotorAngle = _rotorAngle;
 		p.rotorSpeed = _rotorSpeed;
@@ -592,18 +588,13 @@ namespace fr
 		_restPocket = -1;
 		_hudBanner = 1;
 		_bannerTitle = "NO MORE BETS";
-		_bannerSub = dealer ? std::format("{} SPINS", Upper(_dealer.name)) : std::string("YOU SPIN");
+		_bannerSub = a_byPlayer ? std::string("YOU SPIN") : std::string("THE WHEEL SPINS");
+		_spinIn = -1.0f;
 		_bannerTime = std::chrono::steady_clock::now();
 		Audio::Play(Audio::Bank::kRoll, ToWorld(frame, rl::table::kWheelX, rl::table::kWheelY, rl::table::kTrackZ), 0.7f, _plan.rotorTime + 0.3f);  // round the track and down the cone, up to the drop
 		if (_seated && Settings::Get().wheelViewOnSpin) {
 			_wheelView = true;
 			_viewBackIn = -1.0f;
-		}
-		if (auto* d = DealerActor(); d && dealer && Settings::Get().dealerWatchesBall) {
-			if (auto ball = _ball.get()) {
-				Npc::LookAt(d, ball.get());
-				_dealer.watching = true;
-			}
 		}
 	}
 
@@ -699,12 +690,18 @@ namespace fr
 		}
 		_bannerTime = std::chrono::steady_clock::now();
 		Say(yourStake == 0 ? name : std::format("{} · {}", name, _bannerSub), yourStake == 0 ? 0 : yourWin > 0 ? 1 : 2);
+		const bool someoneWon = yourWin > 0 || std::ranges::any_of(npcNet, [](const auto& a_n) { return a_n.second > 0; });
 		for (auto& seat : _seats) {
+			seat.roundNet = 0;
 			if (auto it = npcNet.find(seat.id); it != npcNet.end()) {
 				seat.roundNet = it->second;
 				if (it->second > 0) {
 					Say(std::format("{} WINS {}", Upper(seat.name), it->second), 1);
 				}
+			}
+			// a moment to see where the ball went, then a reaction: their own result, or someone else's win
+			if (seat.step == Seat::Step::kPlaying && (seat.betThisRound || someoneWon)) {
+				seat.reactIn = std::uniform_real_distribution<float>(0.4f, 1.4f)(_rng);
 			}
 			if (seat.betThisRound) {
 				--seat.rounds;
@@ -714,12 +711,6 @@ namespace fr
 		log::info("result {}: you staked {}, got back {}; {} stakes on the table", name, yourStake, yourBack, _stakes.size());
 		_phase = Phase::kResult;
 		_phaseTime = 0.0f;
-		if (_dealer.watching) {
-			if (auto* d = DealerActor()) {
-				Npc::ClearLookAt(d);
-			}
-			_dealer.watching = false;
-		}
 		if (_wheelView && Settings::Get().wheelViewOnSpin) {
 			_viewBackIn = 2.0f;  // a look at the ball in its pocket, then back to the layout
 		}
@@ -1004,7 +995,6 @@ namespace fr
 		Remove(_ball);
 		Remove(_ghost);
 		_ghostValue = -1;
-		Remove(_dealer.walk.marker);
 		for (auto& seat : _seats) {
 			Remove(seat.walk.marker);
 			if (seat.held) {
@@ -1013,12 +1003,6 @@ namespace fr
 				}
 				seat.held = false;
 			}
-		}
-		if (_dealer.held) {
-			if (auto* d = DealerActor()) {
-				Npc::SetRestrained(d, false);
-			}
-			_dealer.held = false;
 		}
 		log::info("before save: our objects off, {} caps back to you for the save", _liftedCaps);
 	}
@@ -1053,7 +1037,6 @@ namespace fr
 		_ghostValue = -1;
 		_stakes.clear();
 		_seats.clear();
-		_dealer = {};
 		_phase = Phase::kBetting;
 		_lifted = false;
 		_liftedCaps = 0;

@@ -30,10 +30,9 @@ above): `make_textures.py` paints it so and `rl::PocketAngle` assumes it.
 ## Controls (defaults)
 
 E (activate) at the table: sit down. Mouse moves the chip; LMB bet, RMB take back; 1-4 chip; E spin; B rebet;
-C clear; V wheel/layout view; X get up. Numpad 1 at a settler: dealer for the nearest table (again: stops).
+C clear; V wheel/layout view; X get up.
 
 ## Next ideas
 
-- Dealer animations (spin the wheel, sweep chips) via the pool's Blender + PyNifly HKX pipeline and dynamic idles.
 - NPCs reacting to wins and losses; the house's take going to the settlement.
 - Chip colours per player instead of offsets.

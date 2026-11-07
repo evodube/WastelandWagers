@@ -5,7 +5,7 @@
 
 namespace fr
 {
-	// The roulette table in play: the one nearest you (within [Table] fActiveDistance). Its wheel turns, its dealer
+	// The roulette table in play: the one nearest you (within [Table] fActiveDistance). Its wheel turns, the ball
 	// comes to it, settlers come over to bet, and you sit down at it by activating it.
 	//
 	// Everything runs on the game's main thread (Tick, queued from the render thread every frame) except OnPresent
@@ -64,8 +64,8 @@ namespace fr
 			int                  hoverPays{ 0 };
 			int                  hoverMine{ 0 };
 			int                  hoverAll{ 0 };        // everyone's caps on it
-			std::string          dealer;               // the dealer's name; empty: you spin
-			bool                 dealerReady{ false };
+			float                spinIn{ -1.0f };      // seconds before the wheel spins itself; -1 no bets yet
+			bool                 spinning{ false };
 			std::vector<std::string> players;          // the NPCs at the table, "PIPER  120 CAPS"
 			std::vector<int>     history;              // last numbers, newest first
 			std::deque<HudLine>  log;                  // the latest things that happened, oldest first
@@ -101,7 +101,7 @@ namespace fr
 			std::vector<RE::ObjectRefHandle> paid;           // the winnings, stacked beside it
 		};
 
-		// an NPC on their way to a spot by the table (the dealer's, or a bettor's)
+		// an NPC on their way to a spot by the table (a bettor's)
 		struct Walker
 		{
 			RE::ObjectRefHandle marker;      // an XMarkerHeading on the spot: their linked ref
@@ -132,17 +132,9 @@ namespace fr
 			float nextChip{ 0.0f };    // seconds before their next chip goes down
 			int   chipsToPlace{ 0 };
 			int   roundNet{ 0 };       // won (or lost) on the last spin
-		};
-
-		struct Dealer
-		{
-			RE::ObjectRefHandle actor;
-			RE::TESFormID       id{ 0 };
-			std::string         name;
-			Walker              walk;
-			bool                arrived{ false };
-			bool                held{ false };
-			bool                watching{ false };  // SetLookAt the ball
+			float nextIdle{ 6.0f };    // seconds before their next little idle while they wait
+			float reactIn{ -1.0f };    // seconds before they react to the result (-1 none due)
+			int   budget{ 0 };         // caps still to put down this round
 		};
 
 		enum class Phase
@@ -209,21 +201,12 @@ namespace fr
 		std::optional<rl::Bet> HoverBet() const;
 		void UpdateHud();
 
-		// the dealer
-		void         AssignDealer();  // the settler under the crosshair deals at the nearest table (again: stops)
-		void         LoadDealerFor(RE::TESObjectREFR* a_table);  // who deals at this table (the co-save's list)
-		RE::Actor*   PickActor() const;
-		RE::Actor*   DealerActor() const;
-		bool         DealerReady() const;
-		void         TickDealer(const Frame& a_frame, float a_dt);
-		void         ReleaseDealer();
-		RE::NiPoint3 DealerSpot(const Frame& a_frame, float& a_heading) const;
-
 		// the NPCs betting
 		void         TickSeats(const Frame& a_frame, float a_dt);
 		void         FindBettor(const Frame& a_frame);
 		void         ReleaseSeat(Seat& a_seat, const char* a_why);
 		void         SeatBets(Seat& a_seat);
+		void         SeatIdle(Seat& a_seat, RE::Actor* a_actor, int a_kind);  // 0 waiting, 1 placing a chip, 2 won, 3 lost, 4 someone else won
 		RE::NiPoint3 SeatSpot(const Frame& a_frame, int a_spot, float& a_heading) const;
 		float        HeadingOf(const Frame& a_frame, double a_dx, double a_dy) const;  // a direction in table space as a heading
 		float        CeilingAbove(const Frame& a_frame, double a_x, double a_y, float a_upTo) const;
@@ -242,6 +225,7 @@ namespace fr
 		Phase                             _phase{ Phase::kBetting };
 		float                             _phaseTime{ 0.0f };
 		float                             _bettingTime{ 0.0f };
+		float                             _spinIn{ -1.0f };  // seconds to the wheel spinning itself (-1: no bets yet)
 		rl::SpinPlan                      _plan;
 		float                             _playT{ 0.0f };
 		std::size_t                       _playIdx{ 0 };
@@ -253,7 +237,6 @@ namespace fr
 		std::vector<Stake>                _stakes;
 		std::vector<std::pair<std::string, int>> _lastRound;  // your bets on the last spin, for re-betting
 		std::deque<int>                   _history;
-		Dealer                            _dealer;
 		std::vector<Seat>                 _seats;
 		float                             _seatTimer{ 0.0f };
 		float                             _scanTimer{ 0.0f };

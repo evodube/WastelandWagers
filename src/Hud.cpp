@@ -240,11 +240,10 @@ namespace fr::Hud
 				Chip(a_v, i, x + 40 + i * 62.0f, y + 120, 20, i == a_st.chip);
 			}
 			float row = y + 152;
-			const std::string dealer = a_st.dealer.empty() ? std::string("NO DEALER · YOU SPIN")
-			                                              : a_st.dealerReady ? "DEALER · " + a_st.dealer : "DEALER · " + a_st.dealer + " (COMING)";
-			std::string up = dealer;
-			std::ranges::transform(up, up.begin(), [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
-			Print(a_v, Mono(), up, x + 18, row, 12, kDim, 0, 1.0f);
+			const std::string when = a_st.spinning ? std::string("NO MORE BETS")
+			                         : a_st.spinIn < 0.0f ? std::string("PLACE A BET · THE WHEEL SPINS AFTER")
+			                                              : std::format("WHEEL SPINS IN {}", static_cast<int>(std::ceil(a_st.spinIn)));
+			Print(a_v, Mono(), when, x + 18, row, 12, a_st.spinIn >= 0.0f && a_st.spinIn < 5.0f ? kBright : kDim, 0, 1.0f);
 			for (const auto& p : a_st.players) {
 				row += 20.0f;
 				Print(a_v, Mono(), p, x + 18, row, 12, kOff, 0, 1.0f);

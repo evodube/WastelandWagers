@@ -1,4 +1,4 @@
-// The dealer (a settler you pick, who comes to the table in play and spins) and the settlers who come over to bet.
+// The settlers who come over to bet, each at their own spot round the layout, with a few vanilla idles while they play.
 // Walking them there is fo4roulette.esl's quest package (Npc.h); once there they're held with SetRestrained and
 // kept facing the table.
 
@@ -16,7 +16,17 @@ namespace fr
 	{
 		constexpr float kArrived = 45.0f;        // this close to the spot: there
 		constexpr float kStallResend = 6.0f;     // no closer in this long: the walk is sent again
-		constexpr float kSummonRange = 6000.0f;  // a dealer further from the table than this isn't called over
+		constexpr int   kMinBudget = 25;         // what a settler puts down in a round: 25 to 100 caps
+		constexpr int   kMaxBudget = 100;
+		constexpr float kSnap = 12.0f;           // arrived further than this from their spot: put exactly on it
+		constexpr float kPersonalSpace = 55.0f;  // a spot with someone (anyone) standing this close isn't free
+
+		// vanilla idles (Fallout4.esm IDLE)
+		constexpr std::array<RE::TESFormID, 4> kWaitIdles{ 0x0001F86C, 0x0001FA11, 0x0001FA12, 0x001E81AC };  // shopping looks A-C, thinking
+		constexpr RE::TESFormID                kPlaceIdle = 0x001A8A0D;  // IdlePlaceEnvelopeOnTable
+		constexpr std::array<RE::TESFormID, 3> kWinIdles{ 0x0010BA3A, 0x00118013, 0x0010F9C0 };  // cheering, laughing, fight winner
+		constexpr std::array<RE::TESFormID, 2> kLoseIdles{ 0x00038C7A, 0x0010BA3D };            // head shake no, booing
+		constexpr RE::TESFormID                kClapIdle = 0x00141F3C;  // IdleClapping
 		constexpr float kStepBack = 32.0f;       // where people stand: this far out from the table's edge
 
 		float Distance2D(const RE::NiPoint3& a, const RE::NiPoint3& b) { return std::hypot(a.x - b.x, a.y - b.y); }
@@ -44,16 +54,15 @@ namespace fr
 
 	// shared with Save.cpp
 	std::mutex                                 g_npcMutex;
-	std::unordered_map<RE::TESFormID, RE::TESFormID> g_dealers;  // table -> the settler who deals there
-	std::unordered_map<RE::TESFormID, int>     g_purses;          // an NPC's caps for roulette
+		std::unordered_map<RE::TESFormID, int>     g_purses;          // an NPC's caps for roulette
 
 	int Game::Purse(RE::TESFormID a_id)
 	{
 		std::scoped_lock lock(g_npcMutex);
 		auto it = g_purses.find(a_id);
 		if (it == g_purses.end()) {
-			// a settler's first visit: 40 to 240 caps, fixed per NPC
-			it = g_purses.emplace(a_id, 40 + static_cast<int>(Hash(a_id) % 201)).first;
+			// a settler's first visit: 250 to 1000 caps, fixed per NPC
+			it = g_purses.emplace(a_id, 250 + static_cast<int>(Hash(a_id) % 751)).first;
 		}
 		return it->second;
 	}
@@ -65,154 +74,13 @@ namespace fr
 		g_purses[a_id] = std::max(0, g_purses[a_id] + a_caps);
 	}
 
-	// ---------------------------------------------------------------- the dealer
-
-	RE::Actor* Game::PickActor() const
-	{
-		// the NPC under the crosshair, within 600
-		auto* player = RE::PlayerCharacter::GetSingleton();
-		auto* camera = RE::PlayerCamera::GetSingleton();
-		if (!player || !camera || !camera->cameraRoot) {
-			return nullptr;
-		}
-		const auto         origin = camera->cameraRoot->GetWorldTranslate();
-		const float        pitch = player->data.angle.x;
-		const float        yaw = player->data.angle.z;
-		const RE::NiPoint3 dir{ std::sin(yaw) * std::cos(pitch), std::cos(yaw) * std::cos(pitch), -std::sin(pitch) };
-		constexpr float    kReach = 600.0f;
-		RE::Actor*         best = nullptr;
-		float              bestT = std::numeric_limits<float>::max();
-		util::ForEachLoadedCell([&](RE::TESObjectCELL* a_cell) {
-			a_cell->ForEachReferenceInRange(origin, kReach + 100.0f, [&](RE::TESObjectREFR* a_ref) {
-				auto* actor = a_ref ? a_ref->As<RE::Actor>() : nullptr;
-				if (!Usable(actor) || actor == player) {
-					return RE::BSContainer::ForEachResult::kContinue;
-				}
-				const auto& b = actor->Get3D()->worldBound;
-				const auto  oc = b.center - origin;
-				const float t = oc.Dot(dir);
-				const float miss2 = oc.SqrLength() - t * t;
-				const float reach = std::max(30.0f, b.fRadius * 0.7f);
-				if (t > 0.0f && t < kReach + b.fRadius && miss2 <= reach * reach && t < bestT) {
-					bestT = t;
-					best = actor;
-				}
-				return RE::BSContainer::ForEachResult::kContinue;
-			});
-		});
-		return best;
-	}
-
-	void Game::AssignDealer()
-	{
-		auto* actor = PickActor();
-		auto* player = RE::PlayerCharacter::GetSingleton();
-		if (!actor || !player) {
-			Notify("Roulette: look at a settler to make them the dealer");
-			return;
-		}
-		static auto* npcType = RE::TESForm::GetFormByID<RE::BGSKeyword>(Forms::kActorTypeNPC);
-		if (actor->IsChild() || actor->GetHostileToActor(player) || (npcType && !actor->HasKeywordHelper(npcType, nullptr))) {
-			Notify(std::format("Roulette: {} can't deal", actor->GetDisplayFullName()));
-			return;
-		}
-		// the table: the one in play, or the nearest roulette table to them
-		RE::TESObjectREFR* table = _table.get().get();
-		if (!table) {
-			float best = 3000.0f;
-			for (const auto& h : _nearTables) {
-				if (auto t = h.get(); t && (t->data.location - actor->data.location).Length() < best) {
-					best = (t->data.location - actor->data.location).Length();
-					table = t.get();
-				}
-			}
-		}
-		if (!table) {
-			Notify("Roulette: no roulette table nearby (build one from the workshop's Furniture > Tables)");
-			return;
-		}
-		const RE::TESFormID tableID = table->GetFormID();
-		const RE::TESFormID actorID = actor->GetFormID();
-		std::string         name = actor->GetDisplayFullName();
-		bool                stop = false;
-		{
-			std::scoped_lock lock(g_npcMutex);
-			auto it = g_dealers.find(tableID);
-			stop = it != g_dealers.end() && it->second == actorID;
-			if (stop) {
-				g_dealers.erase(it);
-			} else {
-				// one table each
-				for (auto i = g_dealers.begin(); i != g_dealers.end();) {
-					i = i->second == actorID ? g_dealers.erase(i) : std::next(i);
-				}
-				g_dealers[tableID] = actorID;
-			}
-		}
-		// a bettor at the table who's now the dealer stops betting
-		for (auto& seat : _seats) {
-			if (seat.id == actorID) {
-				ReleaseSeat(seat, nullptr);
-			}
-		}
-		std::erase_if(_seats, [&](const Seat& s) { return s.id == actorID; });
-		if (_table.get().get() == table || (stop && _dealer.id == actorID)) {
-			ReleaseDealer();
-			_dealer = {};
-			if (!stop) {
-				LoadDealerFor(table);
-			}
-		}
-		Notify(stop ? std::format("Roulette: {} stops dealing", name) : std::format("Roulette: {} is the dealer now", name));
-	}
-
-	void Game::LoadDealerFor(RE::TESObjectREFR* a_table)
-	{
-		RE::TESFormID id = 0;
-		{
-			std::scoped_lock lock(g_npcMutex);
-			if (auto it = g_dealers.find(a_table->GetFormID()); it != g_dealers.end()) {
-				id = it->second;
-			}
-		}
-		if (!id) {
-			return;
-		}
-		_dealer = {};
-		_dealer.id = id;
-		auto* actor = RE::TESForm::GetFormByID<RE::Actor>(id);
-		_dealer.name = actor ? std::string(actor->GetDisplayFullName()) : std::string("the dealer");
-		if (actor) {
-			_dealer.actor = actor->GetHandle();
-		}
-		log::info("dealer here: {} ({:08X})", _dealer.name, id);
-	}
-
-	RE::Actor* Game::DealerActor() const
-	{
-		auto ref = _dealer.actor.get();
-		auto* actor = ref ? ref->As<RE::Actor>() : nullptr;
-		return Usable(actor) ? actor : nullptr;
-	}
-
-	bool Game::DealerReady() const
-	{
-		return _dealer.id && _dealer.arrived && DealerActor();
-	}
-
-	RE::NiPoint3 Game::DealerSpot(const Frame& a_frame, float& a_heading) const
-	{
-		// at the wheel's end of the table, behind the wheel, facing down the layout
-		a_heading = HeadingOf(a_frame, 1.0, 0.0);
-		return ToWorld(a_frame, -rl::table::kHalfLength - kStepBack, rl::table::kWheelY, 0.0);
-	}
+	// ---------------------------------------------------------------- settlers walking over
 
 	RE::NiPoint3 Game::SeatSpot(const Frame& a_frame, int a_spot, float& a_heading) const
 	{
 		using namespace rl::table;
-		// four along the players' side, then two on the far side, all by the layout
-		static constexpr std::array<std::pair<double, int>, 6> spots{ { { 50.0, -1 }, { 85.0, -1 }, { 15.0, -1 }, { 118.0, -1 }, { 60.0, 1 },
-			{ 105.0, 1 } } };
+		// three along the players' side, two on the far side, all by the layout and a body's width apart
+		static constexpr std::array<std::pair<double, int>, 5> spots{ { { 62.0, -1 }, { 0.0, -1 }, { 124.0, -1 }, { 30.0, 1 }, { 95.0, 1 } } };
 		const auto& [x, side] = spots[static_cast<std::size_t>(a_spot) % spots.size()];
 		const double y = side < 0 ? kPlayersEdgeY - kStepBack : kFarEdgeY + kStepBack;
 		a_heading = HeadingOf(a_frame, 0.0, side < 0 ? 1.0 : -1.0);
@@ -288,78 +156,6 @@ namespace fr
 		return false;
 	}
 
-	void Game::TickDealer(const Frame& a_frame, float a_dt)
-	{
-		if (!_dealer.id) {
-			return;
-		}
-		auto* actor = DealerActor();
-		if (!actor) {
-			if (!_dealer.actor) {
-				if (auto* a = RE::TESForm::GetFormByID<RE::Actor>(_dealer.id)) {
-					_dealer.actor = a->GetHandle();  // (loaded since)
-				}
-			}
-			_dealer.arrived = false;
-			return;
-		}
-		if (actor->IsInCombat()) {
-			if (_dealer.arrived || _dealer.held) {
-				ReleaseDealer();
-				_dealer.arrived = false;
-				_dealer.walk = {};
-				Say(std::format("{} HAS BETTER THINGS TO DO", Upper(_dealer.name)), 2);
-			}
-			return;
-		}
-		if (Distance2D(actor->data.location, a_frame.origin) > kSummonRange && !_dealer.walk.joinSent) {
-			return;  // somewhere else entirely
-		}
-		float      heading = 0.0f;
-		const auto spot = DealerSpot(a_frame, heading);
-		if (!_dealer.arrived) {
-			if (WalkTo(actor, _dealer.walk, a_frame, spot, heading, a_dt, true, Settings::Get().dealerWalkTimeout)) {
-				_dealer.arrived = true;
-				Npc::Arrived(actor);
-				Say(std::format("{} IS DEALING", Upper(_dealer.name)), 1);
-			}
-			return;
-		}
-		if (!_dealer.held) {
-			_dealer.held = Npc::SetRestrained(actor, true);
-		}
-		FaceTowards(actor, heading);
-		if (Distance2D(actor->data.location, spot) > kArrived * 3.0f) {
-			// pushed off the spot (or the table was moved in the workshop): back they go
-			if (_dealer.held) {
-				Npc::SetRestrained(actor, false);
-				_dealer.held = false;
-			}
-			_dealer.arrived = false;
-			Remove(_dealer.walk.marker);
-			_dealer.walk = {};
-		}
-	}
-
-	void Game::ReleaseDealer()
-	{
-		auto* actor = DealerActor();
-		if (actor) {
-			if (_dealer.held) {
-				Npc::SetRestrained(actor, false);
-			}
-			if (_dealer.watching) {
-				Npc::ClearLookAt(actor);
-			}
-			Npc::Leave(actor);
-		}
-		_dealer.held = false;
-		_dealer.watching = false;
-		_dealer.arrived = false;
-		Remove(_dealer.walk.marker);
-		_dealer.walk = {};
-	}
-
 	// ---------------------------------------------------------------- settlers betting
 
 	void Game::FindBettor(const Frame& a_frame)
@@ -378,14 +174,15 @@ namespace fr
 			a_cell->ForEachReferenceInRange(a_frame.origin, s.bettorRange, [&](RE::TESObjectREFR* a_ref) {
 				auto* actor = a_ref ? a_ref->As<RE::Actor>() : nullptr;
 				if (!Usable(actor) || actor == player || actor->IsChild() || actor->IsInCombat() || (player && actor->GetHostileToActor(player)) ||
-					(npcType && !actor->HasKeywordHelper(npcType, nullptr)) || actor->GetFormID() == _dealer.id ||
+					(npcType && !actor->HasKeywordHelper(npcType, nullptr)) ||
 					std::ranges::any_of(_seats, [&](const Seat& st) { return st.id == actor->GetFormID(); }) ||
 					std::ranges::any_of(found, [&](const auto& f) { return f.second == actor; })) {
 					return RE::BSContainer::ForEachResult::kContinue;
 				}
-				// (only settlers and the like who are someone's: anyone with a name and nobody's enemy)
-				if (Purse(actor->GetFormID()) < 5) {
-					return RE::BSContainer::ForEachResult::kContinue;
+				// (only settlers and the like who are someone's: anyone with a name and nobody's enemy); broke since
+				// their last visit: a while later, some caps again
+				if (Purse(actor->GetFormID()) < kMinBudget) {
+					AddToPurse(actor->GetFormID(), 150 + static_cast<int>(Hash(actor->GetFormID() ^ 0x5EED) % 250));
 				}
 				found.emplace_back((actor->data.location - a_frame.origin).Length(), actor);
 				return RE::BSContainer::ForEachResult::kContinue;
@@ -397,10 +194,25 @@ namespace fr
 		std::ranges::sort(found, {}, &std::pair<float, RE::Actor*>::first);
 		const std::size_t pick = std::uniform_int_distribution<std::size_t>(0, std::min<std::size_t>(found.size(), 4) - 1)(_rng);
 		auto*             actor = found[pick].second;
-		// a free spot
+		// a free spot: nobody else's, and nobody (a settler sandboxing there, you) standing on it
 		int spot = -1;
-		for (int i = 0; i < 6 && spot < 0; ++i) {
-			if (std::ranges::none_of(_seats, [&](const Seat& st) { return st.spot == i; })) {
+		for (int i = 0; i < 5 && spot < 0; ++i) {
+			if (std::ranges::any_of(_seats, [&](const Seat& st) { return st.spot == i; })) {
+				continue;
+			}
+			float      heading = 0.0f;
+			const auto at = SeatSpot(a_frame, i, heading);
+			bool       taken = false;
+			util::ForEachLoadedCell([&](RE::TESObjectCELL* a_cell) {
+				a_cell->ForEachReferenceInRange(at, kPersonalSpace, [&](RE::TESObjectREFR* a_ref) {
+					if (a_ref && a_ref != actor && a_ref->As<RE::Actor>() && !a_ref->IsDisabled()) {
+						taken = true;
+						return RE::BSContainer::ForEachResult::kStop;
+					}
+					return RE::BSContainer::ForEachResult::kContinue;
+				});
+			});
+			if (!taken) {
 				spot = i;
 			}
 		}
@@ -420,8 +232,10 @@ namespace fr
 
 	void Game::SeatBets(Seat& a_seat)
 	{
-		// one to three chips this round, on the kind of bets people like: mostly the outside, now and then a number
+		// 25 to 100 caps this round, in one to three bets, on the kind of bets people like: mostly the outside, now
+		// and then a number
 		a_seat.betThisRound = true;
+		a_seat.budget = std::min(Purse(a_seat.id), std::uniform_int_distribution<int>(kMinBudget, kMaxBudget)(_rng));
 		a_seat.chipsToPlace = std::uniform_int_distribution<int>(1, 3)(_rng);
 		a_seat.nextChip = std::uniform_real_distribution<float>(0.5f, 2.5f)(_rng);
 	}
@@ -449,6 +263,10 @@ namespace fr
 				if (WalkTo(actor, seat.walk, a_frame, spot, heading, a_dt, false, 40.0f)) {
 					seat.step = Seat::Step::kPlaying;
 					Npc::Arrived(actor);
+					if (auto marker = seat.walk.marker.get(); marker && Distance2D(actor->data.location, spot) > kSnap) {
+						Npc::MoveTo(actor, marker.get());  // stopped short (maybe at someone's elbow): onto their own spot
+					}
+					seat.nextIdle = std::uniform_real_distribution<float>(4.0f, 10.0f)(_rng);
 				}
 				break;
 			case Seat::Step::kPlaying:
@@ -456,6 +274,19 @@ namespace fr
 					seat.held = Npc::SetRestrained(actor, true);
 				}
 				FaceTowards(actor, heading);
+				if (seat.reactIn >= 0.0f) {
+					seat.reactIn -= a_dt;
+					if (seat.reactIn < 0.0f) {
+						SeatIdle(seat, actor, seat.roundNet > 0 ? 2 : seat.roundNet < 0 ? 3 : 4);
+						seat.nextIdle = std::uniform_real_distribution<float>(8.0f, 16.0f)(_rng);
+					}
+				} else if (_phase != Phase::kResult) {
+					seat.nextIdle -= a_dt;
+					if (seat.nextIdle <= 0.0f) {
+						seat.nextIdle = std::uniform_real_distribution<float>(9.0f, 22.0f)(_rng);
+						SeatIdle(seat, actor, 0);
+					}
+				}
 				if (_phase == Phase::kBetting) {
 					if (seat.rounds <= 0 || Purse(seat.id) + OnTable(seat.id) < 1) {
 						if (!HasBets(seat.id)) {
@@ -467,10 +298,10 @@ namespace fr
 					if (!seat.betThisRound && _bettingTime > 2.0f) {
 						SeatBets(seat);
 					}
-					if (seat.chipsToPlace > 0) {
+					if (seat.chipsToPlace > 0 && seat.budget > 0) {
 						seat.nextChip -= a_dt;
 						if (seat.nextChip <= 0.0f) {
-							seat.nextChip = std::uniform_real_distribution<float>(0.8f, 2.2f)(_rng);
+							seat.nextChip = std::uniform_real_distribution<float>(2.0f, 4.0f)(_rng);
 							--seat.chipsToPlace;
 							// the bet: even money half the time, dozens and columns a fifth, the rest on numbers
 							const auto all = rl::AllBets(_wheel);
@@ -484,12 +315,18 @@ namespace fr
 							}
 							if (!pool.empty()) {
 								const auto* bet = pool[std::uniform_int_distribution<std::size_t>(0, pool.size() - 1)(_rng)];
-								const int   purse = Purse(seat.id);
-								static constexpr std::array<int, 6> sizes{ 1, 2, 5, 5, 10, 25 };
-								int amount = sizes[std::uniform_int_distribution<std::size_t>(0, sizes.size() - 1)(_rng)];
-								amount = std::min({ amount, purse, std::max(1, purse / 4) });
+								// this bet's share of the round's budget, in 5s (the last bet takes what's left)
+								int amount = seat.budget;
+								if (seat.chipsToPlace > 0) {
+									amount = std::max(5, (seat.budget / (seat.chipsToPlace + 1)) / 5 * 5);
+								}
+								amount = std::min({ amount, seat.budget, Purse(seat.id), Settings::Get().maxBet });
 								if (amount > 0 && AddChips(seat.id, *bet, amount)) {
+									seat.budget -= amount;
 									Say(std::format("{}: {} ON {}", Upper(seat.name), amount, bet->Name()));
+									if (std::uniform_real_distribution<float>(0.0f, 1.0f)(_rng) < 0.5f) {
+										SeatIdle(seat, actor, 1);
+									}
 								}
 							}
 						}
@@ -506,6 +343,29 @@ namespace fr
 			}
 		}
 		std::erase_if(_seats, [](const Seat& st) { return st.step == Seat::Step::kLeaving; });
+	}
+
+	void Game::SeatIdle(Seat& a_seat, RE::Actor* a_actor, int a_kind)
+	{
+		if (!Settings::Get().bettorIdles || !a_actor || !a_seat.held) {
+			return;
+		}
+		auto pick = [&](const auto& a_list) { return a_list[std::uniform_int_distribution<std::size_t>(0, a_list.size() - 1)(_rng)]; };
+		RE::TESFormID idle = 0;
+		switch (a_kind) {
+		case 0: idle = pick(kWaitIdles); break;
+		case 1: idle = kPlaceIdle; break;
+		case 2: idle = pick(kWinIdles); break;
+		case 3: idle = pick(kLoseIdles); break;
+		default:
+			if (std::uniform_real_distribution<float>(0.0f, 1.0f)(_rng) < 0.5f) {
+				idle = kClapIdle;  // someone else's win
+			}
+			break;
+		}
+		if (idle) {
+			Npc::PlayIdle(a_actor, idle);
+		}
 	}
 
 	void Game::ReleaseSeat(Seat& a_seat, const char* a_why)

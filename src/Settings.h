@@ -24,13 +24,12 @@ namespace fr
 		int keyRebet{ 0x42 };    // B: last round's bets again
 		int keyClear{ 0x43 };    // C: take your chips back
 		std::array<int, 4> keyChip{ 0x31, 0x32, 0x33, 0x34 };  // 1-4: the 1, 5, 25 and 100 chips
-		int keyDealer{ 0x61 };   // Numpad 1: the settler you're looking at deals at the nearest table (again: stops)
 
 		// [Table]
 		int   wheel{ 0 };                  // 0 European (single 0), 1 American (0 and 00)
-		bool  requireDealer{ false };      // no dealer: you can still spin yourself
+		float spinDelay{ 15.0f };          // the wheel spins itself this long after the round's first bet
 		int   maxBet{ 500 };               // caps on one bet
-		float activeDistance{ 3000.0f };   // a table this close to you is played at (dealer and NPCs come)
+		float activeDistance{ 3000.0f };   // a table this close to you is played at (NPCs come)
 
 		// [Camera]
 		float layoutHeight{ 115.0f };      // the top view over the layout, above the felt
@@ -38,21 +37,18 @@ namespace fr
 		bool  wheelViewOnSpin{ true };     // the camera goes over the wheel while the ball's going round
 		float cursorSpeed{ 0.07f };        // how far the cursor moves per bit of mouse movement
 
-		// [Dealer]
-		float dealerWalkTimeout{ 30.0f };  // seconds to get to the table before they're put there
-		bool  dealerWatchesBall{ true };   // the dealer's eyes follow the ball
-
 		// [Bettors] settlers who come over and play
 		bool  bettors{ true };
 		int   maxBettors{ 3 };
+		bool  bettorIdles{ true };         // they cheer, clap, shake their heads, look the layout over
 		float bettorEvery{ 12.0f };        // seconds between looking for someone to come over
 		float bettorRange{ 1500.0f };      // ...within this far of the table
 		int   bettorMinRounds{ 2 };
 		int   bettorMaxRounds{ 6 };
-		float autoSpin{ 20.0f };           // with you away from the table, the dealer spins for the NPCs after this long
 
 		// [HUD]
 		float hudScale{ 1.4f };
+		float hudRange{ 350.0f };          // away from the table, its HUD shows within this far (350 = 5 m)
 		bool  notifications{ false };      // results as the game's corner messages too
 
 		// [Sound]

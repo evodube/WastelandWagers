@@ -464,7 +464,7 @@ namespace fr
 		auto*    player = RE::PlayerCharacter::GetSingleton();
 		auto     table = _table.get();
 		h.seated = _seated;
-		h.nearby = !_seated && table && player && (table->data.location - player->data.location).Length() < 700.0f &&
+		h.nearby = !_seated && table && player && (table->data.location - player->data.location).Length() < rl::table::kHalfLength + Settings::Get().hudRange &&
 		           (_phase != Phase::kBetting || !_stakes.empty() || !_seats.empty());
 		h.american = _wheel == rl::WheelType::kAmerican;
 		h.phase = static_cast<int>(_phase);
@@ -485,8 +485,8 @@ namespace fr
 				}
 			}
 		}
-		h.dealer = _dealer.id ? _dealer.name : std::string();
-		h.dealerReady = DealerReady();
+		h.spinIn = _phase == Phase::kBetting ? _spinIn : -1.0f;
+		h.spinning = _phase != Phase::kBetting;
 		for (const auto& seat : _seats) {
 			if (seat.step == Seat::Step::kPlaying) {
 				h.players.push_back(std::format("{}  {} CAPS", Upper(seat.name), Purse(seat.id) + OnTable(seat.id)));

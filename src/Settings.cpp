@@ -72,10 +72,9 @@ namespace fr
 		keyChip[1] = key(L"iChip5", keyChip[1]);
 		keyChip[2] = key(L"iChip25", keyChip[2]);
 		keyChip[3] = key(L"iChip100", keyChip[3]);
-		keyDealer = key(L"iDealer", keyDealer);
 
 		wheel = ReadInt(L"Table", L"iWheel", wheel) == 1 ? 1 : 0;
-		requireDealer = ReadBool(L"Table", L"bRequireDealer", requireDealer);
+		spinDelay = std::clamp(ReadFloat(L"Table", L"fSpinDelay", spinDelay), 3.0f, 300.0f);
 		maxBet = std::clamp(static_cast<int>(ReadInt(L"Table", L"iMaxBet", maxBet)), 1, 100000);
 		activeDistance = std::clamp(ReadFloat(L"Table", L"fActiveDistance", activeDistance), 500.0f, 20000.0f);
 
@@ -84,26 +83,24 @@ namespace fr
 		wheelViewOnSpin = ReadBool(L"Camera", L"bWheelViewOnSpin", wheelViewOnSpin);
 		cursorSpeed = std::clamp(ReadFloat(L"Camera", L"fCursorSpeed", cursorSpeed), 0.005f, 1.0f);
 
-		dealerWalkTimeout = std::clamp(ReadFloat(L"Dealer", L"fWalkTimeout", dealerWalkTimeout), 5.0f, 300.0f);
-		dealerWatchesBall = ReadBool(L"Dealer", L"bWatchBall", dealerWatchesBall);
-
 		bettors = ReadBool(L"Bettors", L"bEnabled", bettors);
-		maxBettors = std::clamp(static_cast<int>(ReadInt(L"Bettors", L"iMax", maxBettors)), 0, 6);
+		maxBettors = std::clamp(static_cast<int>(ReadInt(L"Bettors", L"iMax", maxBettors)), 0, 5);
+		bettorIdles = ReadBool(L"Bettors", L"bIdles", bettorIdles);
 		bettorEvery = std::clamp(ReadFloat(L"Bettors", L"fEvery", bettorEvery), 2.0f, 600.0f);
 		bettorRange = std::clamp(ReadFloat(L"Bettors", L"fRange", bettorRange), 200.0f, 6000.0f);
 		bettorMinRounds = std::clamp(static_cast<int>(ReadInt(L"Bettors", L"iMinRounds", bettorMinRounds)), 1, 50);
 		bettorMaxRounds = std::clamp(static_cast<int>(ReadInt(L"Bettors", L"iMaxRounds", bettorMaxRounds)), bettorMinRounds, 100);
-		autoSpin = std::clamp(ReadFloat(L"Bettors", L"fAutoSpin", autoSpin), 5.0f, 600.0f);
 
 		hudScale = std::clamp(ReadFloat(L"HUD", L"fScale", hudScale), 0.3f, 3.0f);
+		hudRange = std::clamp(ReadFloat(L"HUD", L"fRange", hudRange), 0.0f, 5000.0f);
 		notifications = ReadBool(L"HUD", L"bNotifications", notifications);
 		sound = ReadBool(L"Sound", L"bEnabled", sound);
 		soundVolume = std::clamp(ReadFloat(L"Sound", L"fVolume", soundVolume), 0.0f, 1.0f);
 
 		plugin = Narrow(ReadString(L"Forms", L"sPlugin", std::wstring(plugin.begin(), plugin.end())));
 
-		log::info("settings: {} wheel, max bet {}, bettors {} (up to {}), dealer required {}", wheel ? "American" : "European", maxBet,
-			bettors ? "on" : "off", maxBettors, requireDealer);
+		log::info("settings: {} wheel, max bet {}, bettors {} (up to {}), spins {:.0f}s after a bet", wheel ? "American" : "European", maxBet,
+			bettors ? "on" : "off", maxBettors, spinDelay);
 	}
 
 	std::string Settings::Key(int a_vk)

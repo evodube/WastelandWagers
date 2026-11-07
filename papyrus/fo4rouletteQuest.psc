@@ -123,3 +123,13 @@ Function ClearCollection(RefCollectionAlias akCollection, Keyword akLink)
 		endif
 	endwhile
 EndFunction
+
+; a vanilla idle (Fallout4.esm IDLE form ID) on someone at the table: their little reactions while they play
+Bool Function PlayIdleOn(Int aiActor, Int aiIdle)
+	Actor akActor = Game.GetForm(aiActor) as Actor
+	Idle akIdle = Game.GetForm(aiIdle) as Idle
+	if akActor == None || akIdle == None
+		return false
+	endif
+	return akActor.PlayIdle(akIdle)
+EndFunction

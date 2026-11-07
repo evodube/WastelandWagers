@@ -77,7 +77,7 @@ extern "C" __declspec(dllexport) bool F4SEAPI F4SEPlugin_Load(const F4SE::LoadIn
 		serialization->SetLoadCallback(fr::Game::Load);
 		serialization->SetRevertCallback(fr::Game::Revert);
 	} else {
-		fr::log::warn("no F4SE serialization: dealers and the settlers' caps won't be saved");
+		fr::log::warn("no F4SE serialization: the settlers' caps won't be saved");
 	}
 
 	fr::log::info("loaded; waiting for game data");

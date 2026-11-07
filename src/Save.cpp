@@ -1,16 +1,14 @@
-// The F4SE co-save: which settler deals at which table, and each NPC's caps for roulette.
+// The F4SE co-save: each NPC's caps for roulette. (0.2.0 and older also wrote 'DLRS', the dealers: skipped now.)
 
 #include "Game.h"
 
 namespace fr
 {
 	extern std::mutex                                       g_npcMutex;
-	extern std::unordered_map<RE::TESFormID, RE::TESFormID> g_dealers;
 	extern std::unordered_map<RE::TESFormID, int>           g_purses;
 
 	namespace
 	{
-		constexpr std::uint32_t kDealersType = 0x444C5253;  // 'DLRS'
 		constexpr std::uint32_t kPursesType = 0x50525345;   // 'PRSE'
 		constexpr std::uint32_t kVersion = 1;
 	}
@@ -18,14 +16,6 @@ namespace fr
 	void Game::Save(const F4SE::SerializationInterface* a_intfc)
 	{
 		std::scoped_lock lock(g_npcMutex);
-		if (a_intfc->OpenRecord(kDealersType, kVersion)) {
-			const auto n = static_cast<std::uint32_t>(g_dealers.size());
-			a_intfc->WriteRecordData(&n, sizeof(n));
-			for (const auto& [table, actor] : g_dealers) {
-				a_intfc->WriteRecordData(&table, sizeof(table));
-				a_intfc->WriteRecordData(&actor, sizeof(actor));
-			}
-		}
 		if (a_intfc->OpenRecord(kPursesType, kVersion)) {
 			const auto n = static_cast<std::uint32_t>(g_purses.size());
 			a_intfc->WriteRecordData(&n, sizeof(n));
@@ -34,17 +24,16 @@ namespace fr
 				a_intfc->WriteRecordData(&caps, sizeof(caps));
 			}
 		}
-		log::info("co-save: {} dealers, {} purses written", g_dealers.size(), g_purses.size());
+		log::info("co-save: {} purses written", g_purses.size());
 	}
 
 	void Game::Load(const F4SE::SerializationInterface* a_intfc)
 	{
 		std::scoped_lock lock(g_npcMutex);
-		g_dealers.clear();
 		g_purses.clear();
 		std::uint32_t type = 0, version = 0, length = 0;
 		while (a_intfc->GetNextRecordInfo(type, version, length)) {
-			if (version != kVersion) {
+			if (version != kVersion || type != kPursesType) {
 				continue;
 			}
 			std::uint32_t n = 0;
@@ -57,16 +46,7 @@ namespace fr
 					break;
 				}
 				const auto resolvedA = a_intfc->ResolveFormID(a);
-				if (type == kDealersType) {
-					RE::TESFormID b = 0;
-					if (!a_intfc->ReadRecordData(&b, sizeof(b))) {
-						break;
-					}
-					const auto resolvedB = a_intfc->ResolveFormID(b);
-					if (resolvedA && resolvedB) {
-						g_dealers[*resolvedA] = *resolvedB;
-					}
-				} else if (type == kPursesType) {
+				if (type == kPursesType) {
 					int caps = 0;
 					if (!a_intfc->ReadRecordData(&caps, sizeof(caps))) {
 						break;
@@ -77,13 +57,12 @@ namespace fr
 				}
 			}
 		}
-		log::info("co-save: {} dealers, {} purses read", g_dealers.size(), g_purses.size());
+		log::info("co-save: {} purses read", g_purses.size());
 	}
 
 	void Game::Revert(const F4SE::SerializationInterface*)
 	{
 		std::scoped_lock lock(g_npcMutex);
-		g_dealers.clear();
 		g_purses.clear();
 	}
 }

@@ -2,8 +2,8 @@
 
 A playable roulette table for Fallout 4, as an F4SE plugin: build the table in a settlement, sit down at it, put
 chips on the layout from a top-down camera and spin. The rotor turns, the ball runs round the track, rattles over the
-diamonds and frets and drops into a pocket. Make a settler the dealer and they come to the wheel and spin for you;
-other settlers wander over and bet with their own caps.
+diamonds and frets and drops into a pocket. The wheel spins itself 15 seconds after the round's first bet; settlers
+wander over and bet with their own caps, cheering, clapping or shaking their heads at the result.
 
 **Status: first build (0.1.0).**
 
@@ -23,14 +23,17 @@ other settlers wander over and bet with their own caps.
      the bet, what it pays and what's on it.
    - **Left button**: put a chip down (your caps go on the table). **Right button**: take your chips off that bet.
    - **1 2 3 4**: the 1, 5, 25 and 100 cap chips. **B**: the same bets as last round. **C**: all your chips back.
-   - **E** (activate): spin. The camera goes over the wheel while the ball goes round (**V** switches view any time).
+   - The wheel spins **15 seconds after the first bet** of the round (yours or a settler's; the HUD counts down).
+     **E** (activate) spins it straight away. The camera goes over the wheel while the ball goes round (**V**
+     switches view any time).
    - **X**: get up. Bets on the table stay there and are paid while you're nearby.
-3. **A dealer**: look at a settler (or companion) and press **Numpad 1**. They walk to the wheel end of the nearest
-   roulette table and deal there from then on (press it at them again and they stop). With a dealer at the table,
-   they spin; without one you spin yourself (or `bRequireDealer=1` makes a dealer necessary).
-4. **Other players**: settlers near the table come over now and then, stand at the layout and bet with their own
-   caps, a few rounds each, until they've had enough or run out. If you're away from the table, the dealer spins for
-   them every so often.
+3. **Other players**: settlers near the table come over now and then, each to their own spot at the layout, and put
+   25 to 100 caps a round on it from their own purse, a few rounds each, until they've had enough or run out. While
+   they play they look the layout over, reach in to bet, and cheer, laugh, clap, boo or shake their heads at the
+   result (vanilla idles; `[Bettors] bIdles=0` turns them off). Their bets start the countdown too, so the table
+   keeps going with you away from it.
+
+The HUD shows while you're at the table, or within 5 m of it while a round's going (`[HUD] fRange`).
 
 Winning bets are paid at the usual odds (35 to 1 down to even money). The result is drawn fairly first, and the ball
 is then thrown until it lands there, so every number is exactly as likely as it should be.
@@ -43,10 +46,10 @@ line bet). Every table shows the matching wheel and layout; a table in play swit
 ### Settings
 
 Every setting is in `Data\F4SE\Plugins\fo4roulette.ini` and on the Real Roulette pages in the F4SE Menu Framework
-menu (Table, Camera, Dealer & NPCs, HUD & sound, Keys).
+menu (Table, Camera, NPCs, HUD & sound, Keys).
 
 `Documents\My Games\Fallout4\F4SE\fo4roulette.log` records what happened: tables, spins (and how many throws it took
-to land on the drawn number), the dealer's and bettors' walks.
+to land on the drawn number), the bettors' walks.
 
 ## What's in it
 
@@ -89,7 +92,7 @@ g++ -std=c++20 -O2 -Isrc tests/layout_test.cpp src/rl/Layout.cpp src/rl/Wheel.cp
 - `src/rl/Layout`: what bet each point on the felt is, its chips' spot, its payout.
 - `src/Game.cpp`: the table in play, its rotor node turned every frame, the ball, the round, the chips (statics
   spawned on the felt). `src/Seat.cpp`: you at the table (the free camera held over the layout, the mouse moving the
-  cursor). `src/Npcs.cpp`: the dealer and the settlers betting.
+  cursor). `src/Npcs.cpp`: the settlers betting.
 - Before a save, the chips, ball and markers come off (and your caps on the table go back in your pocket for the
   save); after it they're put back.
 

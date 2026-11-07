@@ -231,6 +231,16 @@ namespace fr::Npc
 		return CallActor(a_actor, "ClearLookAt");
 	}
 
+	void PlayIdle(RE::Actor* a_actor, RE::TESFormID a_idle)
+	{
+		if (!a_actor || !Ready()) {
+			return;
+		}
+		const std::string what = std::format("{} {:08X}", What(a_actor, "PlayIdle"), a_idle);
+		const RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> logged{ new LogResult(what) };
+		CallQuest("PlayIdleOn", what, logged, FormArg(a_actor), static_cast<std::int32_t>(a_idle));
+	}
+
 	std::string PackageName(RE::Actor* a_actor)
 	{
 		auto* proc = a_actor ? a_actor->currentProcess : nullptr;

@@ -1,7 +1,7 @@
 #pragma once
 
 // Making NPCs walk to the table and stay there, through fo4roulette.esl's quest (fo4rouletteQuest): two collection
-// aliases, Dealers and Bettors, whose package (fo4rouletteWalkToSpot) walks each one to their linked ref (keyword
+// aliases, Dealers (unused since 0.2.1) and Bettors, whose package (fo4rouletteWalkToSpot) walks each one to their linked ref (keyword
 // fo4rouletteLinkSpot) and faces it there. Alias packages go by quest priority (100), so this outranks the sandbox
 // packages settlers usually have. The plugin places an XMarkerHeading where each should stand and links them to it.
 // Plus a few Papyrus Actor functions. Main thread only; the calls run on the script thread, later.
@@ -29,6 +29,9 @@ namespace fr::Npc
 	// Papyrus Actor.SetLookAt / ClearLookAt
 	bool LookAt(RE::Actor* a_actor, RE::TESObjectREFR* a_target);
 	bool ClearLookAt(RE::Actor* a_actor);
+
+	// a vanilla idle (Fallout4.esm IDLE form ID) through the quest's PlayIdleOn
+	void PlayIdle(RE::Actor* a_actor, RE::TESFormID a_idle);
 
 	// The AI package they're on, for the log.
 	std::string PackageName(RE::Actor* a_actor);
