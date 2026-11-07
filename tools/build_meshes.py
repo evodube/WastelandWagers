@@ -111,6 +111,7 @@ def join(objs, name, mat):
     o.name = name
     o.data.name = name
     o['pynNodeName'] = name
+    o['pynBlockName'] = 'BSTriShape'  # without it PyNifly writes NiTriShape, which Fallout 4 can't load
     o.data.materials.clear()
     o.data.materials.append(mat)
     return o
@@ -198,10 +199,13 @@ def export(objs, path):
         o.select_set(False)
     for o in objs:
         o.select_set(True)
+        o['PYN_GAME'] = 'FO4'
     bpy.context.view_layer.objects.active = objs[0]
     with ctx():
+        # intuit_defaults off: left on, PyNifly guesses the game from the objects and wrote Skyrim NIFs
+        # (NiTriShape, user version 83), which crash Fallout 4 as soon as it loads them
         bpy.ops.export_scene.pynifly(filepath=path, target_game='FO4', preserve_hierarchy=True,
-                                     export_colors=False, write_tris=False)
+                                     export_colors=False, write_tris=False, intuit_defaults=False)
 
 
 def chip_mesh(name, mat):
@@ -236,6 +240,7 @@ def chip_mesh(name, mat):
     for p in me.polygons:
         p.use_smooth = False
     o['pynNodeName'] = name
+    o['pynBlockName'] = 'BSTriShape'
     return o
 
 
@@ -324,6 +329,7 @@ def main():
     ball = bpy.context.view_layer.objects.active
     ball.name = "Ball:0"
     ball['pynNodeName'] = "Ball:0"
+    ball['pynBlockName'] = 'BSTriShape'
     ball.data.materials.append(mb)
     with ctx():
         bpy.ops.object.shade_smooth()
