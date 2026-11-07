@@ -3,6 +3,7 @@
 // co-save in Save.cpp.
 
 #include "Game.h"
+#include "MenuWatch.h"
 
 #include "Audio.h"
 #include "Forms.h"
@@ -158,13 +159,10 @@ namespace fr
 		}
 		// talking to someone doesn't stop the world (or the wheel): the game counts the conversation as a menu, so
 		// with only that open, menu mode is ignored
-		static const RE::BSFixedString dialogue("DialogueMenu");
-		if (ui->freezeFramePause != 0 || (ui->menuMode != 0 && !ui->GetMenuOpen(dialogue))) {
+		if (ui->freezeFramePause != 0 || (ui->menuMode != 0 && !menus::Open(menus::kDialogue))) {
 			return true;
 		}
-		static const std::array<RE::BSFixedString, 6> menus{ RE::BSFixedString("PauseMenu"), RE::BSFixedString("PipboyMenu"),
-			RE::BSFixedString("LoadingMenu"), RE::BSFixedString("MainMenu"), RE::BSFixedString("Console"), RE::BSFixedString("WorkshopMenu") };
-		return std::ranges::any_of(menus, [&](const RE::BSFixedString& a_name) { return ui->GetMenuOpen(a_name); });
+		return menus::AnyBlocking();  // (from the menu events: asking the UI holds the menus, see MenuWatch.h)
 	}
 
 	void Game::Notify(const std::string& a_message)
@@ -195,8 +193,7 @@ namespace fr
 		// someone talking to you while you're at the table (a greeting that got through): up, so the conversation can
 		// happen with your own controls and camera
 		if (_seated) {
-			static const RE::BSFixedString dialogue("DialogueMenu");
-			if (auto* ui = RE::UI::GetSingleton(); ui && ui->GetMenuOpen(dialogue)) {
+			if (menus::Open(menus::kDialogue)) {
 				log::info("a conversation started while you were at the table: getting up");
 				StandUp();
 			}

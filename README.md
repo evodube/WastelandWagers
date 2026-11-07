@@ -5,7 +5,7 @@ chips on the layout from a top-down camera and spin. The rotor turns, the ball r
 diamonds and frets and drops into a pocket. The wheel spins itself 15 seconds after the round's first bet; settlers
 wander over and bet with their own caps, cheering or shaking their heads at the result.
 
-**Status: 0.3.2.**
+**Status: 0.3.3.**
 
 ## Requirements
 
