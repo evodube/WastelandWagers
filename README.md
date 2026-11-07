@@ -57,7 +57,7 @@ to land on the drawn number), the bettors' walks.
   walks NPCs to the table), `Scripts\fo4rouletteQuest.pex` and `fo4rouletteGroupAlias.pex`.
 - `Meshes\fo4roulette`, `Textures\fo4roulette`: the table (from a Sketchfab model; see Credits), its two rotors and
   layouts (European and American, painted by `tools/make_textures.py`), ball and chips.
-- `Sound\fo4roulette`: the ball's roll and drop cut from a recording by Maxwell Dufresne (gfxsounds.com); the rest synthesised by `tools/make_sounds.py`.
+- `Sound\fo4roulette`: the ball's roll, hits, small knocks and settling cut from a recording by Maxwell Dufresne (gfxsounds.com), each played as the ball does it; chips, the rotor and the payout synthesised by `tools/make_sounds.py`.
 - `F4SE\Plugins\fo4roulette\hud`: the HUD's fonts (Chakra Petch, Share Tech Mono; OFL).
 
 ## Building
