@@ -22,7 +22,7 @@ namespace fr
 		constexpr float kResultSeconds = 5.0f; // ...and the table cleared for the next round
 		constexpr std::size_t kHistory = 16;
 		constexpr std::size_t kLogLines = 5;
-		constexpr int kMaxStack = 12;          // chips shown in one stack
+		constexpr int kMaxStack = 8;           // chips shown in one stack (the chip models are detailed)
 
 		using util::ForEachLoadedCell;
 
@@ -75,6 +75,10 @@ namespace fr
 				continue;
 			}
 			tasks->AddTask([this, i]() {
+				if (i == 1) {
+					StandUp();  // leaving always works, whatever's open
+					return;
+				}
 				if (IsGamePaused()) {
 					return;
 				}
@@ -149,6 +153,15 @@ namespace fr
 		_last = now;
 		_haveLast = true;
 		dt = std::clamp(dt, 0.0f, kMaxFrame);
+		// someone talking to you while you're at the table (a greeting that got through): up, so the conversation can
+		// happen with your own controls and camera
+		if (_seated) {
+			static const RE::BSFixedString dialogue("DialogueMenu");
+			if (auto* ui = RE::UI::GetSingleton(); ui && ui->GetMenuOpen(dialogue)) {
+				log::info("a conversation started while you were at the table: getting up");
+				StandUp();
+			}
+		}
 		if (IsGamePaused()) {
 			return;  // (menus, the workshop, talking: everything holds still)
 		}
@@ -1032,6 +1045,7 @@ namespace fr
 		// a load: everything we'd spawned went with the old game; let go of it all without touching it
 		_seated = false;
 		BlockControls(false);
+		QuietNpcs(false);
 		_haveEntryView = false;
 		_table = {};
 		_ball = {};

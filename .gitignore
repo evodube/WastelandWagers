@@ -5,3 +5,4 @@ vsxmake*/
 .vs/
 compile_commands.json
 build/test/
+__pycache__/

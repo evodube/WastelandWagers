@@ -202,6 +202,8 @@ namespace fr
 		void Rebet();
 		void ToggleView();
 		void BlockControls(bool a_block);
+		void QuietNpcs(bool a_quiet);  // the game's greetings off while you're at the table
+		bool _npcsQuiet{ false };
 		void HoldPlayerView();
 		void PlaceGhost(const Frame& a_frame);
 		std::optional<rl::Bet> HoverBet() const;

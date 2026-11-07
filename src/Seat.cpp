@@ -147,6 +147,7 @@ namespace fr
 		_viewBackIn = -1.0f;
 		_seated = true;
 		BlockControls(true);
+		QuietNpcs(true);
 		const auto& s = Settings::Get();
 		const std::string spin = Upper(Settings::Key(s.keySpin > 0 ? s.keySpin : _activateVk.load()));
 		log::info("sat down at the table");
@@ -164,6 +165,7 @@ namespace fr
 		HoldPlayerView();
 		_haveEntryView = false;
 		BlockControls(false);
+		QuietNpcs(false);
 		if (InFreeCamera()) {
 			if (auto* camera = RE::PlayerCamera::GetSingleton()) {
 				camera->ToggleFreeCameraMode(false);
@@ -172,6 +174,41 @@ namespace fr
 		Remove(_ghost);
 		_ghostValue = -1;
 		log::info("left the table");
+	}
+
+	void Game::QuietNpcs(bool a_quiet)
+	{
+		// the game's own settings for greetings and comments: off while you're at the table (a settler coming over to
+		// bet would otherwise start a conversation, which the table's camera and blocked controls can't take part in),
+		// back as they were after. From Playable Pool.
+		if (a_quiet == _npcsQuiet) {
+			return;
+		}
+		_npcsQuiet = a_quiet;
+		static std::unordered_map<std::string, float> was;
+		auto* settings = RE::GameSettingCollection::GetSingleton();
+		if (!settings) {
+			return;
+		}
+		static constexpr std::pair<const char*, float> kQuiet[] = {
+			{ "fAIMinGreetingDistance", 0.0f },
+			{ "fAIGreetingTimer", 100000.0f },
+			{ "fAIHelloTimer", 100000.0f },
+			{ "fCommentOnPlayerActionsTimer", 100000.0f },
+		};
+		for (const auto& [name, quiet] : kQuiet) {
+			auto* setting = settings->GetSetting(name);
+			if (!setting) {
+				continue;
+			}
+			if (a_quiet) {
+				was[name] = setting->GetFloat();
+				setting->SetFloat(quiet);
+			} else if (auto it = was.find(name); it != was.end()) {
+				setting->SetFloat(it->second);
+			}
+		}
+		log::info("NPC greetings {}", a_quiet ? "off while you're at the table" : "back on");
 	}
 
 	void Game::BlockControls(bool a_block)
@@ -301,7 +338,7 @@ namespace fr
 			y = bet->spot.y;
 			// over the top of your stack there
 			if (const Stake* st = StakeFor(0, bet->key)) {
-				z += std::min<int>(static_cast<int>(rl::ChipsFor(st->amount).size()), 12) * kChipHeight;
+				z += std::min<int>(static_cast<int>(rl::ChipsFor(st->amount).size()), 8) * kChipHeight;
 			}
 		}
 		const auto pos = ToWorld(a_frame, x, y, z);

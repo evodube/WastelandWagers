@@ -150,7 +150,7 @@ namespace rl
 		const double trackDrag = uni(0.45, 0.75);       // rad/s^2
 		const double airDrag = uni(0.010, 0.014);       // per rad/s, squared speed
 		const double dropSpeed = uni(5.2, 6.2);         // rad/s: slower than this and it leaves the track
-		const double diamondChance = uni(0.45, 0.7);
+		const double diamondChance = uni(0.6, 0.9);
 
 		double r = rTrack, vr = 0.0;
 		double th = Wrap(a_params.throwAngle), w = a_params.ballSpeed;
@@ -204,7 +204,12 @@ namespace rl
 				h += vz * dt;
 				if (h <= 0.0) {
 					h = 0.0;
-					vz = std::abs(vz) > 20.0 ? -vz * 0.3 : 0.0;
+					// landing: a few smaller bounces, each knocking it about a little on the rotor
+					if (!onTrack && descent >= 1.0 && std::abs(vz) > 25.0) {
+						w += uni(-1.2, 1.2);
+						vr += uni(-12.0, 12.0);
+					}
+					vz = std::abs(vz) > 12.0 ? -vz * 0.45 : 0.0;
 				}
 			}
 
@@ -230,7 +235,7 @@ namespace rl
 					const double eighth = kPi / 4.0;
 					if (std::floor(Wrap(thBefore) / eighth) != std::floor(Wrap(th) / eighth) && U(a_noise) < diamondChance) {
 						w *= uni(-0.25, 0.55);
-						vz = uni(25.0, 70.0);
+						vz = uni(45.0, 110.0);
 						descent = std::max(0.3, descent - uni(0.05, 0.25));  // thrown back up the cone a little
 					}
 				}
@@ -243,12 +248,12 @@ namespace rl
 				const double rBefore = r;
 				// radial: the slope's pull inward against a share of what the turn throws outward
 				vr += (0.2 * r * w * w - InwardPull(r)) * dt;
-				vr *= std::exp(-(r < kNumberInner + 1.0 ? 3.0 : 1.5) * dt);  // the frets and pocket floor soak up bouncing
+				vr *= std::exp(-(r < kNumberInner + 1.0 ? 1.6 : 0.8) * dt);  // the frets and pocket floor soak up bouncing
 				r += vr * dt;
 				// angular: dragged towards the rotor's speed, hard once it's down among the pockets
 				const bool onRotor = r < kRotorEdge;
 				if (onRotor) {
-					const double drag = r < kNumberInner ? 1.7 : 0.7;
+					const double drag = r < kNumberInner ? 0.6 : 0.35;
 					w = wr + Slow(w - wr, drag, dt);
 				} else {
 					w = Slow(w, 0.8, dt);
@@ -273,9 +278,9 @@ namespace rl
 					if (fBefore != fNow) {
 						const double rel = w - wr;
 						th = thBefore + wr * dt;  // stays in its pocket this step...
-						w = wr - rel * uni(0.35, 0.7);  // ...bouncing back off the fret
-						vr += uni(-10.0, 55.0) * std::min(1.0, std::abs(rel) / 3.0);
-						vz = std::abs(rel) * r * uni(0.15, 0.4);
+						w = wr - rel * uni(0.55, 0.9);  // ...bouncing back off the fret
+						vr += uni(-15.0, 75.0) * std::min(1.0, std::abs(rel) / 2.5);
+						vz = uni(35.0, 85.0) * std::min(1.0, std::abs(rel) / 0.8);  // up off the fret
 					}
 				}
 

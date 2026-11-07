@@ -257,23 +257,36 @@ namespace fr::Hud
 				return;
 			}
 			const std::size_t n = std::min<std::size_t>(a_st.history.size(), 12);
-			const float       r = 15.0f, gap = 36.0f;
-			const float       w = 30.0f + gap * static_cast<float>(n);
+			const float       r = 17.0f, gap = 40.0f;
+			const float       w = std::max(34.0f + gap * static_cast<float>(n), TextWidth(Mono(), "LAST NUMBERS", 13, 2.0f) + 40.0f);
 			const float       x = a_v.w - 24.0f - w, y = 24.0f;
-			Chamfer(a_v, x, y, w, 64.0f, 10.0f, kPanel, kEdge);
-			Print(a_v, Mono(), "LAST NUMBERS", x + 16, y + 8, 11, kDim, 0, 2.0f);
+			Chamfer(a_v, x, y, w, 76.0f, 10.0f, kPanel, kEdge);
+			Print(a_v, Mono(), "LAST NUMBERS", x + 18, y + 10, 13, kDim, 0, 2.0f);
 			for (std::size_t i = 0; i < n; ++i) {
-				NumberDisc(a_v, a_st.history[i], x + 15 + r + gap * static_cast<float>(i), y + 40, i == 0 ? r + 2 : r, i == 0 ? 1.0f : 0.8f);
+				NumberDisc(a_v, a_st.history[i], x + 17 + r + gap * static_cast<float>(i), y + 48, i == 0 ? r + 2 : r, i == 0 ? 1.0f : 0.8f);
 			}
 		}
 
+		// what's been happening, in a panel at the bottom left
 		void Log(const View& a_v, const Game::HudState& a_st, float a_bottom)
 		{
-			float y = a_bottom - 18.0f * static_cast<float>(a_st.log.size());
+			if (a_st.log.empty()) {
+				return;
+			}
+			constexpr float kLine = 22.0f, kSize = 15.0f;
+			float w = 0.0f;
 			for (const auto& line : a_st.log) {
-				const ImU32 col = line.tone == 1 ? kBright : line.tone == 2 ? kRedText : kDim;
-				Print(a_v, Mono(), "> " + line.text, 28.0f, y, 13, col, 0, 1.0f);
-				y += 18.0f;
+				w = std::max(w, TextWidth(Mono(), "> " + line.text, kSize, 1.0f));
+			}
+			w = std::min(w + 36.0f, a_v.w * 0.42f);
+			const float h = kLine * static_cast<float>(a_st.log.size()) + 20.0f;
+			const float x = 24.0f, y0 = a_bottom - h;
+			Chamfer(a_v, x, y0, w, h, 10.0f, kPanel, kEdge);
+			float y = y0 + 10.0f;
+			for (const auto& line : a_st.log) {
+				const ImU32 col = line.tone == 1 ? kBright : line.tone == 2 ? kRedText : kText;
+				Print(a_v, Mono(), "> " + line.text, x + 16, y, kSize, col, 0, 1.0f);
+				y += kLine;
 			}
 		}
 
@@ -289,16 +302,21 @@ namespace fr::Hud
 			if (a_st.hoverAll > a_st.hoverMine) {
 				tail += std::format(" · ALL {}", a_st.hoverAll);
 			}
-			const float cx = a_v.w * 0.5f, y = a_v.h - 112.0f;
+			const float cx = a_v.w * 0.5f, y = a_v.h - 124.0f;
 			const float w = std::max(TextWidth(Title(), a_st.hover, 24, 2.0f), TextWidth(Mono(), tail, 13, 1.5f)) + 60.0f;
 			Chamfer(a_v, cx - w * 0.5f, y, w, 62.0f, 10.0f, kPanel, kEdge);
 			Print(a_v, Title(), a_st.hover, cx, y + 6, 24, kBright, kGlow, 2.0f, Align::kCentre);
 			Print(a_v, Mono(), tail, cx, y + 38, 13, kDim, 0, 1.5f, Align::kCentre);
 		}
 
+		// the key hints, in a strip along the bottom
 		void Keys(const View& a_v, const Game::HudState& a_st)
 		{
-			Print(a_v, Mono(), a_st.keys, a_v.w * 0.5f, a_v.h - 34.0f, 11, kOff, 0, 1.0f, Align::kCentre);
+			constexpr float kSize = 13.0f;
+			const float     w = TextWidth(Mono(), a_st.keys, kSize, 1.0f) + 40.0f;
+			const float     y = a_v.h - 46.0f;
+			Chamfer(a_v, a_v.w * 0.5f - w * 0.5f, y, w, 30.0f, 8.0f, kPanel, kEdge);
+			Print(a_v, Mono(), a_st.keys, a_v.w * 0.5f, y + 7.0f, kSize, kText, 0, 1.0f, Align::kCentre);
 		}
 
 		void Banner(const View& a_v, const Game::HudState& a_st)
@@ -389,9 +407,9 @@ namespace fr::Hud
 				Status(v, st);
 				Hover(v, st);
 				Keys(v, st);
-				Log(v, st, v.h - 130.0f);
+				Log(v, st, v.h - 140.0f);
 			} else {
-				Log(v, st, v.h - 60.0f);
+				Log(v, st, v.h - 24.0f);
 			}
 		}
 

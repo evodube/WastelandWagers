@@ -48,7 +48,7 @@ namespace rl::table
 
 	// chips
 	inline constexpr double kChipRadius = 0.34 * kScale;
-	inline constexpr double kChipHeight = 0.42;
+	inline constexpr double kChipHeight = 0.51;  // the chip set's chips at this size (tools/build_chips.py)
 
 	// the table's edges (for walking round it)
 	inline constexpr double kHalfLength = 138.2;

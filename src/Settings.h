@@ -52,7 +52,7 @@ namespace fr
 		float autoSpin{ 20.0f };           // with you away from the table, the dealer spins for the NPCs after this long
 
 		// [HUD]
-		float hudScale{ 1.0f };
+		float hudScale{ 1.4f };
 		bool  notifications{ false };      // results as the game's corner messages too
 
 		// [Sound]

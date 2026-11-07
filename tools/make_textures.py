@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Writes fo4roulette's textures (Data/Textures/fo4roulette/*.dds) from the table model's maps.
 
-    python tools/make_textures.py <model textures folder> <out Data folder>
+    python tools/make_textures.py <model textures folder> <out Data folder>     (the model's .obj next to it, in ../model)
 
 - table:     the wood, brass and bowl (lambert1), converted as they are
 - wheel_eu / wheel_us: the rotor (lambert2). Its pocket ring and number ring are drawn here, so the pockets sit
@@ -84,55 +84,60 @@ def paste_text(img: Image.Image, text: str, centre, height_px: float, angle: flo
     img.alpha_composite(tile, (int(centre[0] - tile.width / 2), int(centre[1] - tile.height / 2)))
 
 
-def wheel(base: Image.Image, seq: list[int], size: int) -> Image.Image:
-    img = base.convert("RGBA").resize((size, size), Image.LANCZOS)
+def wheel(base: Image.Image, seq: list[int], size: int, positions) -> Image.Image:
+    """the rotor's two rings painted where each texel really is on the rotor (rotor_uv.py), so nothing of the old
+    rings is left showing and the numbers sit on the sloped ring itself"""
+    img = base.convert("RGB").resize((size, size), Image.LANCZOS)
+    arr = np.array(img).astype(np.float32)
     n = len(seq)
     step = 360.0 / n
-    # per pixel: model x, y, radius and angle
-    px = (np.arange(size) + 0.5) / size
-    u, v = np.meshgrid(px, px)
-    v = 1.0 - v
-    x = (u - WU[1]) / WU[0]
-    y = (v - WV[1]) / WV[0]
+    P = positions
+    used = ~np.isnan(P[..., 0])
+    x, y = np.nan_to_num(P[..., 0]), np.nan_to_num(P[..., 1])
     r = np.hypot(x, y)
     ang = np.degrees(np.arctan2(y, x))
-    # sequence slot: pocket k spans 90 - (k + 0.5) step .. 90 - (k - 0.5) step
     k = np.floor(((90.0 - ang) / step + 0.5) % n).astype(int)
-    within = ((90.0 - ang) / step + 0.5) % 1.0   # 0..1 across the slot
-    arr = np.array(img).astype(np.float32)
+    within = ((90.0 - ang) / step + 0.5) % 1.0
     cols = np.array([colour(m) for m in seq], dtype=np.float32)
-    slot_col = cols[k]
+    slot = cols[k]
 
-    # number ring: wedges in the pocket colour, a thin brass line between them
-    ring = (r >= NUMBER_R[0] - 0.05) & (r <= NUMBER_R[1] + 0.08)
-    edge = (within < 0.035) | (within > 0.965)
-    arr[ring, :3] = slot_col[ring]
-    arr[ring & edge, :3] = (176, 140, 74)
-    # pocket ring: ivory base, the pocket floor coloured, frets (ivory) between
-    pr = (r >= POCKET_R[0] - 0.04) & (r <= POCKET_R[1] + 0.04)
-    arr[pr, :3] = C_IVORY
-    floor = pr & (within > 0.11) & (within < 0.89) & (r > POCKET_R[0] + 0.07) & (r < POCKET_R[1] - 0.07)
-    shade = 0.82 + 0.18 * np.clip((r - POCKET_R[0]) / (POCKET_R[1] - POCKET_R[0]), 0, 1)
-    arr[floor, :3] = slot_col[floor] * shade[floor, None]
-    # a dark line where the rings meet
-    seam = (r > POCKET_R[1] + 0.04) & (r < NUMBER_R[0] - 0.05)
-    arr[seam, :3] = (60, 46, 30)
-    img = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), "RGBA")
+    ring = used & (r >= NUMBER_R[0] - 0.03)
+    pr = used & (r >= POCKET_R[0] - 0.02) & (r < NUMBER_R[0] - 0.03)
+    arr[ring] = slot[ring]
+    arr[ring & ((within < 0.035) | (within > 0.965))] = (176, 140, 74)
+    arr[pr] = C_IVORY
+    floor = pr & (within > 0.11) & (within < 0.89) & (r > POCKET_R[0] + 0.06) & (r < POCKET_R[1] - 0.05)
+    shade = 0.8 + 0.2 * np.clip((r - POCKET_R[0]) / (POCKET_R[1] - POCKET_R[0]), 0, 1)
+    arr[floor] = slot[floor] * shade[floor, None]
+    seam = used & (r >= POCKET_R[1] + 0.02) & (r < NUMBER_R[0] - 0.03)
+    arr[seam] = (60, 46, 30)
 
-    ppu = abs(WU[0]) * size  # pixels per model unit
-    rt = (NUMBER_R[0] + NUMBER_R[1]) / 2
+    # the numbers: drawn on a strip that's the number ring unrolled (across = round the wheel, clockwise seen from
+    # above; down = inwards), then picked up by each texel of the ring
+    W, H = 8192, 320
+    r0, r1 = NUMBER_R[0] + 0.05, NUMBER_R[1] - 0.04
+    strip = Image.new("L", (W, H), 0)
+    rm = (r0 + r1) / 2
+    along = W / (2 * math.pi * rm)  # strip pixels per model unit round the ring
+    down = H / (r1 - r0)            # ...and across it
+    f = font(H * 0.7 * 1.35)
     for i, m in enumerate(seq):
-        phi = 90.0 - i * step
-        cx = (WU[0] * rt * math.cos(math.radians(phi)) + WU[1]) * size
-        cy = (1.0 - (WV[0] * rt * math.sin(math.radians(phi)) + WV[1])) * size
         txt = name(m)
-        width = (2 * math.pi * rt / n) * ppu * 0.78
-        hgt = (NUMBER_R[1] - NUMBER_R[0]) * ppu * 0.55
-        f = font(hgt * 1.35)
-        l, t, rr, b = f.getbbox(txt)
-        stretch = min(1.0, width / max(1, rr - l))
-        paste_text(img, txt, (cx, cy), hgt, phi + 90.0, C_WHITE + (255,), stretch)
-    return img.convert("RGB")
+        l, tt, rr, b = f.getbbox(txt)
+        tile = Image.new("L", (rr - l + 8, b - tt + 8), 0)
+        ImageDraw.Draw(tile).text((4 - l, 4 - tt), txt, font=f, fill=255)
+        # as wide as it should look: squeeze to the strip's scale round the ring, at most 80% of a pocket
+        want_w = min(tile.width * along / down, 2 * math.pi * rm / n * along * 0.8)
+        tile = tile.resize((max(1, int(want_w)), int(H * 0.8)), Image.LANCZOS)
+        cxp = ((-(90.0 - i * step)) % 360.0) / 360.0 * W
+        for dx in (0, -W, W):  # (wraps round)
+            strip.paste(tile, (int(cxp - tile.width / 2 + dx), int(H * 0.1)), tile)
+    sx = (((-ang) % 360.0) / 360.0 * W).astype(int) % W
+    sy = np.clip(((r1 - r) * down).astype(int), 0, H - 1)
+    a = np.array(strip, dtype=np.float32)[sy, sx] / 255.0
+    a[~(ring & (r >= r0) & (r <= r1))] = 0.0
+    arr = arr * (1 - a[..., None]) + np.array(C_WHITE, dtype=np.float32) * a[..., None]
+    return Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), "RGB")
 
 
 def layout(base: Image.Image, american: bool, size: int) -> Image.Image:
@@ -247,6 +252,7 @@ def chip(value: int, col, size: int = 512) -> Image.Image:
 
 
 CHIPS = {1: (226, 222, 210), 5: (172, 28, 34), 25: (28, 120, 52), 100: (24, 24, 26)}
+CHIP_COLOURS = ["00794e", "030303", "060606", "e7e7e7", "ff463c"]  # build_chips.py's result
 
 
 def spec_from(rough: Image.Image, metal: Image.Image, size: int, base: float = 0.35) -> Image.Image:
@@ -285,8 +291,12 @@ def main() -> int:
     put(spec_from(load("lambert1SG_roughness"), load("lambert1SG_metallic"), 1024), "table_s")
     # wheels
     wbase = load("lambert2SG_albedo")
-    put(wheel(wbase, EU, 2048), "wheel_eu_d")
-    put(wheel(wbase, US, 2048), "wheel_us_d")
+    import glob
+    from rotor_uv import texel_positions
+    obj = (glob.glob(os.path.join(src, "..", "model", "*.obj")) + glob.glob(os.path.join(src, "*.obj")))[0]
+    positions = texel_positions(obj, 2048)
+    put(wheel(wbase, EU, 2048, positions), "wheel_eu_d")
+    put(wheel(wbase, US, 2048, positions), "wheel_us_d")
     put(flat(), "flat_n")
     put(spec_from(load("lambert2SG_roughness"), load("lambert2SG_metallic"), 512, 0.5), "wheel_s")
     # layouts
@@ -294,10 +304,11 @@ def main() -> int:
     put(layout(lbase, False, 2048), "layout_eu_d")
     put(layout(lbase, True, 2048), "layout_us_d")
     put(flat(64, (10, 40, 0)), "felt_s")
-    # chips and ball
-    for v, col in CHIPS.items():
-        put(chip(v, col), f"chip_{v}_d")
+    # chips: one colour per material of the chip set (build_chips.py lists them)
+    for hexcol in CHIP_COLOURS:
+        put(flat(8, tuple(int(hexcol[i:i + 2], 16) for i in (0, 2, 4))), f"chipcol_{hexcol}")
     put(flat(64, (90, 200, 0)), "chip_s")
+    # the ball
     put(flat(64, (244, 240, 230)), "ball_d")
     put(flat(64, (220, 230, 0)), "ball_s")
     return 0
