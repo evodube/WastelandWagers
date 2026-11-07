@@ -168,6 +168,32 @@ namespace fr::Hud
 			}
 		}
 
+		// text centred on (a_cx, a_cy) by its ink, not its advance and line height: digits sit dead centre in a disc
+		void PrintInkCentred(const View& a_v, const HudFont::Font& a_f, std::string_view a_text, float a_cx, float a_cy, float a_size, ImU32 a_col)
+		{
+			const float k = a_size / a_f.size;
+			const auto* space = FindGlyph(a_f, ' ');
+			const float pad = space ? -space->xoff : 0.0f;  // the atlas's padding round each glyph (for the glow)
+			float       pen = 0.0f, l = 1.0e9f, r = -1.0e9f, t = 1.0e9f, b = -1.0e9f;
+			for (const auto code : Decode(a_text)) {
+				const auto* g = FindGlyph(a_f, code);
+				if (!g) {
+					continue;
+				}
+				if (code != ' ') {
+					l = std::min(l, pen + (g->xoff + pad) * k);
+					r = std::max(r, pen + (g->xoff + g->w - pad) * k);
+					t = std::min(t, (g->yoff + pad) * k);
+					b = std::max(b, (g->yoff + g->h - pad) * k);
+				}
+				pen += g->advance * k;
+			}
+			if (r < l) {
+				return;
+			}
+			Print(a_v, a_f, a_text, a_cx - (l + r) * 0.5f, a_cy - (t + b) * 0.5f, a_size, a_col);
+		}
+
 		const HudFont::Font& Title() { return HudFont::k_title; }
 		const HudFont::Font& Mono() { return HudFont::k_mono; }
 
@@ -198,7 +224,7 @@ namespace fr::Hud
 		{
 			DL::AddCircleFilled(a_v.dl, a_v.P(a_cx, a_cy), a_r * a_v.s, Fade(NumberColour(a_n), a_alpha), 32);
 			DL::AddCircle(a_v.dl, a_v.P(a_cx, a_cy), a_r * a_v.s, Fade(Rgba(230, 220, 190), 0.8f * a_alpha), 32, std::max(1.0f, 1.2f * a_v.s));
-			Print(a_v, Title(), rl::NumberName(a_n), a_cx, a_cy - a_r * 0.62f, a_r * 1.15f, Fade(Rgba(245, 240, 225), a_alpha), 0, 0.0f, Align::kCentre);
+			PrintInkCentred(a_v, Title(), rl::NumberName(a_n), a_cx, a_cy, a_r * 1.15f, Fade(Rgba(245, 240, 225), a_alpha));
 		}
 
 		void Chip(const View& a_v, int a_index, float a_cx, float a_cy, float a_r, bool a_on)
@@ -255,14 +281,18 @@ namespace fr::Hud
 			if (a_st.history.empty()) {
 				return;
 			}
-			const std::size_t n = std::min<std::size_t>(a_st.history.size(), 5);
-			const float       r = 17.0f, gap = 40.0f;
-			const float       w = std::max(34.0f + gap * static_cast<float>(n), TextWidth(Mono(), "LAST NUMBERS", 13, 2.0f) + 40.0f);
-			const float       x = a_v.w - 24.0f - w, y = 24.0f;
-			Chamfer(a_v, x, y, w, 76.0f, 10.0f, kPanel, kEdge);
-			Print(a_v, Mono(), "LAST NUMBERS", x + 18, y + 10, 13, kDim, 0, 2.0f);
+			// the last five, newest first, all the same size, the row centred in the panel
+			constexpr std::size_t kShown = 5;
+			const std::size_t     n = std::min(a_st.history.size(), kShown);
+			const float           r = 17.0f, gap = 42.0f;
+			const float           row = 2.0f * r + gap * static_cast<float>(kShown - 1);
+			const float           w = std::max(row, TextWidth(Mono(), "LAST NUMBERS", 13, 2.0f)) + 36.0f;
+			const float           x = a_v.w - 24.0f - w, y = 24.0f;
+			Chamfer(a_v, x, y, w, 80.0f, 10.0f, kPanel, kEdge);
+			Print(a_v, Mono(), "LAST NUMBERS", x + w * 0.5f, y + 10, 13, kDim, 0, 2.0f, Align::kCentre);
+			const float x0 = x + (w - row) * 0.5f + r;
 			for (std::size_t i = 0; i < n; ++i) {
-				NumberDisc(a_v, a_st.history[i], x + 17 + r + gap * static_cast<float>(i), y + 48, i == 0 ? r + 2 : r, i == 0 ? 1.0f : 0.8f);
+				NumberDisc(a_v, a_st.history[i], x0 + gap * static_cast<float>(i), y + 50, r, i == 0 ? 1.0f : 0.85f);
 			}
 		}
 
