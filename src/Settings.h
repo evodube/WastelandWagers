@@ -48,7 +48,6 @@ namespace fr
 
 		// [HUD]
 		float hudScale{ 1.4f };
-		float hudRange{ 350.0f };          // away from the table, its HUD shows within this far (350 = 5 m)
 		bool  notifications{ false };      // results as the game's corner messages too
 
 		// [Sound]

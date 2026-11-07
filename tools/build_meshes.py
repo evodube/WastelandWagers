@@ -11,8 +11,13 @@ Writes:
     RouletteTable.nif   the table, the bowl and its diamonds, both layouts (LayoutEU, LayoutUS: the plugin hides the
                         one not in use) and both rotors (NiNodes RotorEU and RotorUS, each the numbered disc and the
                         turret, origin on the wheel's axis: the plugin turns them). One convex collision body.
-    Chip1/5/25/100.nif  chips, origin at the bottom centre
     Ball.nif            the ball, origin at its centre
+(The chips are matveuk's set: build_chips.py.)
+
+The rotor is rebuilt here rather than taken from the model: a surface of revolution with the model's profile, its
+disc (pocket floors, number ring) with planar UVs for make_textures.py's wheel_eu/us_d, and the cone, a real fret
+between every pocket (37 or 38) and the turret in polished metal with the game's own reflections (the pool table's
+cube map).
 
 Model units are scaled by SCALE; the table's origin is the centre of its footprint on the floor. The numbers the
 plugin needs (wheel centre, layout cells, pocket ring, track) are in src/rl/Table.h, derived from the same values.
@@ -31,9 +36,18 @@ OUT = r"C:\Users\Dan\Desktop\table\work\Data"
 
 SCALE = 6.6
 ORIGIN = Vector((12.005, 3.755, -8.22))   # model units: footprint centre, floor
-CHIP_R, CHIP_H = 0.34 * SCALE, 0.42
 BALL_R = 0.16 * SCALE
 TEX = "textures\\fo4roulette\\"
+CUBEMAP = "textures\\Shared\\Cubemaps\\mipblur_DefaultOutside1.dds"  # as the vanilla pool table uses
+
+# the rotor's profile (model units: radius, height), from the model's disc; the wheel's axis is the model's origin
+CONE = [(0.0, 1.752), (0.78, 1.752), (1.305, 1.679), (1.827, 1.585), (2.352, 1.517), (2.784, 1.481), (2.83, 1.481),
+        (2.83, 1.356)]
+DISC = [(2.83, 1.356), (3.73, 1.356), (3.73, 1.481), (3.784, 1.481), (4.45, 1.713)]
+FRET_R = (2.83, 3.73)
+FRET_TOP = 1.47
+FRET_HALF = 0.032
+ROTOR_UV = 4.5  # make_textures.py's planar mapping: u = 0.5 + x / (2 * ROTOR_UV)
 
 
 def ctx():
@@ -209,40 +223,99 @@ def export(objs, path):
                                      export_colors=False, write_tris=False, intuit_defaults=False)
 
 
-def chip_mesh(name, mat):
-    """a cylinder; the faces cover the whole texture, the side wall sits on its outer rim"""
-    seg = 40
+def revolve(name, profile, segments, mat):
+    """a surface of revolution; each step of the profile its own band (hard edges between bands, smooth round)"""
     bm = bmesh.new()
     uv = bm.loops.layers.uv.new("UVMap")
-    bot = [bm.verts.new((CHIP_R * math.cos(2 * math.pi * i / seg), CHIP_R * math.sin(2 * math.pi * i / seg), 0))
-           for i in range(seg)]
-    top = [bm.verts.new((v.co.x, v.co.y, CHIP_H)) for v in bot]
-    ft = bm.faces.new(top)
-    fb = bm.faces.new(list(reversed(bot)))
-    for f in (ft, fb):
-        for lp in f.loops:
-            lp[uv].uv = (0.5 + 0.5 * lp.vert.co.x / CHIP_R, 0.5 + 0.5 * lp.vert.co.y / CHIP_R)
-    for i in range(seg):
-        j = (i + 1) % seg
-        f = bm.faces.new((bot[i], bot[j], top[j], top[i]))
-        for lp in f.loops:
-            a = math.atan2(lp.vert.co.y, lp.vert.co.x)
-            if lp.vert in (bot[j], top[j]) and j == 0:
-                a = 2 * math.pi
-            rr = 0.49 if lp.vert.co.z > 0 else 0.47
-            lp[uv].uv = (0.5 + rr * math.cos(a), 0.5 + rr * math.sin(a))
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    for (r0, z0), (r1, z1) in zip(profile, profile[1:]):
+        exp = Vector((-(z1 - z0), r1 - r0))  # the side that's seen: (radial, up)
+        ring0, ring1 = [], []
+        for j in range(segments):
+            a = 2 * math.pi * j / segments
+            ring0.append(bm.verts.new((r0 * math.cos(a), r0 * math.sin(a), z0)) if r0 > 0 or j == 0 else ring0[0])
+            ring1.append(bm.verts.new((r1 * math.cos(a), r1 * math.sin(a), z1)))
+        for j in range(segments):
+            k = (j + 1) % segments
+            vs = [ring0[j], ring1[j], ring1[k], ring0[k]] if r0 > 0 else [ring0[0], ring1[j], ring1[k]]
+            f = bm.faces.new(vs)
+            f.normal_update()
+            a = 2 * math.pi * (j + 0.5) / segments
+            want = Vector((exp.x * math.cos(a), exp.x * math.sin(a), exp.y))
+            if f.normal.dot(want) < 0:
+                f.normal_flip()
+            f.smooth = True
+            for lp in f.loops:
+                lp[uv].uv = (0.5 + lp.vert.co.x / (2 * ROTOR_UV), 0.5 + lp.vert.co.y / (2 * ROTOR_UV))
     me = bpy.data.meshes.new(name)
     bm.to_mesh(me)
     bm.free()
     o = bpy.data.objects.new(name, me)
     bpy.context.scene.collection.objects.link(o)
-    me.materials.append(mat)
-    for p in me.polygons:
-        p.use_smooth = False
-    o['pynNodeName'] = name
-    o['pynBlockName'] = 'BSTriShape'
     return o
+
+
+def frets(name, n):
+    """a fret at each boundary between pockets: pocket k is centred at 90 - k*360/n degrees (clockwise from above)"""
+    bm = bmesh.new()
+    uv = bm.loops.layers.uv.new("UVMap")
+    step = 360.0 / n
+    for k in range(n):
+        a = math.radians(90.0 - (k + 0.5) * step)
+        d = Vector((math.cos(a), math.sin(a), 0))
+        s = Vector((-math.sin(a), math.cos(a), 0)) * FRET_HALF
+        pts = {}
+        for ri, r in enumerate(FRET_R):
+            for si, sg in enumerate((-1, 1)):
+                for zi, z in enumerate((DISC[0][1], FRET_TOP)):
+                    pts[ri, si, zi] = d * r + s * sg + Vector((0, 0, z))
+        quads = [
+            [(0, 0, 1), (0, 1, 1), (1, 1, 1), (1, 0, 1)],  # top
+            [(0, 0, 0), (1, 0, 0), (1, 0, 1), (0, 0, 1)],  # one side
+            [(0, 1, 0), (0, 1, 1), (1, 1, 1), (1, 1, 0)],  # the other
+            [(0, 0, 0), (0, 0, 1), (0, 1, 1), (0, 1, 0)],  # inner end
+            [(1, 0, 0), (1, 1, 0), (1, 1, 1), (1, 0, 1)],  # outer end
+        ]
+        centre = d * (sum(FRET_R) / 2) + Vector((0, 0, (DISC[0][1] + FRET_TOP) / 2))
+        for q in quads:
+            f = bm.faces.new([bm.verts.new(pts[i]) for i in q])
+            f.normal_update()
+            if f.normal.dot(f.calc_center_median() - centre) < 0:
+                f.normal_flip()
+            f.smooth = False
+            for lp in f.loops:
+                lp[uv].uv = (0.5 + lp.vert.co.x / (2 * ROTOR_UV), 0.5 + lp.vert.co.y / (2 * ROTOR_UV))
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    o = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(o)
+    return o
+
+
+def to_table(o):
+    """model units to the table's space, as import_model does"""
+    o.data.transform(Matrix.Scale(SCALE, 4) @ Matrix.Translation(-ORIGIN))
+
+
+def add_envmap(path, shape_names):
+    """PyNifly leaves environment maps out of Fallout 4 NIFs: put them in, as the vanilla pool table has them (shader
+    type Environment Map, the flag, its cube map)"""
+    import sys
+    pn = next(m for k, m in sys.modules.items() if k.endswith('pyn.pynifly'))
+    nif = pn.NifFile(path)
+    done = []
+    for s in nif.shapes:
+        if s.name in shape_names:
+            p = s.shader.properties
+            p.Shader_Type = 1
+            p.Shader_Flags_1 |= 0x80
+            p.Env_Map_Scale = 1.0
+            s.shader.write_properties()
+            s.shader.textures['EnvMap'] = CUBEMAP
+            s.shader.textures['EnvMask'] = TEX + "metal_m.dds"
+            done.append(s.name)
+    nif.save()
+    return done
 
 
 def main():
@@ -252,15 +325,17 @@ def main():
     by = lambda key: [o for o in objs if key in o.name]  # noqa: E731
 
     m_wood = make_material(tmpl, "Wood", "table_d", "table_n", "table_s")
-    m_eu = make_material(tmpl, "WheelEU", "wheel_eu_d", "flat_n", "wheel_s", 1.5)
-    m_us = make_material(tmpl, "WheelUS", "wheel_us_d", "flat_n", "wheel_s", 1.5)
-    m_leu = make_material(tmpl, "LayoutEU", "layout_eu_d", "flat_n", "felt_s", 0.2)
-    m_lus = make_material(tmpl, "LayoutUS", "layout_us_d", "flat_n", "felt_s", 0.2)
+    m_eu = make_material(tmpl, "WheelEU", "wheel_eu_d", "flat_n", "wheel_s", 1.2)
+    m_us = make_material(tmpl, "WheelUS", "wheel_us_d", "flat_n", "wheel_s", 1.2)
+    m_metal = make_material(tmpl, "Metal", "metal_d", "flat_n", "metal_s", 2.0)
+    m_leu = make_material(tmpl, "LayoutEU", "layout_eu_d", "felt_n", "felt_s", 0.2)
+    m_lus = make_material(tmpl, "LayoutUS", "layout_us_d", "felt_n", "felt_s", 0.2)
 
     disc = by("bek1")[0]
     turret = by(" Kol")
+    diamonds = by("Süs")
     layout = [o for o in objs if o.name.endswith("Masa2")][0]
-    body_parts = [o for o in objs if o not in turret and o is not disc and o is not layout]
+    body_parts = [o for o in objs if o not in turret and o not in diamonds and o is not disc and o is not layout]
     base_parts = [o for o in body_parts if "Masaalt" in o.name or "Masaevre" in o.name or "Masaçevre" in o.name]
 
     root = node("RouletteTable")
@@ -276,6 +351,8 @@ def main():
 
     body = join(body_parts, "TableBody", m_wood)
     parent_keep(body, root)
+    deco = join(diamonds, "Diamonds", m_metal)
+    parent_keep(deco, root)
     l_eu = join([layout], "LayoutEU", m_leu)
     l_us = l_eu.copy()
     l_us.data = l_eu.data.copy()
@@ -290,40 +367,40 @@ def main():
 
     centre = Vector((-ORIGIN.x * SCALE, -ORIGIN.y * SCALE, 0))
     rotors = {}
-    for tag, mat in (("EU", m_eu), ("US", m_us)):
+    metal_shapes = ["Diamonds"]
+    for tag, mat, pockets in (("EU", m_eu, 37), ("US", m_us, 38)):
         n = node("Rotor" + tag, centre, root, "SELECTIVE_UPDATE | SELECTIVE_UPDATE_TRANSF" +
                  (" | HIDDEN" if tag == "US" else ""))
-        d = disc.copy()
-        d.data = disc.data.copy()
-        bpy.context.scene.collection.objects.link(d)
+        d = revolve("RotorDisc" + tag, DISC, pockets * 8, mat)
+        to_table(d)
         d = join([d], "RotorDisc" + tag, mat)
         parent_keep(d, n)
-        tparts = []
+        cone = revolve("RotorCone" + tag, CONE, pockets * 4, m_metal)
+        fr = frets("RotorFrets" + tag, pockets)
+        for o in (cone, fr):
+            to_table(o)
+        tparts = [cone, fr]
         for t in turret:
             c = t.copy()
             c.data = t.data.copy()
             bpy.context.scene.collection.objects.link(c)
             tparts.append(c)
-        tt = join(tparts, "RotorTurret" + tag, m_wood)
+        tt = join(tparts, "RotorMetal" + tag, m_metal)
         parent_keep(tt, n)
         rotors[tag] = (n, d, tt)
+        metal_shapes.append("RotorMetal" + tag)
     for o in [disc] + turret:
         bpy.data.objects.remove(o, do_unlink=True)
 
     data = OUT
-    table_objs = [root, bsx, body, l_eu, l_us] + [x for r in rotors.values() for x in r] + [system]
-    export(table_objs, os.path.join(data, "Meshes", "fo4roulette", "RouletteTable.nif"))
+    table_objs = [root, bsx, body, deco, l_eu, l_us] + [x for r in rotors.values() for x in r] + [system]
+    table_path = os.path.join(data, "Meshes", "fo4roulette", "RouletteTable.nif")
+    export(table_objs, table_path)
+    env = add_envmap(table_path, metal_shapes)
 
-    # chips and ball, each on its own
-    for v in (1, 5, 25, 100):
-        for o in list(bpy.data.objects):
-            o.hide_set(True)
-        m = make_material(tmpl, f"Chip{v}", f"chip_{v}_d", "flat_n", "chip_s", 0.6)
-        r = node(f"Chip{v}")
-        r['pynRoot'] = True
-        c = chip_mesh(f"Chip{v}:0", m)
-        c.parent = r
-        export([r, c], os.path.join(data, "Meshes", "fo4roulette", f"Chip{v}.nif"))
+    # the ball
+    for o in list(bpy.data.objects):
+        o.hide_set(True)
     mb = make_material(tmpl, "Ball", "ball_d", "flat_n", "ball_s", 2.0)
     with ctx():
         bpy.ops.mesh.primitive_uv_sphere_add(segments=20, ring_count=12, radius=BALL_R)
@@ -338,7 +415,7 @@ def main():
     rb['pynRoot'] = True
     ball.parent = rb
     export([rb, ball], os.path.join(data, "Meshes", "fo4roulette", "Ball.nif"))
-    return {"hull": hull_n, "wheel_centre": tuple(round(c, 3) for c in centre)}
+    return {"hull": hull_n, "wheel_centre": tuple(round(c, 3) for c in centre), "envmap": env}
 
 
 result = main()

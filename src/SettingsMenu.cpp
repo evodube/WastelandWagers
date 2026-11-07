@@ -95,8 +95,6 @@ namespace fr::SettingsMenu
 				{ "HUD & sound", "The HUD sizes itself to your screen height; the scale makes it bigger or smaller on top of that.",
 					{
 						{ L"HUD", L"fScale", "HUD scale", Kind::kFloat, &s.hudScale, 0.3f, 3.0f, "%.2fx" },
-						{ L"HUD", L"fRange", "HUD shows within", Kind::kFloat, &s.hudRange, 0.0f, 5000.0f, "%.0f",
-							"away from the table, how close you have to be to see its HUD (350 = about 5 m)" },
 						{ L"HUD", L"bNotifications", "Corner messages too", Kind::kBool, &s.notifications, 0, 0, nullptr,
 							"results also as the game's corner notifications" },
 						{ L"Sound", L"bEnabled", "Sounds on", Kind::kBool, &s.sound, 0, 0, nullptr, "switching them on takes a game restart" },

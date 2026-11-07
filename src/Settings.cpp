@@ -92,7 +92,6 @@ namespace fr
 		bettorMaxRounds = std::clamp(static_cast<int>(ReadInt(L"Bettors", L"iMaxRounds", bettorMaxRounds)), bettorMinRounds, 100);
 
 		hudScale = std::clamp(ReadFloat(L"HUD", L"fScale", hudScale), 0.3f, 3.0f);
-		hudRange = std::clamp(ReadFloat(L"HUD", L"fRange", hudRange), 0.0f, 5000.0f);
 		notifications = ReadBool(L"HUD", L"bNotifications", notifications);
 		sound = ReadBool(L"Sound", L"bEnabled", sound);
 		soundVolume = std::clamp(ReadFloat(L"Sound", L"fVolume", soundVolume), 0.0f, 1.0f);

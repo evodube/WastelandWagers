@@ -461,11 +461,8 @@ namespace fr
 	void Game::UpdateHud()
 	{
 		HudState h;
-		auto*    player = RE::PlayerCharacter::GetSingleton();
-		auto     table = _table.get();
 		h.seated = _seated;
-		h.nearby = !_seated && table && player && (table->data.location - player->data.location).Length() < rl::table::kHalfLength + Settings::Get().hudRange &&
-		           (_phase != Phase::kBetting || !_stakes.empty() || !_seats.empty());
+		h.nearby = false;  // the HUD is only for when you're sitting at the table
 		h.american = _wheel == rl::WheelType::kAmerican;
 		h.phase = static_cast<int>(_phase);
 		h.caps = PlayerCaps();

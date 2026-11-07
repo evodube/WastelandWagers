@@ -33,7 +33,7 @@ wander over and bet with their own caps, cheering or shaking their heads at the 
    result (vanilla idles; `[Bettors] bIdles=0` turns them off). Their bets start the countdown too, so the table
    keeps going with you away from it.
 
-The HUD shows while you're at the table, or within 5 m of it while a round's going (`[HUD] fRange`).
+The HUD shows while you're sitting at the table.
 
 Winning bets are paid at the usual odds (35 to 1 down to even money). The result is drawn fairly first, and the ball
 is then thrown until it lands there, so every number is exactly as likely as it should be.
