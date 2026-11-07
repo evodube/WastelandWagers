@@ -37,7 +37,7 @@ C_GREEN = (18, 112, 40)
 C_WHITE = (238, 232, 218)
 C_IVORY = (196, 186, 166)
 C_METAL = (150, 152, 158)   # the metal lines painted on the disc
-C_STEEL = (88, 91, 98)      # polished steel's own colour: dark, the shine is the reflections and highlights
+C_STEEL = (70, 67, 61)      # polished nickel, darkened with age: warm, dark; the shine is its reflections and highlights
 
 # ---------------------------------------------------------------- wheel (rotor): planar UVs, from the model
 WU = (-0.098188, 0.50677)   # u = a*x + b
@@ -169,32 +169,46 @@ def rotor_spec(size: int = 1024) -> Image.Image:
 
 
 def metal(size: int = 512, seed: int = 7) -> tuple[Image.Image, Image.Image]:
-    """polished steel (the cone, the frets, the turret, the diamonds): a dark grey with faint brushing, so the
-    reflections and highlights make it metal rather than a white plastic; its specular map"""
+    """dark polished nickel (the cone, frets, turret, diamonds): faint brushing, fingerprints and smudges, fine
+    scratches; its specular map (the smudges duller)"""
     rng = np.random.default_rng(seed)
     streaks = rng.normal(0, 1, (size, 1)) * 0.8 + rng.normal(0, 1, (size, size)) * 0.3
     streaks = np.array(Image.fromarray(((streaks + 3) * 40).clip(0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(0.6)),
                        np.float32) / 40 - 3
+    smudge = np.array(Image.fromarray((rng.random((size // 16, size // 16)) * 255).astype(np.uint8)).resize((size, size), Image.BICUBIC)
+                      .filter(ImageFilter.GaussianBlur(size / 64)), np.float32) / 255.0
+    smudge = np.clip((smudge - 0.45) * 2.5, 0, 1)
+    lines = Image.new("L", (size, size), 0)
+    d = ImageDraw.Draw(lines)
+    for _ in range(size // 3):
+        x0, y0 = rng.random() * size, rng.random() * size
+        a = rng.random() * np.pi
+        n = rng.random() * size / 12 + 4
+        d.line([x0, y0, x0 + np.cos(a) * n, y0 + np.sin(a) * n], fill=int(40 + rng.random() * 110), width=1)
+    scratch = np.array(lines.filter(ImageFilter.GaussianBlur(0.4)), np.float32) / 255.0
     base = np.array(C_STEEL, np.float32) * (1 + 0.05 * streaks[..., None])
-    d = Image.fromarray(np.clip(base, 0, 255).astype(np.uint8), "RGB")
-    s = Image.fromarray(np.dstack([np.full((size, size), 210, np.uint8), np.full((size, size), 190, np.uint8),
+    base = base * (1 - 0.18 * smudge[..., None]) + np.array([150, 146, 138], np.float32) * 0.35 * scratch[..., None]
+    dimg = Image.fromarray(np.clip(base, 0, 255).astype(np.uint8), "RGB")
+    spec = 210 * (1 - 0.35 * smudge) + 30 * scratch
+    gloss = 200 * (1 - 0.45 * smudge) - 40 * scratch
+    s = Image.fromarray(np.dstack([spec.clip(0, 255).astype(np.uint8), gloss.clip(0, 255).astype(np.uint8),
                                    np.zeros((size, size), np.uint8)]), "RGB")
-    return d, s
+    return dimg, s
 
 
 FELT = (17, 66, 22)   # baize green
 
 
 def felt_noise(size: int, seed: int) -> np.ndarray:
-    """fine fuzz plus a faint, large mottling, about 0 +- 1"""
+    """fine fuzz plus broad, flowing changes of shade, about 0 +- 1"""
     rng = np.random.default_rng(seed)
     fine = rng.normal(0, 1, (size, size)).astype(np.float32)
     fine = np.array(Image.fromarray(((fine + 4) * 32).clip(0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(0.7)),
                     np.float32) / 32 - 4
-    low = rng.normal(0, 1, (size // 64, size // 64)).astype(np.float32)
+    low = rng.normal(0, 1, (6, 6)).astype(np.float32)
     low = np.array(Image.fromarray(((low + 4) * 32).clip(0, 255).astype(np.uint8)).resize((size, size), Image.BICUBIC)
-                   .filter(ImageFilter.GaussianBlur(24)), np.float32) / 32 - 4
-    return fine * 1.4 + low * 0.6
+                   .filter(ImageFilter.GaussianBlur(size / 24)), np.float32) / 32 - 4
+    return fine * 0.9 + low * 1.2  # fuzz, and broad, smooth changes of shade (no blotches)
 
 
 def felt_normal(size: int, seed: int = 11) -> Image.Image:
@@ -216,7 +230,17 @@ def felt_normal(size: int, seed: int = 11) -> Image.Image:
 def layout(american: bool, size: int, ss: int = 3) -> Image.Image:
     """the felt (all of it new: the model's own has stretched streaks) with the layout printed on it"""
     noise = felt_noise(size, 3)
-    felt = np.array(FELT, np.float32) * (1 + 0.07 * noise[..., None])
+    felt = np.array(FELT, np.float32) * (1 + 0.06 * noise[..., None])
+    # worn: the nap rubbed paler and a little greyer where hands and chips go (round the layout), the edges grubbier
+    yy, xx = np.mgrid[0:size, 0:size].astype(np.float32) / size
+    kk = abs(LU[0])
+    lx0 = ((LX0 - (1.0 - LU[1]) / LU[0]) * kk, (((0.0 - LV[1]) / LV[0]) - (LY0 + 1.5 * ROW_H)) * kk)
+    cx, cy = lx0[0] + (ZERO_W + 6 * CELL_W) * kk, lx0[1]
+    rub = np.exp(-(((xx - cx) / 0.22) ** 2 + ((yy - cy) / 0.12) ** 2))
+    grey = felt.mean(-1, keepdims=True)
+    felt = felt * (1 + 0.10 * rub[..., None]) * (1 - 0.25 * rub[..., None]) + grey * 0.25 * rub[..., None]
+    edge = np.minimum(np.minimum(xx, 1 - xx), np.minimum(yy, 1 - yy))
+    felt *= (1 - 0.10 * np.exp(-edge / 0.06))[..., None]  # grubbier towards the rail
     img = Image.fromarray(felt.clip(0, 255).astype(np.uint8), "RGB")  # in the view from above (x right, y up)
 
     k = abs(LU[0]) * size                      # pixels per model unit
@@ -368,7 +392,7 @@ def main() -> int:
     import glob
     from wood import wood
     obj = (glob.glob(os.path.join(src, "..", "model", "*.obj")) + glob.glob(os.path.join(src, "*.obj")))[0]
-    put(wood(load("lambert1SG_albedo"), obj, 4096), "table_d", "BC7")
+    put(wood(load("lambert1SG_albedo"), obj, 4096, load("lambert1SG_normal")), "table_d", "BC7")
     put(load("lambert1SG_normal").convert("RGB"), "table_n", "BC7")
     put(spec_from(load("lambert1SG_roughness"), load("lambert1SG_metallic"), 1024), "table_s")
     # the rotor (build_meshes.py makes it, with planar UVs on the disc) and its metal
@@ -376,7 +400,7 @@ def main() -> int:
     put(rotor_disc(US, 2048), "wheel_us_d", "BC7")
     put(rotor_spec(1024), "wheel_s")
     put(flat(), "flat_n")
-    md, ms = metal(512)
+    md, ms = metal(1024)
     put(md, "metal_d", "BC7")
     put(ms, "metal_s")
     put(flat(16, (255, 255, 255)), "metal_m")   # the env map's mask: all of it shines

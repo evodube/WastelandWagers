@@ -9,7 +9,7 @@ their blotchy, stretched detail.
 """
 
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter
 
 
 def load_wood(obj_path: str):
@@ -93,30 +93,68 @@ def fbm(p, seed, octaves=4):
 
 
 def grain(P: np.ndarray) -> np.ndarray:
-    """0..1 wood figure at model points (N, 3): growth rings round lines along the table's length (X), bent by
-    noise, plus fine pores running along the grain"""
+    """0..1 wood figure at model points (N, 3): straight-grained boards along the table's length (X). The growth
+    layers are planes, not cylinders (quarter-sawn), only gently bent, so the grain runs in long, nearly straight
+    lines; their spacing wanders a little, and fine pores streak along them"""
     x, y, z = P[:, 0], P[:, 1], P[:, 2]
-    warp = fbm(np.stack([x * 0.15, y * 0.6, z * 0.6], -1), 3, 4)
-    d = np.hypot(y * 1.0 + 3.0 * warp, (z + 6.0) * 1.0 + 3.0 * warp)
-    rings = (d * 3.2 + 1.5 * fbm(np.stack([x * 0.05, y * 0.4, z * 0.4], -1), 9, 3)) % 1.0
-    rings = np.where(rings < 0.72, rings / 0.72, (1.0 - rings) / 0.28)  # slow growth, then a sharp late-wood edge
-    rings = rings ** 1.6
-    pores = fbm(np.stack([x * 1.2, y * 25.0, z * 25.0], -1), 21, 2)  # long, thin streaks along X
-    flecks = value_noise(np.stack([x * 4.0, y * 45.0, z * 45.0], -1), 33)
-    g = 0.55 * rings + 0.3 * (pores * 0.5 + 0.5) + 0.15 * (flecks * 0.5 + 0.5)
+    across = y * 0.94 + z * 0.34                                       # through the layers
+    bend = 0.08 * fbm(np.stack([x * 0.08, y * 0.25, z * 0.25], -1), 3, 3)  # a slow, slight drift
+    spacing = 1.0 + 0.35 * fbm(np.stack([x * 0.02, across * 0.3, z * 0.1], -1), 9, 2)
+    layers = (across * 5.0 * spacing + bend * 5.0) % 1.0
+    rings = np.where(layers < 0.8, layers / 0.8, (1.0 - layers) / 0.2)  # wide early wood, a narrow dark late-wood line
+    rings = rings ** 0.8
+    pores = fbm(np.stack([x * 0.6, across * 60.0, z * 6.0], -1), 21, 2)    # long, fine streaks along X
+    figure = fbm(np.stack([x * 0.12, y * 1.5, z * 1.5], -1), 41, 3)       # broad, soft changes of tone along a board
+    g = 0.5 * rings + 0.25 * (pores * 0.5 + 0.5) + 0.25 * (figure * 0.5 + 0.5)
     return np.clip(g, 0.0, 1.0)
 
 
-def wood(albedo: Image.Image, obj_path: str, size: int = 4096) -> Image.Image:
+def wear(size: int, seed: int, normal: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray]:
+    """an old table's use, in texture space: (grime, scuffs), each 0..1. Grime: soft, uneven darkening and fine grit.
+    Scuffs: worn edges (from the normal map: where the surface turns), with short scratches"""
+    rng = np.random.default_rng(seed)
+
+    def blurred(n, sigma):
+        a = rng.normal(0, 1, (n, n)).astype(np.float32)
+        img = Image.fromarray(((a + 4) * 32).clip(0, 255).astype(np.uint8)).resize((size, size), Image.BICUBIC)
+        return np.array(img.filter(ImageFilter.GaussianBlur(sigma)), np.float32) / 32 - 4
+
+    grime = np.clip(0.5 + 0.35 * blurred(size // 128, size / 160) + 0.2 * blurred(size // 16, 3), 0, 1)
+    grit = rng.random((size, size)).astype(np.float32)
+    grime = np.clip(grime * 0.75 + (grit > 0.985) * 0.6 + (grit < 0.02) * 0.25, 0, 1)
+    scuff = np.zeros((size, size), np.float32)
+    if normal is not None:
+        bend = 1.0 - (normal[..., 2].astype(np.float32) / 255.0)   # 0 flat .. 1 the surface turning hard
+        edge = np.clip((bend - 0.08) * 6.0, 0, 1)
+        scuff = np.maximum(scuff, edge * np.clip(0.6 + 0.6 * blurred(size // 64, 2), 0, 1))
+    lines = Image.new("L", (size, size), 0)
+    d = ImageDraw.Draw(lines)
+    for _ in range(size // 6):
+        x0, y0 = rng.random() * size, rng.random() * size
+        a = rng.random() * np.pi
+        n = rng.random() * size / 60 + 3
+        d.line([x0, y0, x0 + np.cos(a) * n, y0 + np.sin(a) * n], fill=int(60 + rng.random() * 120), width=1)
+    scuff = np.maximum(scuff, np.array(lines.filter(ImageFilter.GaussianBlur(0.5)), np.float32) / 255.0)
+    return grime, scuff
+
+
+def wood(albedo: Image.Image, obj_path: str, size: int = 4096, normal: Image.Image | None = None) -> Image.Image:
     base = albedo.convert("RGB").resize((size, size), Image.LANCZOS)
     tint = np.array(base.filter(ImageFilter.GaussianBlur(size / 256)), np.float32)  # the artist's colours, no detail
     pos = texel_positions(obj_path, size)
     used = ~np.isnan(pos[..., 0])
     g = grain(pos[used].astype(np.float64)).astype(np.float32)
     out = np.array(base, np.float32)
-    lum = 0.62 + 0.62 * g  # dark late wood .. light early wood, round the tint
+    lum = 0.72 + 0.5 * g  # dark late wood .. light early wood, round the tint
     warm = np.stack([lum * 1.04, lum, lum * 0.93], -1)
     out[used] = np.clip(tint[used] * warm, 0, 255)
+    # years of use: grime and grit darkening it unevenly, the varnish worn pale on the edges, scratches
+    nrm = np.array(normal.convert("RGB").resize((size, size), Image.LANCZOS)) if normal is not None else None
+    grime, scuff = wear(size, 5, nrm)
+    out[used] *= (1.0 - 0.28 * grime[used])[:, None]
+    worn = np.array([196, 160, 120], np.float32)
+    out[used] = out[used] * (1 - 0.35 * scuff[used, None]) + worn * 0.35 * scuff[used, None] * (out[used] / 140.0).clip(0.4, 1.2)
+    out = np.clip(out, 0, 255)
     # past the islands' edges, their own colours pulled outwards (so mipmaps don't bleed in the old texture)
     img = Image.fromarray(out.astype(np.uint8), "RGB")
     mask = Image.fromarray((used * 255).astype(np.uint8), "L")
