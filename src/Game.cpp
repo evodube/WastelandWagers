@@ -713,7 +713,7 @@ namespace fr
 		}
 		if (yourBack > 0) {
 			GivePlayer(yourBack);
-			Audio::PlayUI(Audio::Bank::kWin, 0.8f);
+			Audio::PlayUI(Audio::Bank::kChip, 0.8f);  // your caps coming back
 		}
 		_lastWin = yourBack - yourStake;
 		const std::string name = std::format("{} {}", rl::NumberName(number), rl::ColourName(number));

@@ -10,7 +10,7 @@ namespace fr::Audio
 		kTick,    // the ball's small knocks: bouncing about the rotor and the pockets
 		kRoll,    // the ball running round the track
 		kSpin,    // the rotor turned by hand
-		kWin,     // a winning bet paid (HUD sound)
+		kWin,     // (unused since 0.2.3: a win is the caps' own clink)
 		kCount
 	};
 

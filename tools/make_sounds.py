@@ -10,7 +10,7 @@ gfxsounds.com, Standard licence), into pieces the plugin plays as the ball does 
   rattle   the three hard hits in the drop (a diamond, a fret)
   tick     the small knocks after them (the ball's little bounces about the rotor and pockets)
   settle   the last rattles as it rocks into place
-The rest are synthesised here: chips, the rotor's whirr, the caps paid out.
+The rest are synthesised here: chips (caps), the rotor's whirr.
 """
 
 import os
@@ -190,7 +190,7 @@ def main() -> int:
     for old in os.listdir(out):
         if old.endswith(".wav"):
             os.remove(os.path.join(out, old))
-    banks = {"chip": (chip, 4), "spin": (spin, 2), "win": (win, 1)}
+    banks = {"chip": (chip, 4), "spin": (spin, 2)}
     if os.path.exists(SOURCE):
         banks["roll"] = (real_roll, 1)
         sets = {"rattle": real_hits(), "tick": real_ticks(), "settle": [real_settle()]}

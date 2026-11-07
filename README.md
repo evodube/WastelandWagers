@@ -5,7 +5,7 @@ chips on the layout from a top-down camera and spin. The rotor turns, the ball r
 diamonds and frets and drops into a pocket. The wheel spins itself 15 seconds after the round's first bet; settlers
 wander over and bet with their own caps, cheering or shaking their heads at the result.
 
-**Status: 0.2.2.**
+**Status: 0.2.3.**
 
 ## Requirements
 
@@ -57,7 +57,7 @@ to land on the drawn number), the bettors' walks.
   walks NPCs to the table), `Scripts\fo4rouletteQuest.pex` and `fo4rouletteGroupAlias.pex`.
 - `Meshes\fo4roulette`, `Textures\fo4roulette`: the table (from a Sketchfab model; see Credits), its two rotors and
   layouts (European and American, painted by `tools/make_textures.py`), ball and chips.
-- `Sound\fo4roulette`: the ball's roll, hits, small knocks and settling cut from a recording by Maxwell Dufresne (gfxsounds.com), each played as the ball does it; chips, the rotor and the payout synthesised by `tools/make_sounds.py`.
+- `Sound\fo4roulette`: the ball's roll, hits, small knocks and settling cut from a recording by Maxwell Dufresne (gfxsounds.com), each played as the ball does it; chips and the rotor synthesised by `tools/make_sounds.py`.
 - `F4SE\Plugins\fo4roulette\hud`: the HUD's fonts (Chakra Petch, Share Tech Mono; OFL).
 
 ## Building
