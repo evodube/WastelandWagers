@@ -4,7 +4,8 @@
     python tools/make_esl.py [out.esl]
 
 Form IDs (src/Forms.h expects these):
-    xx000800  ACTI fo4rouletteTable        Roulette Table: Meshes\\fo4roulette\\RouletteTable.nif (activate: Play)
+    xx000800  ACTI fo4rouletteTable        Roulette Table: Meshes\\fo4roulette\\RouletteTable.nif (activate: Play;
+                                           workshop menu preview framed as the vanilla pool table's)
     xx000801  STAT fo4rouletteBall         Meshes\\fo4roulette\\Ball.nif
     xx000802  STAT fo4rouletteChip1        Meshes\\fo4roulette\\Chip1.nif   (and 5, 25, 100 at 803-805)
     xx000806  KYWD fo4rouletteLinkSpot     an NPC's linked ref: the spot by the table they're to walk to
@@ -149,14 +150,16 @@ def quest_vmad(quest_id: int, quest_script: str, alias_properties: list[tuple[st
 
 
 
-def activator(form_id: int, editor_id: str, name: str, mesh: str, bounds: tuple, verb: str) -> bytes:
-    """An activator with no script: activating it is what the plugin listens for (TESActivateEvent)."""
+def activator(form_id: int, editor_id: str, name: str, mesh: str, bounds: tuple, verb: str, preview: int) -> bytes:
+    """An activator with no script: activating it is what the plugin listens for (TESActivateEvent). preview: the
+    TRNS that frames it in the workshop menu (PTRN)."""
     return record(
         b"ACTI",
         0,
         form_id,
         subrecord(b"EDID", zstring(editor_id))
         + subrecord(b"OBND", struct.pack("<6h", *bounds))
+        + subrecord(b"PTRN", struct.pack("<I", preview))
         + subrecord(b"FULL", zstring(name))
         + subrecord(b"MODL", zstring(mesh))
         + subrecord(b"ATTX", zstring(verb))
@@ -218,7 +221,8 @@ def build() -> bytes:
     own = 0x01000000  # our records come after the one master
     table = own | FIRST_ID
     acti = [activator(table, "fo4rouletteTable", "Roulette Table", "fo4roulette\\RouletteTable.nif",
-                      (-139, -85, 0, 139, 85, 74), "Play")]
+                      (-139, -85, 0, 139, 85, 74), "Play",
+                      0x001A03DD)]  # the vanilla pool table's preview framing (PoolTable01's PTRN): a table of much the same size
     stats = [stat(own | (FIRST_ID + 1), "fo4rouletteBall", "fo4roulette\\Ball.nif", bound=2)]
     for i, v in enumerate((1, 5, 25, 100)):
         stats.append(stat(own | (FIRST_ID + 2 + i), f"fo4rouletteChip{v}", f"fo4roulette\\Chip{v}.nif", bound=3))
