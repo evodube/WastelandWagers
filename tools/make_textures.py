@@ -3,7 +3,7 @@
 
     python tools/make_textures.py <model textures folder> <out Data folder>     (the model's .obj next to it, in ../model)
 
-- table:     the wood, brass and bowl (lambert1), converted as they are
+- table:     the wood and bowl (lambert1): a sharp solid wood grain over the model's own colours (wood.py); its normal map
 - wheel_eu / wheel_us: the rotor's disc (build_meshes.py rebuilds the rotor, with planar UVs): pocket floors and
   the number ring, pocket k of the wheel's sequence centred at 90 - k*360/N degrees in the rotor's own frame (k = 0
   is the 0 pocket, at +Y), going clockwise seen from above; metal_*: the cone, frets and turret (nickel)
@@ -363,8 +363,13 @@ def main() -> int:
         print("wrote", n)
 
     # table wood, brass and bowl
-    put(load("lambert1SG_albedo").resize((2048, 2048), Image.LANCZOS), "table_d")
-    put(load("lambert1SG_normal").resize((2048, 2048), Image.LANCZOS), "table_n")
+    # the wood: a sharp solid grain over the model's own colours (wood.py), at full size and in BC7 (DXT1 at 2048
+    # made it blotchy)
+    import glob
+    from wood import wood
+    obj = (glob.glob(os.path.join(src, "..", "model", "*.obj")) + glob.glob(os.path.join(src, "*.obj")))[0]
+    put(wood(load("lambert1SG_albedo"), obj, 4096), "table_d", "BC7")
+    put(load("lambert1SG_normal").convert("RGB"), "table_n", "BC7")
     put(spec_from(load("lambert1SG_roughness"), load("lambert1SG_metallic"), 1024), "table_s")
     # the rotor (build_meshes.py makes it, with planar UVs on the disc) and its metal
     put(rotor_disc(EU, 2048), "wheel_eu_d", "BC7")

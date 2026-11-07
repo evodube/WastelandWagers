@@ -1,2 +1,2 @@
-roll_1.wav, drop_1.wav: cut from a roulette recording by Maxwell Dufresne, gfxsounds.com (https://gfxsounds.com), Standard licence.
+roll, rattle, tick and settle: cut from a roulette recording by Maxwell Dufresne, gfxsounds.com (https://gfxsounds.com), Standard licence.
 The other sounds are synthesised by tools/make_sounds.py.
