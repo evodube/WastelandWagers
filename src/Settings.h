@@ -39,7 +39,7 @@ namespace fr
 
 		// [Bettors] settlers who come over and play
 		bool  bettors{ true };
-		int   maxBettors{ 3 };
+		int   maxBettors{ 4 };
 		bool  bettorIdles{ true };         // they cheer, clap, shake their heads, look the layout over
 		float bettorEvery{ 12.0f };        // seconds between looking for someone to come over
 		float bettorRange{ 1500.0f };      // ...within this far of the table

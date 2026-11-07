@@ -84,7 +84,7 @@ namespace fr::SettingsMenu
 				{ "NPCs", "Settlers nearby come over to bet with their own caps.",
 					{
 						{ L"Bettors", L"bEnabled", "Settlers come and bet", Kind::kBool, &s.bettors },
-						{ L"Bettors", L"iMax", "Most at the table", Kind::kInt, &s.maxBettors, 0, 5, nullptr },
+						{ L"Bettors", L"iMax", "Most at the table", Kind::kInt, &s.maxBettors, 0, 4, nullptr },
 						{ L"Bettors", L"bIdles", "Idles and reactions", Kind::kBool, &s.bettorIdles, 0, 0, nullptr,
 							"they look the layout over, reach in to bet, cheer or shake their heads at the result" },
 						{ L"Bettors", L"fEvery", "Look for someone every", Kind::kFloat, &s.bettorEvery, 2.0f, 120.0f, "%.0f s" },

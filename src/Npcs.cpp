@@ -14,7 +14,9 @@ namespace fr
 {
 	namespace
 	{
-		constexpr float kArrived = 45.0f;        // this close to the spot: there
+		constexpr float kArrived = 30.0f;        // this close to the spot: there
+		constexpr float kSettleIn = 2.5f;        // seconds standing at their spot before they start betting
+		constexpr float kAtSpot = 40.0f;         // ...and only while they're this close to it
 		constexpr float kStallResend = 6.0f;     // no closer in this long: the walk is sent again
 		constexpr int   kMinBudget = 25;         // what a settler puts down in a round: 25 to 100 caps
 		constexpr int   kMaxBudget = 100;
@@ -78,8 +80,9 @@ namespace fr
 	RE::NiPoint3 Game::SeatSpot(const Frame& a_frame, int a_spot, float& a_heading) const
 	{
 		using namespace rl::table;
-		// three along the players' side, two on the far side, all by the layout and a body's width apart
-		static constexpr std::array<std::pair<double, int>, 5> spots{ { { 62.0, -1 }, { 0.0, -1 }, { 124.0, -1 }, { 30.0, 1 }, { 95.0, 1 } } };
+		// two along the players' side and two along the far side, by the layout, well apart; filled front, back,
+		// front, back
+		static constexpr std::array<std::pair<double, int>, kSpots> spots{ { { 20.0, -1 }, { 50.0, 1 }, { 105.0, -1 }, { 120.0, 1 } } };
 		const auto& [x, side] = spots[static_cast<std::size_t>(a_spot) % spots.size()];
 		const double y = side < 0 ? kPlayersEdgeY - kStepBack : kFarEdgeY + kStepBack;
 		a_heading = HeadingOf(a_frame, 0.0, side < 0 ? 1.0 : -1.0);
@@ -195,7 +198,7 @@ namespace fr
 		auto*             actor = found[pick].second;
 		// a free spot: nobody else's, and nobody (a settler sandboxing there, you) standing on it
 		int spot = -1;
-		for (int i = 0; i < 5 && spot < 0; ++i) {
+		for (int i = 0; i < kSpots && spot < 0; ++i) {
 			if (std::ranges::any_of(_seats, [&](const Seat& st) { return st.spot == i; })) {
 				continue;
 			}
@@ -273,6 +276,12 @@ namespace fr
 					seat.held = Npc::SetRestrained(actor, true);
 				}
 				FaceTowards(actor, heading);
+				// standing at their spot for a moment before they play (not while still coming up to it)
+				if (Distance2D(actor->data.location, spot) < kAtSpot) {
+					seat.atSpot += a_dt;
+				} else {
+					seat.atSpot = 0.0f;
+				}
 				if (seat.reactIn >= 0.0f) {
 					seat.reactIn -= a_dt;
 					if (seat.reactIn < 0.0f) {
@@ -292,6 +301,9 @@ namespace fr
 							Say(std::format("{} {}", Upper(seat.name), Purse(seat.id) < 1 ? "IS OUT OF CAPS" : "CALLS IT A NIGHT"));
 							seat.step = Seat::Step::kLeaving;
 						}
+						break;
+					}
+					if (seat.atSpot < kSettleIn) {
 						break;
 					}
 					if (!seat.betThisRound && _bettingTime > 2.0f) {

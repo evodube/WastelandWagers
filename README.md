@@ -5,7 +5,7 @@ chips on the layout from a top-down camera and spin. The rotor turns, the ball r
 diamonds and frets and drops into a pocket. The wheel spins itself 15 seconds after the round's first bet; settlers
 wander over and bet with their own caps, cheering or shaking their heads at the result.
 
-**Status: 0.2.5.**
+**Status: 0.2.6.**
 
 ## Requirements
 
@@ -27,7 +27,7 @@ wander over and bet with their own caps, cheering or shaking their heads at the 
      **E** (activate) spins it straight away. The camera goes over the wheel while the ball goes round (**V**
      switches view any time).
    - **X**: get up. Bets on the table stay there and are paid while you're nearby.
-3. **Other players**: settlers near the table come over now and then, each to their own spot at the layout, and put
+3. **Other players**: settlers near the table come over now and then, each to their own spot at the layout (two on each side), and put
    25 to 100 caps a round on it from their own purse, a few rounds each, until they've had enough or run out. While
    they play they look the layout over, reach in to bet, and cheer or shake their heads at the
    result (vanilla idles; `[Bettors] bIdles=0` turns them off). Their bets start the countdown too, so the table

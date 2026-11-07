@@ -135,6 +135,7 @@ namespace fr
 			float nextIdle{ 6.0f };    // seconds before their next little idle while they wait
 			float reactIn{ -1.0f };    // seconds before they react to the result (-1 none due)
 			int   budget{ 0 };         // caps still to put down this round
+			float atSpot{ 0.0f };      // seconds they've been standing at their spot
 		};
 
 		enum class Phase
@@ -203,6 +204,7 @@ namespace fr
 		void UpdateHud();
 
 		// the NPCs betting
+		static constexpr int kSpots = 4;  // places to stand round the layout
 		void         TickSeats(const Frame& a_frame, float a_dt);
 		void         FindBettor(const Frame& a_frame);
 		void         ReleaseSeat(Seat& a_seat, const char* a_why);

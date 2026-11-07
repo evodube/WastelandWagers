@@ -84,7 +84,7 @@ namespace fr
 		cursorSpeed = std::clamp(ReadFloat(L"Camera", L"fCursorSpeed", cursorSpeed), 0.005f, 1.0f);
 
 		bettors = ReadBool(L"Bettors", L"bEnabled", bettors);
-		maxBettors = std::clamp(static_cast<int>(ReadInt(L"Bettors", L"iMax", maxBettors)), 0, 5);
+		maxBettors = std::clamp(static_cast<int>(ReadInt(L"Bettors", L"iMax", maxBettors)), 0, 4);  // (Game::kSpots places to stand)
 		bettorIdles = ReadBool(L"Bettors", L"bIdles", bettorIdles);
 		bettorEvery = std::clamp(ReadFloat(L"Bettors", L"fEvery", bettorEvery), 2.0f, 600.0f);
 		bettorRange = std::clamp(ReadFloat(L"Bettors", L"fRange", bettorRange), 200.0f, 6000.0f);
