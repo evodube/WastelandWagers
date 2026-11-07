@@ -309,7 +309,7 @@ def add_envmap(path, shape_names):
             p = s.shader.properties
             p.Shader_Type = 1
             p.Shader_Flags_1 |= 0x80
-            p.Env_Map_Scale = 1.0
+            p.Env_Map_Scale = 1.4
             s.shader.write_properties()
             s.shader.textures['EnvMap'] = CUBEMAP
             s.shader.textures['EnvMask'] = TEX + "metal_m.dds"
@@ -327,9 +327,10 @@ def main():
     m_wood = make_material(tmpl, "Wood", "table_d", "table_n", "table_s")
     m_eu = make_material(tmpl, "WheelEU", "wheel_eu_d", "flat_n", "wheel_s", 1.2)
     m_us = make_material(tmpl, "WheelUS", "wheel_us_d", "flat_n", "wheel_s", 1.2)
-    m_metal = make_material(tmpl, "Metal", "metal_d", "flat_n", "metal_s", 2.0)
-    m_leu = make_material(tmpl, "LayoutEU", "layout_eu_d", "felt_n", "felt_s", 0.2)
-    m_lus = make_material(tmpl, "LayoutUS", "layout_us_d", "felt_n", "felt_s", 0.2)
+    m_metal = make_material(tmpl, "Metal", "metal_d", "flat_n", "metal_s", 1.4)
+    # (flat normals on the felt: with a normal map, the felt's few big triangles shade with hard diagonal edges)
+    m_leu = make_material(tmpl, "LayoutEU", "layout_eu_d", "flat_n", "felt_s", 0.2)
+    m_lus = make_material(tmpl, "LayoutUS", "layout_us_d", "flat_n", "felt_s", 0.2)
 
     disc = by("bek1")[0]
     turret = by(" Kol")

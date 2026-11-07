@@ -36,7 +36,8 @@ C_BLACK = (22, 20, 20)
 C_GREEN = (18, 112, 40)
 C_WHITE = (238, 232, 218)
 C_IVORY = (196, 186, 166)
-C_METAL = (178, 180, 184)   # nickel
+C_METAL = (150, 152, 158)   # the metal lines painted on the disc
+C_STEEL = (88, 91, 98)      # polished steel's own colour: dark, the shine is the reflections and highlights
 
 # ---------------------------------------------------------------- wheel (rotor): planar UVs, from the model
 WU = (-0.098188, 0.50677)   # u = a*x + b
@@ -168,14 +169,15 @@ def rotor_spec(size: int = 1024) -> Image.Image:
 
 
 def metal(size: int = 512, seed: int = 7) -> tuple[Image.Image, Image.Image]:
-    """polished nickel (the cone, the frets, the turret): a light grey with faint brushing; its specular map"""
+    """polished steel (the cone, the frets, the turret, the diamonds): a dark grey with faint brushing, so the
+    reflections and highlights make it metal rather than a white plastic; its specular map"""
     rng = np.random.default_rng(seed)
-    streaks = rng.normal(0, 1, (size, 1)) * 0.6 + rng.normal(0, 1, (size, size)) * 0.25
+    streaks = rng.normal(0, 1, (size, 1)) * 0.8 + rng.normal(0, 1, (size, size)) * 0.3
     streaks = np.array(Image.fromarray(((streaks + 3) * 40).clip(0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(0.6)),
                        np.float32) / 40 - 3
-    base = np.array(C_METAL, np.float32) * (1 + 0.025 * streaks[..., None])
+    base = np.array(C_STEEL, np.float32) * (1 + 0.05 * streaks[..., None])
     d = Image.fromarray(np.clip(base, 0, 255).astype(np.uint8), "RGB")
-    s = Image.fromarray(np.dstack([np.full((size, size), 235, np.uint8), np.full((size, size), 215, np.uint8),
+    s = Image.fromarray(np.dstack([np.full((size, size), 210, np.uint8), np.full((size, size), 190, np.uint8),
                                    np.zeros((size, size), np.uint8)]), "RGB")
     return d, s
 
@@ -376,7 +378,6 @@ def main() -> int:
     # the felt with the layouts printed on it
     put(layout(False, 4096), "layout_eu_d", "BC7")
     put(layout(True, 4096), "layout_us_d", "BC7")
-    put(felt_normal(2048), "felt_n", "BC5")
     put(flat(64, (14, 46, 0)), "felt_s")
     # chips: one colour per material of the chip set (build_chips.py lists them)
     for hexcol in CHIP_COLOURS:
