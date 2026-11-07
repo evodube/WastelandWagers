@@ -17,6 +17,7 @@ namespace fr
 	namespace
 	{
 		constexpr float kMaxFrame = 0.05f;
+		constexpr float kPlanLead = 0.6f;  // seconds between the spin starting and the ball going in
 		constexpr float kScanEvery = 0.5f;
 		constexpr float kLosersGo = 1.5f;     // after the result: losing chips taken
 		constexpr float kResultSeconds = 5.0f; // ...and the table cleared for the next round
@@ -369,6 +370,7 @@ namespace fr
 		_table = a_table->GetHandle();
 		_wheel = Settings::Get().wheel == 1 ? rl::WheelType::kAmerican : rl::WheelType::kEuropean;
 		_phase = Phase::kBetting;
+		_planning = false;
 		_phaseTime = 0.0f;
 		_bettingTime = 0.0f;
 		_rotorAngle = std::uniform_real_distribution<double>(0.0, 6.283)(_rng);
@@ -399,6 +401,7 @@ namespace fr
 		_seats.clear();
 		_table = {};
 		_phase = Phase::kBetting;
+		_planning = false;
 		_hudBanner = 0;
 	}
 
@@ -572,24 +575,48 @@ namespace fr
 			_rotorSpeed = 1.6 + 0.6 * U(_rng);
 			Audio::Play(Audio::Bank::kSpin, ToWorld(frame, rl::table::kWheelX, rl::table::kWheelY, rl::table::kFeltZ), 0.8f);
 		}
+		// the throw is worked out on another thread (finding one that lands in the drawn pocket and bounces about
+		// properly can take a while), for where the rotor will be a moment from now, when the ball goes in
 		rl::SpinParams p;
 		p.throwAngle = 3.14159265;  // from the wheel's end (-X)
 		p.ballSpeed = -(15.0 + 3.0 * U(_rng));
-		p.rotorAngle = _rotorAngle;
-		p.rotorSpeed = _rotorSpeed;
-		_plan = rl::PlanSpin(_wheel, p, _rng);
-		log::info("spin: {} ({} pocket {}; {} tries); drop {:.1f}s, rotor {:.1f}s, rest {:.1f}s", rl::NumberName(_plan.number),
-			_plan.drawn ? "drawn" : "NOT drawn", _plan.pocket, _plan.tries, _plan.dropTime, _plan.rotorTime, _plan.settleTime);
+		double angle = _rotorAngle, speed = _rotorSpeed;
+		for (int k = 0; k < 60; ++k) {
+			speed = rl::RotorDrag(speed, kPlanLead / 60.0);
+			angle += speed * (kPlanLead / 60.0);
+		}
+		p.rotorAngle = angle;
+		p.rotorSpeed = speed;
+		const auto type = _wheel;
+		const auto seed = _rng();
+		_planFuture = std::async(std::launch::async, [type, p, seed]() {
+			std::mt19937 rng(seed);
+			return rl::PlanSpin(type, p, rng);
+		});
+		_plan = {};
+		_planning = true;
 		_phase = Phase::kSpinning;
 		_phaseTime = 0.0f;
-		_playT = 0.0f;
+		_playT = -kPlanLead;
 		_dropSaid = false;
-		_restPocket = -1;
 		_hudBanner = 1;
 		_bannerTitle = "NO MORE BETS";
 		_bannerSub = a_byPlayer ? std::string("YOU SPIN") : std::string("THE WHEEL SPINS");
 		_spinIn = -1.0f;
 		_bannerTime = std::chrono::steady_clock::now();
+		if (_seated && Settings::Get().wheelViewOnSpin) {
+			_wheelView = true;
+			_viewBackIn = -1.0f;
+		}
+	}
+
+	void Game::LaunchSpin(const Frame& a_frame)
+	{
+		const auto& frame = a_frame;
+		log::info("spin: {} ({} pocket {}; {} tries); drop {:.1f}s, rotor {:.1f}s, rest {:.1f}s; {:.0f} pockets round the rotor, {} frets",
+			rl::NumberName(_plan.number), _plan.drawn ? "drawn" : "NOT drawn", _plan.pocket, _plan.tries, _plan.dropTime, _plan.rotorTime,
+			_plan.settleTime, _plan.travel, _plan.frets);
+		_restPocket = -1;
 		// the roll: as loud as the ball is fast, round the track and down the cone, gone as it reaches the rotor
 		{
 			std::vector<std::pair<float, float>> keys;
@@ -617,16 +644,27 @@ namespace fr
 		}
 		_eventIdx = 0;
 		_lastKnock = -1.0f;
-		if (_seated && Settings::Get().wheelViewOnSpin) {
-			_wheelView = true;
-			_viewBackIn = -1.0f;
-		}
 	}
 
 	void Game::TickSpin(const Frame& a_frame, float a_dt)
 	{
 		using namespace rl::table;
 		_playT += a_dt;
+		if (_planning) {
+			// the rotor carries on as it was until the throw's ready (and as the throw was worked out for)
+			_rotorSpeed = rl::RotorDrag(_rotorSpeed, a_dt);
+			_rotorAngle += _rotorSpeed * a_dt;
+			if (_playT < 0.0f || !_planFuture.valid() ||
+				_planFuture.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
+				return;
+			}
+			_plan = _planFuture.get();
+			_planning = false;
+			if (_playT > 0.05f) {
+				log::info("spin: the throw took {:.2f}s longer to work out than the lead; joining it that far in", _playT);
+			}
+			LaunchSpin(a_frame);
+		}
 		const auto& smp = _plan.samples;
 		if (smp.empty()) {
 			Settle();
@@ -761,6 +799,7 @@ namespace fr
 		}
 		_stakes.clear();
 		_phase = Phase::kBetting;
+		_planning = false;
 		_phaseTime = 0.0f;
 		_bettingTime = 0.0f;
 		_hudBanner = 0;
@@ -925,6 +964,7 @@ namespace fr
 		}
 		if (_phase == Phase::kSpinning) {
 			_phase = Phase::kBetting;
+			_planning = false;
 		}
 	}
 
@@ -1076,6 +1116,7 @@ namespace fr
 		_stakes.clear();
 		_seats.clear();
 		_phase = Phase::kBetting;
+		_planning = false;
 		_lifted = false;
 		_liftedCaps = 0;
 		_hudBanner = 0;

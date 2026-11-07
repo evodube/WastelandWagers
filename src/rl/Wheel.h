@@ -81,6 +81,7 @@ namespace rl
 		float               rotorTime{ 0.0f };   // the ball reached the rotor
 		float               settleTime{ 0.0f };  // the ball came to rest in its pocket
 		int                 frets{ 0 };          // frets it hit on the way
+		double              travel{ 0.0 };       // pockets it went past on the rotor (either way)
 		double              rotorSpeed{ 0.0 };   // the rotor's speed (rad/s) when the plan ends, for carrying on
 		int                 tries{ 0 };          // spins thrown away before one landed in the drawn pocket
 		bool                drawn{ true };       // landed in the pocket drawn at random (false: the sim's own pocket)

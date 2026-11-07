@@ -167,6 +167,7 @@ namespace fr
 
 		// the round
 		void StartSpin(bool a_byPlayer);
+		void LaunchSpin(const Frame& a_frame);  // the throw's worked out: the ball goes in
 		void TickSpin(const Frame& a_frame, float a_dt);
 		void Settle();
 		void ClearRound();
@@ -227,6 +228,8 @@ namespace fr
 		float                             _bettingTime{ 0.0f };
 		float                             _spinIn{ -1.0f };  // seconds to the wheel spinning itself (-1: no bets yet)
 		rl::SpinPlan                      _plan;
+		std::future<rl::SpinPlan>         _planFuture;
+		bool                              _planning{ false };  // the throw's being worked out
 		float                             _playT{ 0.0f };
 		std::size_t                       _eventIdx{ 0 };      // the next of the spin's events to sound
 		float                             _lastKnock{ -1.0f };

@@ -16,8 +16,10 @@ namespace rl
 		constexpr int    kSampleEvery = 4;      // 60 samples a second
 		constexpr double kMaxSeconds = 30.0;
 		constexpr double kAfterSettle = 1.0;    // recorded after the ball comes to rest
-		constexpr float  kMinOnRotor = 2.5f;    // seconds a shown spin bounces about on the rotor, at least
-		constexpr int    kMinFrets = 3;         // ...and frets it hits
+		constexpr float  kMinOnRotor = 3.0f;    // seconds a shown spin bounces about on the rotor, at least
+		constexpr int    kMinFrets = 4;         // ...frets it hits
+		constexpr double kMinTravel = 8.0;      // ...and pockets it goes past, round the rotor
+		constexpr double kSkipSpeed = 1.6;      // rad/s against the rotor: faster than this a fret is mostly skipped over
 
 		const std::vector<int> kEuropean{ 0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20,
 			14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26 };
@@ -257,6 +259,7 @@ namespace rl
 			} else {
 				const double thBefore = th;
 				const double rBefore = r;
+				const double relBefore = thBefore - (phi - wr * dt);
 				// radial: the slope's pull inward against a share of what the turn throws outward
 				vr += (0.2 * r * w * w - InwardPull(r)) * dt;
 				vr *= std::exp(-(r < kNumberInner + 1.0 ? 1.6 : 0.8) * dt);  // the frets and pocket floor soak up bouncing
@@ -288,14 +291,23 @@ namespace rl
 					const double fNow = std::floor(Wrap(kPi / 2.0 - aNow) / step + 0.5);
 					if (fBefore != fNow) {
 						const double rel = w - wr;
-						th = thBefore + wr * dt;  // stays in its pocket this step...
 						event(SpinEvent::Kind::kFret, std::abs(rel) / 3.0);
 						++plan.frets;
-						w = wr - rel * uni(0.55, 0.9);  // ...bouncing back off the fret
-						vr += uni(-15.0, 75.0) * std::min(1.0, std::abs(rel) / 2.5);
-						vz = uni(35.0, 85.0) * std::min(1.0, std::abs(rel) / 0.8);  // up off the fret
+						if (std::abs(rel) > kSkipSpeed && U(a_noise) < 0.85) {
+							// going fast: it clips the fret and skips over it, on round the wheel, a little slower
+							w = wr + rel * uni(0.55, 0.8);
+							vr += uni(5.0, 45.0);  // thrown out towards the numbers
+							vz = uni(30.0, 70.0);
+						} else {
+							th = thBefore + wr * dt;  // stays in its pocket this step...
+							w = wr - rel * uni(0.45, 0.8);  // ...bouncing back off the fret
+							vr += uni(-15.0, 60.0) * std::min(1.0, std::abs(rel) / 2.5);
+							vz = uni(25.0, 70.0) * std::min(1.0, std::abs(rel) / 0.8);  // up off the fret
+						}
 					}
 				}
+
+				plan.travel += std::abs(std::remainder((th - phi) - relBefore, kTwoPi)) / step;
 
 				// at rest in a pocket?
 				const bool resting = r < kNumberInner && std::abs(w - wr) < 0.15 && std::abs(vr) < 5.0 && h < 0.05;
@@ -338,7 +350,7 @@ namespace rl
 			last.tries = tries;
 			last.drawn = true;
 			// a proper finish: a few seconds bouncing about on the rotor, off several frets, before it sits down
-			if (last.settleTime - last.rotorTime >= kMinOnRotor && last.frets >= kMinFrets) {
+			if (last.settleTime - last.rotorTime >= kMinOnRotor && last.frets >= kMinFrets && last.travel >= kMinTravel) {
 				return last;
 			}
 			if (fallback.samples.empty() || last.settleTime - last.rotorTime > fallback.settleTime - fallback.rotorTime) {

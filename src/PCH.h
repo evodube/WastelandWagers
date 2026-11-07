@@ -21,6 +21,7 @@
 #include <cstdint>
 #include <format>
 #include <functional>
+#include <future>
 #include <memory>
 #include <mutex>
 #include <optional>
