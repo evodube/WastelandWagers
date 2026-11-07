@@ -210,6 +210,15 @@ namespace fr
 			// nothing bumps into it while it follows you about; and which way round the 3D takes an angle (so the
 			// preview turns exactly as the table set down at that angle will stand)
 			RE::bhkWorld::EnableCollision(root, false, true, true);
+			// the table's collision made keyframed, as Playable Pool does: left as it is, the physics holds the
+			// table's 3D where it was made (the table's BSX flags have it articulated), so it never followed you
+			int bodies = 0;
+			RE::BSVisit::TraverseScenegraphCollision(root, [&](RE::bhkNPCollisionObject* a_collision) {
+				a_collision->SetMotionType(RE::hknpMotionPropertiesId::Preset::kKeyframed);
+				++bodies;
+				return RE::BSVisitControl::kContinue;
+			});
+			log::info("kit: preview {:08X} ready ({} collision object(s) keyframed)", preview->GetFormID(), bodies);
 			RE::NiMatrix3 plus, minus;
 			plus.FromEulerAnglesXYZ(0.0f, 0.0f, _kitMadeAngle);
 			minus.FromEulerAnglesXYZ(0.0f, 0.0f, -_kitMadeAngle);
