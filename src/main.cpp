@@ -25,6 +25,7 @@ namespace
 			fr::CameraHook::Install();
 			fr::Audio::Init();
 			fr::Game::Listen();
+			fr::Game::Get().SetUpKit();
 			break;
 		case F4SE::MessagingInterface::kPreLoadGame:
 			fr::Game::Get().Forget();
@@ -39,6 +40,7 @@ namespace
 		case F4SE::MessagingInterface::kNewGame:
 			fr::Hook::Install();  // no-op if already hooked
 			fr::CameraHook::Install();
+			fr::Game::Get().StockKit();
 			break;
 		default:
 			break;

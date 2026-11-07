@@ -1,4 +1,4 @@
-// The F4SE co-save: each NPC's caps for roulette. (0.2.0 and older also wrote 'DLRS', the dealers: skipped now.)
+// The F4SE co-save: each NPC's caps for roulette, and the tables set up from kits (Kit.cpp). (0.2.0 and older also wrote 'DLRS', the dealers: skipped now.)
 
 #include "Game.h"
 
@@ -25,14 +25,20 @@ namespace fr
 			}
 		}
 		log::info("co-save: {} purses written", g_purses.size());
+		SaveKit(a_intfc);
 	}
 
 	void Game::Load(const F4SE::SerializationInterface* a_intfc)
 	{
 		std::scoped_lock lock(g_npcMutex);
 		g_purses.clear();
+		RevertKit();
 		std::uint32_t type = 0, version = 0, length = 0;
 		while (a_intfc->GetNextRecordInfo(type, version, length)) {
+			if (type == kKitRecordType) {
+				LoadKit(a_intfc, version);
+				continue;
+			}
 			if (version != kVersion || type != kPursesType) {
 				continue;
 			}
@@ -62,7 +68,10 @@ namespace fr
 
 	void Game::Revert(const F4SE::SerializationInterface*)
 	{
-		std::scoped_lock lock(g_npcMutex);
-		g_purses.clear();
+		{
+			std::scoped_lock lock(g_npcMutex);
+			g_purses.clear();
+		}
+		RevertKit();
 	}
 }

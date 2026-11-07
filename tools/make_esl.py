@@ -15,6 +15,10 @@ Form IDs (src/Forms.h expects these):
                                            so it outranks settler sandboxes)
     xx000809  COBJ workshop_co_fo4rouletteTable  the table in the workshop menu (Furniture > Tables, as the vanilla
                                            tables): wood 12, steel 4, cloth 4, screws 2
+    xx00080A  ALCH fo4rouletteTableKit     Roulette Table Kit: an Aid item; used, the plugin sets a table up in front of
+                                           you (sold by Vadim at the Dugout Inn: the plugin adds it to his stock)
+    xx00080B  COBJ fo4rouletteco_TableKit  the kit at a chem station (Utility): wood 12, steel 6, cloth 4, screws 2,
+                                           adhesive 2
 
 Record layouts follow Playable Pool's tools/make_esl.py (laid out as Fallout4.esm's own records).
 """
@@ -75,6 +79,23 @@ def recipe(form_id: int, editor_id: str, created: int, components: list[tuple[in
         + subrecord(b"BNAM", struct.pack("<I", workbench))
         + subrecord(b"FNAM", struct.pack("<I", category))
         + subrecord(b"INTV", struct.pack("<HH", 1, 0)),  # makes one
+    )
+
+
+def potion(form_id: int, editor_id: str, name: str, desc: str, mesh: str, bounds: bytes, value: int, weight: float) -> bytes:
+    """An Aid item with no effects: using it (from the Pip-Boy) is what the plugin listens for (TESEquipEvent)."""
+    return record(
+        b"ALCH",
+        0,
+        form_id,
+        subrecord(b"EDID", zstring(editor_id))
+        + subrecord(b"OBND", bounds)
+        + subrecord(b"FULL", zstring(name))
+        + (subrecord(b"MODL", zstring(mesh)) if mesh else b"")
+        + subrecord(b"DESC", zstring(desc))
+        + subrecord(b"DATA", struct.pack("<f", weight))
+        # value, flags (1: no auto-calc, the value as given), addiction (none), addiction chance, consume sound (none)
+        + subrecord(b"ENIT", struct.pack("<iIIfI", value, 1, 0, 0.0, 0)),
     )
 
 
@@ -233,13 +254,25 @@ def build() -> bytes:
     quests = [quest(own | (FIRST_ID + 8), "fo4rouletteQuest", walk)]
     recipes = [workshop_recipe(own | (FIRST_ID + 9), "workshop_co_fo4rouletteTable", table,
                                [(0x0001FAC2, 12), (0x0001FABD, 4), (0x001223C7, 4), (0x0003D294, 2)])]
+    # the Roulette Table Kit: sold at the Dugout Inn (the plugin adds it to Vadim's stock); used, a table in front of
+    # you. No model: nothing shows in the Pip-Boy or barter previews
+    kit = own | (FIRST_ID + 10)
+    potions = [potion(kit, "fo4rouletteTableKit", "Roulette Table Kit",
+                      "A folding roulette table: wheel, ball, layout and all. Use it to set the table up in front of you; "
+                      "sit at it and press P to pack it away again.",
+                      "", bytes(12), 400, 25.0)]
+    # ...and made at a chem station (its Utility tab): wood 12, steel 6, cloth 4, screws 2, adhesive 2
+    recipes.append(recipe(own | (FIRST_ID + 11), "fo4rouletteco_TableKit", kit,
+                          [(0x0001FAC2, 12), (0x0001FABD, 6), (0x001223C7, 4), (0x0003D294, 2), (0x0001FAA5, 2)],
+                          0x00102158,   # WorkbenchChemlab
+                          0x0006980C))  # RecipeUtility
 
-    count = len(acti) + len(stats) + len(keywords) + len(packages) + len(quests) + len(recipes)
+    count = len(acti) + len(stats) + len(keywords) + len(packages) + len(quests) + len(recipes) + len(potions)
     header = record(
         b"TES4",
         FLAG_MASTER | FLAG_LIGHT,
         0,
-        subrecord(b"HEDR", struct.pack("<fiI", 1.0, count, FIRST_ID + 10))
+        subrecord(b"HEDR", struct.pack("<fiI", 1.0, count, FIRST_ID + 12))
         + subrecord(b"CNAM", zstring("evodube"))
         + subrecord(b"SNAM", zstring("Real Roulette: a playable roulette table"))
         + subrecord(b"MAST", zstring("Fallout4.esm"))
@@ -251,6 +284,7 @@ def build() -> bytes:
         + group(b"KYWD", b"".join(keywords))
         + group(b"ACTI", b"".join(acti))
         + group(b"STAT", b"".join(stats))
+        + group(b"ALCH", b"".join(potions))
         + group(b"QUST", b"".join(quests))
         + group(b"PACK", b"".join(packages))
         + group(b"COBJ", b"".join(recipes))

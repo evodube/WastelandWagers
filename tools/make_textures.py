@@ -392,8 +392,8 @@ def main() -> int:
     import glob
     from wood import wood
     obj = (glob.glob(os.path.join(src, "..", "model", "*.obj")) + glob.glob(os.path.join(src, "*.obj")))[0]
-    put(wood(load("lambert1SG_albedo"), obj, 4096, load("lambert1SG_normal")), "table_d", "BC7")
-    put(load("lambert1SG_normal").convert("RGB"), "table_n", "BC7")
+    put(wood(load("lambert1SG_albedo"), obj, SIZE, load("lambert1SG_normal")), "table_d", "BC7")
+    put(load("lambert1SG_normal").convert("RGB").resize((SIZE, SIZE), Image.LANCZOS), "table_n", "BC7")
     put(spec_from(load("lambert1SG_roughness"), load("lambert1SG_metallic"), 1024), "table_s")
     # the rotor (build_meshes.py makes it, with planar UVs on the disc) and its metal
     put(rotor_disc(EU, 2048), "wheel_eu_d", "BC7")
@@ -405,8 +405,8 @@ def main() -> int:
     put(ms, "metal_s")
     put(flat(16, (255, 255, 255)), "metal_m")   # the env map's mask: all of it shines
     # the felt with the layouts printed on it
-    put(layout(False, 4096), "layout_eu_d", "BC7")
-    put(layout(True, 4096), "layout_us_d", "BC7")
+    put(layout(False, SIZE, 4), "layout_eu_d", "BC7")
+    put(layout(True, SIZE, 4), "layout_us_d", "BC7")
     put(flat(64, (14, 46, 0)), "felt_s")
     # chips: one colour per material of the chip set (build_chips.py lists them)
     for hexcol in CHIP_COLOURS:
@@ -419,6 +419,7 @@ def main() -> int:
 
 
 PREVIEW = "--preview" in sys.argv
+SIZE = 4096 if "--4k" in sys.argv else 2048  # the wood and felt: 2048 (BC7) by default, --4k for the big ones
 if __name__ == "__main__":
-    sys.argv = [a for a in sys.argv if a != "--preview"]
+    sys.argv = [a for a in sys.argv if a not in ("--preview", "--4k")]
     sys.exit(main())

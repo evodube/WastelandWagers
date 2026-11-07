@@ -61,14 +61,35 @@ namespace fr
 		const bool  focus = util::GameHasFocus();
 		const bool  seated = _seated.load();
 		const int   spin = s.keySpin > 0 ? s.keySpin : _activateVk.load();
-		const std::array<int, 9> keys{ spin, s.keyLeave, s.keyView, s.keyRebet, s.keyClear, s.keyChip[0], s.keyChip[1], s.keyChip[2],
-			s.keyChip[3] };
+		const bool  placing = _kitPlacing.load();
+		const std::array<int, 13> keys{ spin, s.keyLeave, s.keyView, s.keyRebet, s.keyClear, s.keyChip[0], s.keyChip[1], s.keyChip[2],
+			s.keyChip[3], s.keyPackUp, VK_LEFT, VK_RIGHT, _activateVk.load() };
 		auto* tasks = F4SE::GetTaskInterface();
 		for (std::size_t i = 0; i < keys.size(); ++i) {
 			const bool down = focus && keys[i] > 0 && (::GetAsyncKeyState(keys[i]) & 0x8000) != 0;
 			const bool pressed = down && !_keyWasDown[i];
 			_keyWasDown[i] = down;  // (tracked always, so the press that sat you down isn't also a spin)
-			if (!pressed || !tasks || !seated) {
+			if (!pressed || !tasks) {
+				continue;
+			}
+			if (placing) {
+				// setting a kit table up: activate puts it there, the arrows turn it, the leave key puts the kit away
+				if (i == 12 || i == 1 || i == 10 || i == 11) {
+					tasks->AddTask([this, i]() {
+						if (IsGamePaused()) {
+							return;
+						}
+						switch (i) {
+						case 12: ConfirmKit(); break;
+						case 1: CancelKit(true); break;
+						case 10: TurnKit(-1); break;
+						default: TurnKit(1); break;
+						}
+					});
+				}
+				continue;
+			}
+			if (!seated || i >= 10) {
 				continue;
 			}
 			if (i >= 5 && i <= 8) {
@@ -89,11 +110,12 @@ namespace fr
 				case 2: ToggleView(); break;
 				case 3: Rebet(); break;
 				case 4:
-					if (_phase == Phase::kBetting && HasBets(0)) {
+					if (_t.phase == Phase::kBetting && HasBets(0)) {
 						TakeAllBack(0);
 						Say("YOUR CHIPS ARE BACK");
 					}
 					break;
+				case 9: PackUpTable(); break;
 				default: break;
 				}
 			});
@@ -139,11 +161,11 @@ namespace fr
 	void Game::Say(const std::string& a_text, int a_tone)
 	{
 		log::info("[table] {}", a_text);
-		_log.push_back({ a_text, a_tone });
-		while (_log.size() > kLogLines) {
-			_log.pop_front();
+		_t.log.push_back({ a_text, a_tone });
+		while (_t.log.size() > kLogLines) {
+			_t.log.pop_front();
 		}
-		if (Settings::Get().notifications || !Hud::Showing()) {
+		if (Settings::Get().notifications || (!_secondary && (!Hud::Showing() || (!_seated && a_tone != 0)))) {
 			RE::SendHUDMessage::ShowHUDMessage(("Roulette: " + a_text).c_str(), nullptr, false, false);
 		}
 	}
@@ -178,13 +200,24 @@ namespace fr
 			_clearNpcs = false;
 			Npc::ClearAll();  // a load: whoever was in the quest's collections in that save goes back to their own business
 		}
+		if (_kitPlacing) {
+			TickKitPlacement();
+		}
 		_scanTimer -= dt;
 		if (_scanTimer <= 0.0f) {
 			_scanTimer = kScanEvery;
 			ScanTables();
 		}
-		if (_table) {
+		if (_t.table) {
 			TickTable(dt);
+		}
+		if (_other.table) {
+			// the second table in play, the same way, with nothing of you at the table about it
+			SwapTables();
+			_secondary = true;
+			TickTable(dt);
+			_secondary = false;
+			SwapTables();
 		}
 		UpdateHud();
 	}
@@ -215,36 +248,72 @@ namespace fr
 				return RE::BSContainer::ForEachResult::kContinue;
 			});
 		});
-		// every table shows the wheel and layout of the setting (the one in play: of the round on it)
+		// every table shows the wheel and layout of the setting (the ones in play: of the round on them)
 		for (auto* t : found) {
-			ApplyWheel(t, _table && _table.get().get() == t ? _wheel : setting);
+			const bool here = _t.table && _t.table.get().get() == t;
+			const bool other = _other.table && _other.table.get().get() == t;
+			ApplyWheel(t, here ? _t.wheel : other ? _other.wheel : setting);
 		}
 		_nearTables.clear();
 		for (auto* t : found) {
 			_nearTables.push_back(t->GetHandle());
 		}
 
-		// the table in play: the nearest within reach; the one already in play stays so a little further out
-		if (_table) {
-			auto*       current = _table.get().get();
-			const bool  loaded = current && current->Get3D() && !current->IsDisabled() && std::ranges::find(found, current) != found.end();
-			const float d = loaded ? (current->data.location - player->data.location).Length() : std::numeric_limits<float>::max();
-			if (!loaded || d > s.activeDistance + 400.0f) {
-				EndSession(loaded ? "you walked away" : "the table's gone");
-			} else if (nearest && nearest != current && nearestD < d - 300.0f && !_seated && _phase == Phase::kBetting) {
-				EndSession("another table is nearer");
+		(void)nearest;
+		// the tables in play: up to two, the nearest within reach; one already in play stays so a little further out
+		auto distanceTo = [&](const Slot& a_slot) {
+			auto* t = a_slot.table.get().get();
+			const bool loaded = t && t->Get3D() && !t->IsDisabled() && std::ranges::find(found, t) != found.end();
+			return loaded ? (t->data.location - player->data.location).Length() : std::numeric_limits<float>::max();
+		};
+		for (int k = 0; k < 2; ++k) {
+			if (k == 1) {
+				SwapTables();
+				_secondary = true;
+			}
+			if (_t.table) {
+				const float d = distanceTo(_t);
+				if (d > s.activeDistance + 400.0f) {
+					EndSession(d < std::numeric_limits<float>::max() ? "you walked away" : "the table's gone");
+				}
+			}
+			if (k == 1) {
+				_secondary = false;
+				SwapTables();
 			}
 		}
-		if (!_table && nearest && nearestD < s.activeDistance) {
-			StartSession(nearest);
+		std::ranges::sort(found, {}, [&](RE::TESObjectREFR* a_t) { return (a_t->data.location - player->data.location).Length(); });
+		for (auto* t : found) {
+			if ((t->data.location - player->data.location).Length() >= s.activeDistance) {
+				break;
+			}
+			if (IsKitPreview(t)) {
+				continue;  // (the one following your crosshair while you set a kit up)
+			}
+			if (_t.table.get().get() == t || _other.table.get().get() == t) {
+				continue;
+			}
+			if (!_t.table) {
+				StartSession(t);
+			} else if (!_other.table) {
+				SwapTables();
+				_secondary = true;
+				StartSession(t);
+				_secondary = false;
+				SwapTables();
+			}
+		}
+		// the one you're at (or else the nearer) is the one in _t: the HUD's and your keys'
+		if (!_seated && _other.table && distanceTo(_other) + 300.0f < distanceTo(_t)) {
+			SwapTables();
 		}
 		// how high the views can go under whatever's above the table
 		if (_seated) {
-			if (auto t = _table.get()) {
+			if (auto t = _t.table.get()) {
 				Frame frame;
 				if (FrameOf(t.get(), frame)) {
-					_roomLayout = CeilingAbove(frame, rl::LayoutCentre().x, rl::LayoutCentre().y, s.layoutHeight + 40.0f);
-					_roomWheel = CeilingAbove(frame, rl::table::kWheelX, rl::table::kWheelY, s.wheelHeight + 40.0f);
+					_t.roomLayout = CeilingAbove(frame, rl::LayoutCentre().x, rl::LayoutCentre().y, s.layoutHeight + 40.0f);
+					_t.roomWheel = CeilingAbove(frame, rl::table::kWheelX, rl::table::kWheelY, s.wheelHeight + 40.0f);
 				}
 			}
 		}
@@ -305,7 +374,7 @@ namespace fr
 	RE::ObjectRefHandle Game::Spawn(RE::TESBoundObject* a_form, const RE::NiPoint3& a_pos, float a_angle) const
 	{
 		auto* dh = RE::TESDataHandler::GetSingleton();
-		auto  table = _table.get();
+		auto  table = _t.table.get();
 		auto* cell = table ? table->GetParentCell() : nullptr;
 		if (!dh || !cell || !a_form) {
 			return {};
@@ -369,54 +438,64 @@ namespace fr
 	void Game::StartSession(RE::TESObjectREFR* a_table)
 	{
 		Settings::Get().Load();
-		_table = a_table->GetHandle();
-		_wheel = Settings::Get().wheel == 1 ? rl::WheelType::kAmerican : rl::WheelType::kEuropean;
-		_phase = Phase::kBetting;
-		_planning = false;
-		_phaseTime = 0.0f;
-		_bettingTime = 0.0f;
-		_rotorAngle = std::uniform_real_distribution<double>(0.0, 6.283)(_rng);
-		_rotorSpeed = std::uniform_real_distribution<double>(0.3, 0.9)(_rng);
-		_restPocket = -1;
-		_stakes.clear();
-		_seatTimer = 3.0f;
-		_history.clear();
-		ApplyWheel(a_table, _wheel);
-		log::info("table {:08X} in play ({} wheel)", a_table->GetFormID(), _wheel == rl::WheelType::kAmerican ? "American" : "European");
+		_t.table = a_table->GetHandle();
+		_t.wheel = Settings::Get().wheel == 1 ? rl::WheelType::kAmerican : rl::WheelType::kEuropean;
+		_t.phase = Phase::kBetting;
+		_t.planning = false;
+		_t.phaseTime = 0.0f;
+		_t.bettingTime = 0.0f;
+		_t.rotorAngle = std::uniform_real_distribution<double>(0.0, 6.283)(_rng);
+		_t.rotorSpeed = std::uniform_real_distribution<double>(0.3, 0.9)(_rng);
+		_t.restPocket = -1;
+		_t.stakes.clear();
+		_t.seatTimer = 3.0f;
+		_t.history.clear();
+		ApplyWheel(a_table, _t.wheel);
+		log::info("table {:08X} in play ({} wheel)", a_table->GetFormID(), _t.wheel == rl::WheelType::kAmerican ? "American" : "European");
 	}
 
 	void Game::EndSession(const char* a_why)
 	{
-		if (!_table) {
+		if (!_t.table) {
 			return;
 		}
-		log::info("table {:08X} no longer in play: {}", _table.get() ? _table.get()->GetFormID() : 0u, a_why);
-		if (_seated) {
+		log::info("table {:08X} no longer in play: {}", _t.table.get() ? _t.table.get()->GetFormID() : 0u, a_why);
+		if (Here()) {
 			StandUp();
+			Remove(_ghost);
 		}
 		RefundEverything();
-		Remove(_ball);
-		Remove(_ghost);
-		for (auto& seat : _seats) {
+		Remove(_t.ball);
+		for (auto& seat : _t.seats) {
 			ReleaseSeat(seat, nullptr);
 		}
-		_seats.clear();
-		_table = {};
-		_phase = Phase::kBetting;
-		_planning = false;
-		_hudBanner = 0;
+		_t.seats.clear();
+		_t.table = {};
+		_t.phase = Phase::kBetting;
+		_t.planning = false;
+		_t.hudBanner = 0;
 	}
 
 	void Game::OnLoadingStarts()
 	{
-		if (_table) {
+		if (_kitPlacing) {
+			CancelKit(true);  // travelling while setting a kit up: the kit back
+		}
+		if (_t.table) {
 			EndSession("a loading screen");
+		}
+		if (_other.table) {
+			SwapTables();
+			_secondary = true;
+			EndSession("a loading screen");
+			_secondary = false;
+			SwapTables();
 		}
 	}
 
 	void Game::TickTable(float a_dt)
 	{
-		auto  table = _table.get();
+		auto  table = _t.table.get();
 		Frame frame;
 		if (!table || !FrameOf(table.get(), frame)) {
 			return;
@@ -425,19 +504,19 @@ namespace fr
 			return;  // a save is being written
 		}
 
-		switch (_phase) {
+		switch (_t.phase) {
 		case Phase::kBetting:
-			_bettingTime += a_dt;
-			_rotorSpeed = rl::RotorDrag(_rotorSpeed, a_dt);
-			_rotorAngle += _rotorSpeed * a_dt;
+			_t.bettingTime += a_dt;
+			_t.rotorSpeed = rl::RotorDrag(_t.rotorSpeed, a_dt);
+			_t.rotorAngle += _t.rotorSpeed * a_dt;
 			// the wheel spins itself a while after the round's first bet (yours or anyone's)
-			if (_stakes.empty()) {
-				_spinIn = -1.0f;
-			} else if (_spinIn < 0.0f) {
-				_spinIn = Settings::Get().spinDelay;
+			if (_t.stakes.empty()) {
+				_t.spinIn = -1.0f;
+			} else if (_t.spinIn < 0.0f) {
+				_t.spinIn = Settings::Get().spinDelay;
 			} else {
-				_spinIn -= a_dt;
-				if (_spinIn <= 0.0f) {
+				_t.spinIn -= a_dt;
+				if (_t.spinIn <= 0.0f) {
 					StartSpin(false);
 				}
 			}
@@ -446,16 +525,16 @@ namespace fr
 			TickSpin(frame, a_dt);
 			break;
 		case Phase::kResult:
-			_phaseTime += a_dt;
-			_rotorSpeed = rl::RotorDrag(_rotorSpeed, a_dt);
-			_rotorAngle += _rotorSpeed * a_dt;
-			if (_phaseTime >= kLosersGo) {
+			_t.phaseTime += a_dt;
+			_t.rotorSpeed = rl::RotorDrag(_t.rotorSpeed, a_dt);
+			_t.rotorAngle += _t.rotorSpeed * a_dt;
+			if (_t.phaseTime >= kLosersGo) {
 				// the dealer sweeps the losing chips
 				bool swept = false;
-				for (auto it = _stakes.begin(); it != _stakes.end();) {
+				for (auto it = _t.stakes.begin(); it != _t.stakes.end();) {
 					if (it->won == 0) {
 						DespawnStake(*it);
-						it = _stakes.erase(it);
+						it = _t.stakes.erase(it);
 						swept = true;
 					} else {
 						++it;
@@ -465,24 +544,24 @@ namespace fr
 					Audio::Play(Audio::Bank::kChip, ToWorld(frame, rl::LayoutCentre().x, rl::LayoutCentre().y, rl::table::kFeltZ), 0.6f);
 				}
 			}
-			if (_phaseTime >= kResultSeconds) {
+			if (_t.phaseTime >= kResultSeconds) {
 				ClearRound();
 			}
 			break;
 		}
-		if (_viewBackIn >= 0.0f) {
+		if (!_secondary && _viewBackIn >= 0.0f) {
 			_viewBackIn -= a_dt;
 			if (_viewBackIn < 0.0f) {
 				_wheelView = false;
 			}
 		}
 
-		_rotorAngle = std::remainder(_rotorAngle, 6.283185307179586);  // (kept small: the spin plans are in floats)
+		_t.rotorAngle = std::remainder(_t.rotorAngle, 6.283185307179586);  // (kept small: the spin plans are in floats)
 		TurnRotor(frame);
 		PlaceBall(frame);
 		MakeStacks(frame);
 		TickSeats(frame, a_dt);
-		if (_seated) {
+		if (Here()) {
 			// the cursor: mouse right is the table's +X (the camera's right), mouse forward its +Y (up the screen)
 			{
 				std::scoped_lock lock(_camMutex);
@@ -496,7 +575,7 @@ namespace fr
 				const double cx = wheel ? rl::table::kWheelX : rl::LayoutCentre().x;
 				const double cy = wheel ? rl::table::kWheelY : rl::LayoutCentre().y;
 				const float  want = wheel ? s.wheelHeight : s.layoutHeight;
-				const float  room = (wheel ? _roomWheel : _roomLayout) - 15.0f;  // (a ceiling: the view comes down under it)
+				const float  room = (wheel ? _t.roomWheel : _t.roomLayout) - 15.0f;  // (a ceiling: the view comes down under it)
 				_camWant = ToWorld(frame, cx, cy - 2.0, rl::table::kFeltZ + std::clamp(room, 30.0f, want));
 				_camYaw = HeadingOf(frame, 0.0, 1.0);
 			}
@@ -508,19 +587,19 @@ namespace fr
 	void Game::TurnRotor(const Frame& a_frame)
 	{
 		(void)a_frame;
-		auto  table = _table.get();
+		auto  table = _t.table.get();
 		auto* root = table ? table->Get3D() : nullptr;
 		if (!root) {
 			return;
 		}
 		static const RE::BSFixedString eu("RotorEU"), us("RotorUS");
-		auto* node = root->GetObjectByName(_wheel == rl::WheelType::kAmerican ? us : eu);
+		auto* node = root->GetObjectByName(_t.wheel == rl::WheelType::kAmerican ? us : eu);
 		if (!node) {
 			return;
 		}
-		// the rotor's x axis at _rotorAngle round the table's z (rows: its axes in the table's space)
-		const float c = static_cast<float>(std::cos(_rotorAngle));
-		const float s = static_cast<float>(std::sin(_rotorAngle));
+		// the rotor's x axis at _t.rotorAngle round the table's z (rows: its axes in the table's space)
+		const float c = static_cast<float>(std::cos(_t.rotorAngle));
+		const float s = static_cast<float>(std::sin(_t.rotorAngle));
 		node->local.rotate = util::FromAxes({ c, s, 0.0f }, { -s, c, 0.0f }, { 0.0f, 0.0f, 1.0f });
 		RE::NiUpdateData update;
 		node->Update(update);
@@ -531,9 +610,9 @@ namespace fr
 		using namespace rl::table;
 		double r = 0.0, th = 0.0, z = 0.0;
 		bool   show = false;
-		if (_phase == Phase::kSpinning && !_plan.samples.empty()) {
-			const auto& smp = _plan.samples;
-			const float f = _playT * 60.0f;
+		if (_t.phase == Phase::kSpinning && !_t.plan.samples.empty()) {
+			const auto& smp = _t.plan.samples;
+			const float f = _t.playT * 60.0f;
 			const std::size_t i = std::min<std::size_t>(static_cast<std::size_t>(f), smp.size() - 1);
 			const std::size_t j = std::min(i + 1, smp.size() - 1);
 			const double      u = std::clamp(static_cast<double>(f - static_cast<float>(i)), 0.0, 1.0);
@@ -541,17 +620,17 @@ namespace fr
 			th = smp[i].theta + std::remainder(static_cast<double>(smp[j].theta) - smp[i].theta, 6.283185307) * u;
 			z = smp[i].z + (smp[j].z - smp[i].z) * u;
 			show = true;
-		} else if (_restPocket >= 0) {
+		} else if (_t.restPocket >= 0) {
 			r = kPocketCentre;
-			th = _rotorAngle + rl::PocketAngle(_wheel, _restPocket);
+			th = _t.rotorAngle + rl::PocketAngle(_t.wheel, _t.restPocket);
 			z = kPocketFloorZ + kBallRadius;
 			show = true;
 		}
 		const RE::NiPoint3 pos = ToWorld(a_frame, kWheelX + r * std::cos(th), kWheelY + r * std::sin(th), z);
-		if (!_ball && show) {
-			_ball = Spawn(Forms::Ball(), pos, 0.0f);
+		if (!_t.ball && show) {
+			_t.ball = Spawn(Forms::Ball(), pos, 0.0f);
 		}
-		if (auto ball = _ball.get()) {
+		if (auto ball = _t.ball.get()) {
 			PlaceNode(ball.get(), pos, a_frame.yaw, !show);
 		}
 	}
@@ -560,21 +639,21 @@ namespace fr
 
 	void Game::StartSpin(bool a_byPlayer)
 	{
-		if (!_table || _phase != Phase::kBetting) {
-			if (a_byPlayer && _phase != Phase::kBetting) {
+		if (!_t.table || _t.phase != Phase::kBetting) {
+			if (a_byPlayer && _t.phase != Phase::kBetting) {
 				Say("THE BALL'S ALREADY GOING ROUND");
 			}
 			return;
 		}
-		auto  table = _table.get();
+		auto  table = _t.table.get();
 		Frame frame;
 		if (!table || !FrameOf(table.get(), frame)) {
 			return;
 		}
 		// a push on the rotor if it's slowed right down, and the ball thrown the other way, from the wheel's end
 		std::uniform_real_distribution<double> U(0.0, 1.0);
-		if (_rotorSpeed < 1.4) {
-			_rotorSpeed = 1.6 + 0.6 * U(_rng);
+		if (_t.rotorSpeed < 1.4) {
+			_t.rotorSpeed = 1.6 + 0.6 * U(_rng);
 			Audio::Play(Audio::Bank::kSpin, ToWorld(frame, rl::table::kWheelX, rl::table::kWheelY, rl::table::kFeltZ), 0.8f);
 		}
 		// the throw is worked out on another thread (finding one that lands in the drawn pocket and bounces about
@@ -582,31 +661,31 @@ namespace fr
 		rl::SpinParams p;
 		p.throwAngle = 3.14159265;  // from the wheel's end (-X)
 		p.ballSpeed = -(15.0 + 3.0 * U(_rng));
-		double angle = _rotorAngle, speed = _rotorSpeed;
+		double angle = _t.rotorAngle, speed = _t.rotorSpeed;
 		for (int k = 0; k < 60; ++k) {
 			speed = rl::RotorDrag(speed, kPlanLead / 60.0);
 			angle += speed * (kPlanLead / 60.0);
 		}
 		p.rotorAngle = angle;
 		p.rotorSpeed = speed;
-		const auto type = _wheel;
+		const auto type = _t.wheel;
 		const auto seed = _rng();
-		_planFuture = std::async(std::launch::async, [type, p, seed]() {
+		_t.planFuture = std::async(std::launch::async, [type, p, seed]() {
 			std::mt19937 rng(seed);
 			return rl::PlanSpin(type, p, rng);
 		});
-		_plan = {};
-		_planning = true;
-		_phase = Phase::kSpinning;
-		_phaseTime = 0.0f;
-		_playT = -kPlanLead;
-		_dropSaid = false;
-		_hudBanner = 1;
-		_bannerTitle = "NO MORE BETS";
-		_bannerSub = a_byPlayer ? std::string("YOU SPIN") : std::string("THE WHEEL SPINS");
-		_spinIn = -1.0f;
-		_bannerTime = std::chrono::steady_clock::now();
-		if (_seated && Settings::Get().wheelViewOnSpin) {
+		_t.plan = {};
+		_t.planning = true;
+		_t.phase = Phase::kSpinning;
+		_t.phaseTime = 0.0f;
+		_t.playT = -kPlanLead;
+		_t.dropSaid = false;
+		_t.hudBanner = 1;
+		_t.bannerTitle = "NO MORE BETS";
+		_t.bannerSub = a_byPlayer ? std::string("YOU SPIN") : std::string("THE WHEEL SPINS");
+		_t.spinIn = -1.0f;
+		_t.bannerTime = std::chrono::steady_clock::now();
+		if (Here() && Settings::Get().wheelViewOnSpin) {
 			_wheelView = true;
 			_viewBackIn = -1.0f;
 		}
@@ -616,13 +695,13 @@ namespace fr
 	{
 		const auto& frame = a_frame;
 		log::info("spin: {} ({} pocket {}; {} tries); drop {:.1f}s, rotor {:.1f}s, rest {:.1f}s; {:.0f} pockets round the rotor, {} frets",
-			rl::NumberName(_plan.number), _plan.drawn ? "drawn" : "NOT drawn", _plan.pocket, _plan.tries, _plan.dropTime, _plan.rotorTime,
-			_plan.settleTime, _plan.travel, _plan.frets);
-		_restPocket = -1;
+			rl::NumberName(_t.plan.number), _t.plan.drawn ? "drawn" : "NOT drawn", _t.plan.pocket, _t.plan.tries, _t.plan.dropTime, _t.plan.rotorTime,
+			_t.plan.settleTime, _t.plan.travel, _t.plan.frets);
+		_t.restPocket = -1;
 		// the roll: as loud as the ball is fast, round the track and down the cone, gone as it reaches the rotor
 		{
 			std::vector<std::pair<float, float>> keys;
-			const auto& smp = _plan.samples;
+			const auto& smp = _t.plan.samples;
 			double      fastest = 0.0;
 			auto speedAt = [&](std::size_t a_i) {
 				const std::size_t j = std::min(a_i + 15, smp.size() - 1);
@@ -630,59 +709,59 @@ namespace fr
 				const double      dt = std::max(1e-3, static_cast<double>(smp[j].t - smp[i].t));
 				return std::abs(std::remainder(static_cast<double>(smp[j].theta) - smp[i].theta, 6.283185307)) * smp[i].r / dt;
 			};
-			for (std::size_t i = 0; i < smp.size() && smp[i].t <= _plan.rotorTime; i += 15) {
+			for (std::size_t i = 0; i < smp.size() && smp[i].t <= _t.plan.rotorTime; i += 15) {
 				fastest = std::max(fastest, speedAt(i));
 			}
-			for (std::size_t i = 0; i < smp.size() && smp[i].t <= _plan.rotorTime; i += 15) {
+			for (std::size_t i = 0; i < smp.size() && smp[i].t <= _t.plan.rotorTime; i += 15) {
 				const double v = fastest > 0.0 ? speedAt(i) / fastest : 0.0;
-				keys.emplace_back(smp[i].t, static_cast<float>(std::pow(std::clamp(v, 0.0, 1.0), 0.7) * (smp[i].t < _plan.dropTime ? 1.0 : 0.8)));
+				keys.emplace_back(smp[i].t, static_cast<float>(std::pow(std::clamp(v, 0.0, 1.0), 0.7) * (smp[i].t < _t.plan.dropTime ? 1.0 : 0.8)));
 			}
 			if (!keys.empty()) {
 				keys.front().second = 0.0f;
 				keys.insert(keys.begin() + 1, { 0.08f, keys.size() > 1 ? keys[1].second : 1.0f });
-				keys.emplace_back(_plan.rotorTime + 0.12f, 0.0f);
+				keys.emplace_back(_t.plan.rotorTime + 0.12f, 0.0f);
 				Audio::PlayShaped(Audio::Bank::kRoll, ToWorld(frame, rl::table::kWheelX, rl::table::kWheelY, rl::table::kTrackZ), 0.75f, keys);
 			}
 		}
-		_eventIdx = 0;
-		_lastKnock = -1.0f;
+		_t.eventIdx = 0;
+		_t.lastKnock = -1.0f;
 	}
 
 	void Game::TickSpin(const Frame& a_frame, float a_dt)
 	{
 		using namespace rl::table;
-		_playT += a_dt;
-		if (_planning) {
+		_t.playT += a_dt;
+		if (_t.planning) {
 			// the rotor carries on as it was until the throw's ready (and as the throw was worked out for)
-			_rotorSpeed = rl::RotorDrag(_rotorSpeed, a_dt);
-			_rotorAngle += _rotorSpeed * a_dt;
-			if (_playT < 0.0f || !_planFuture.valid() ||
-				_planFuture.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
+			_t.rotorSpeed = rl::RotorDrag(_t.rotorSpeed, a_dt);
+			_t.rotorAngle += _t.rotorSpeed * a_dt;
+			if (_t.playT < 0.0f || !_t.planFuture.valid() ||
+				_t.planFuture.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
 				return;
 			}
-			_plan = _planFuture.get();
-			_planning = false;
-			if (_playT > 0.05f) {
-				log::info("spin: the throw took {:.2f}s longer to work out than the lead; joining it that far in", _playT);
+			_t.plan = _t.planFuture.get();
+			_t.planning = false;
+			if (_t.playT > 0.05f) {
+				log::info("spin: the throw took {:.2f}s longer to work out than the lead; joining it that far in", _t.playT);
 			}
 			LaunchSpin(a_frame);
 		}
-		const auto& smp = _plan.samples;
+		const auto& smp = _t.plan.samples;
 		if (smp.empty()) {
 			Settle();
 			return;
 		}
-		const std::size_t i = std::min<std::size_t>(static_cast<std::size_t>(_playT * 60.0f), smp.size() - 1);
+		const std::size_t i = std::min<std::size_t>(static_cast<std::size_t>(_t.playT * 60.0f), smp.size() - 1);
 		const std::size_t j = std::min(i + 1, smp.size() - 1);
-		const double      u = std::clamp(static_cast<double>(_playT * 60.0f - static_cast<float>(i)), 0.0, 1.0);
-		_rotorAngle = smp[i].rotor + std::remainder(static_cast<double>(smp[j].rotor) - smp[i].rotor, 6.283185307) * u;
+		const double      u = std::clamp(static_cast<double>(_t.playT * 60.0f - static_cast<float>(i)), 0.0, 1.0);
+		_t.rotorAngle = smp[i].rotor + std::remainder(static_cast<double>(smp[j].rotor) - smp[i].rotor, 6.283185307) * u;
 		// each knock as it happens: off a diamond, a fret, coming down from a bounce, rocking into place
 		const auto wheel = ToWorld(a_frame, kWheelX, kWheelY, kRotorEdgeZ);
-		while (_eventIdx < _plan.events.size() && _plan.events[_eventIdx].t <= _playT) {
-			const auto& ev = _plan.events[_eventIdx++];
+		while (_t.eventIdx < _t.plan.events.size() && _t.plan.events[_t.eventIdx].t <= _t.playT) {
+			const auto& ev = _t.plan.events[_t.eventIdx++];
 			using Kind = rl::SpinEvent::Kind;
 			const float s = ev.strength;
-			if (ev.kind != Kind::kSettle && ev.t - _lastKnock < 0.03f && s < 0.5f) {
+			if (ev.kind != Kind::kSettle && ev.t - _t.lastKnock < 0.03f && s < 0.5f) {
 				continue;  // (two in the same instant sound as one)
 			}
 			switch (ev.kind) {
@@ -706,33 +785,33 @@ namespace fr
 				Audio::Play(Audio::Bank::kSettle, wheel, 0.45f);
 				break;
 			}
-			_lastKnock = ev.t;
+			_t.lastKnock = ev.t;
 		}
-		if (_playT >= smp.back().t) {
+		if (_t.playT >= smp.back().t) {
 			Settle();
 		}
 	}
 
 	void Game::Settle()
 	{
-		const int number = _plan.number;
-		_restPocket = _plan.pocket;
-		if (!_plan.samples.empty()) {
-			_rotorAngle = _plan.samples.back().rotor;
+		const int number = _t.plan.number;
+		_t.restPocket = _t.plan.pocket;
+		if (!_t.plan.samples.empty()) {
+			_t.rotorAngle = _t.plan.samples.back().rotor;
 		}
-		_rotorSpeed = _plan.rotorSpeed;
-		_history.push_front(number);
-		while (_history.size() > kHistory) {
-			_history.pop_back();
+		_t.rotorSpeed = _t.plan.rotorSpeed;
+		_t.history.push_front(number);
+		while (_t.history.size() > kHistory) {
+			_t.history.pop_back();
 		}
 		// who won what
 		int  yourStake = 0, yourBack = 0, yourWin = 0;
 		std::map<RE::TESFormID, int> npcNet;
-		_lastRound.clear();
-		for (auto& st : _stakes) {
+		_t.lastRound.clear();
+		for (auto& st : _t.stakes) {
 			if (st.owner == 0) {
 				yourStake += st.amount;
-				_lastRound.emplace_back(st.bet.key, st.amount);
+				_t.lastRound.emplace_back(st.bet.key, st.amount);
 			}
 			if (st.bet.Wins(number)) {
 				st.won = st.amount * st.bet.Payout();
@@ -755,21 +834,21 @@ namespace fr
 			GivePlayer(yourBack);
 			Audio::PlayUI(Audio::Bank::kChip, 0.8f);  // your caps coming back
 		}
-		_lastWin = yourBack - yourStake;
+		_t.lastWin = yourBack - yourStake;
 		const std::string name = std::format("{} {}", rl::NumberName(number), rl::ColourName(number));
-		_hudBanner = yourStake == 0 ? 4 : yourWin > 0 ? 2 : 3;
-		_bannerTitle = name;
-		_bannerNumber = number;
+		_t.hudBanner = yourStake == 0 ? 4 : yourWin > 0 ? 2 : 3;
+		_t.bannerTitle = name;
+		_t.bannerNumber = number;
 		if (yourStake == 0) {
-			_bannerSub.clear();
+			_t.bannerSub.clear();
 		} else if (yourWin > 0) {
-			_bannerSub = std::format("YOU WIN {} CAPS", yourWin);
+			_t.bannerSub = std::format("YOU WIN {} CAPS", yourWin);
 		} else {
-			_bannerSub = std::format("YOU LOSE {} CAPS", yourStake);
+			_t.bannerSub = std::format("YOU LOSE {} CAPS", yourStake);
 		}
-		_bannerTime = std::chrono::steady_clock::now();
-		Say(yourStake == 0 ? name : std::format("{} · {}", name, _bannerSub), yourStake == 0 ? 0 : yourWin > 0 ? 1 : 2);
-		for (auto& seat : _seats) {
+		_t.bannerTime = std::chrono::steady_clock::now();
+		Say(yourStake == 0 ? name : std::format("{} · {}", name, _t.bannerSub), yourStake == 0 ? 0 : yourWin > 0 ? 1 : 2);
+		for (auto& seat : _t.seats) {
 			seat.roundNet = 0;
 			if (auto it = npcNet.find(seat.id); it != npcNet.end()) {
 				seat.roundNet = it->second;
@@ -786,47 +865,47 @@ namespace fr
 			}
 			seat.betThisRound = false;
 		}
-		log::info("result {}: you staked {}, got back {}; {} stakes on the table", name, yourStake, yourBack, _stakes.size());
-		_phase = Phase::kResult;
-		_phaseTime = 0.0f;
-		if (_wheelView && Settings::Get().wheelViewOnSpin) {
+		log::info("result {}: you staked {}, got back {}; {} stakes on the table", name, yourStake, yourBack, _t.stakes.size());
+		_t.phase = Phase::kResult;
+		_t.phaseTime = 0.0f;
+		if (Here() && _wheelView && Settings::Get().wheelViewOnSpin) {
 			_viewBackIn = 2.0f;  // a look at the ball in its pocket, then back to the layout
 		}
 	}
 
 	void Game::ClearRound()
 	{
-		for (auto& st : _stakes) {
+		for (auto& st : _t.stakes) {
 			DespawnStake(st);
 		}
-		_stakes.clear();
-		_phase = Phase::kBetting;
-		_planning = false;
-		_phaseTime = 0.0f;
-		_bettingTime = 0.0f;
-		_hudBanner = 0;
+		_t.stakes.clear();
+		_t.phase = Phase::kBetting;
+		_t.planning = false;
+		_t.phaseTime = 0.0f;
+		_t.bettingTime = 0.0f;
+		_t.hudBanner = 0;
 		// a changed wheel setting comes in now, between rounds
 		const auto setting = Settings::Get().wheel == 1 ? rl::WheelType::kAmerican : rl::WheelType::kEuropean;
-		if (setting != _wheel) {
-			_wheel = setting;
-			_restPocket = -1;
-			_lastRound.clear();
-			if (auto table = _table.get()) {
-				ApplyWheel(table.get(), _wheel);
+		if (setting != _t.wheel) {
+			_t.wheel = setting;
+			_t.restPocket = -1;
+			_t.lastRound.clear();
+			if (auto table = _t.table.get()) {
+				ApplyWheel(table.get(), _t.wheel);
 			}
-			Say(_wheel == rl::WheelType::kAmerican ? "AMERICAN WHEEL (0 AND 00)" : "EUROPEAN WHEEL (SINGLE 0)");
+			Say(_t.wheel == rl::WheelType::kAmerican ? "AMERICAN WHEEL (0 AND 00)" : "EUROPEAN WHEEL (SINGLE 0)");
 		}
 	}
 
 	bool Game::HasBets(RE::TESFormID a_owner) const
 	{
-		return std::ranges::any_of(_stakes, [&](const Stake& s) { return s.owner == a_owner && s.won < 0; });
+		return std::ranges::any_of(_t.stakes, [&](const Stake& s) { return s.owner == a_owner && s.won < 0; });
 	}
 
 	int Game::OnTable(RE::TESFormID a_owner) const
 	{
 		int sum = 0;
-		for (const auto& s : _stakes) {
+		for (const auto& s : _t.stakes) {
 			if (s.owner == a_owner && s.won < 0) {
 				sum += s.amount;
 			}
@@ -866,7 +945,7 @@ namespace fr
 
 	Game::Stake* Game::StakeFor(RE::TESFormID a_owner, const std::string& a_key)
 	{
-		for (auto& s : _stakes) {
+		for (auto& s : _t.stakes) {
 			if (s.owner == a_owner && s.bet.key == a_key && s.won < 0) {
 				return &s;
 			}
@@ -876,7 +955,7 @@ namespace fr
 
 	bool Game::AddChips(RE::TESFormID a_owner, const rl::Bet& a_bet, int a_amount)
 	{
-		if (_phase != Phase::kBetting || a_amount <= 0) {
+		if (_t.phase != Phase::kBetting || a_amount <= 0) {
 			return false;
 		}
 		const int maxBet = Settings::Get().maxBet;
@@ -903,12 +982,12 @@ namespace fr
 			Stake s;
 			s.owner = a_owner;
 			s.bet = a_bet;
-			_stakes.push_back(std::move(s));
-			existing = &_stakes.back();
+			_t.stakes.push_back(std::move(s));
+			existing = &_t.stakes.back();
 		}
 		existing->amount += a_amount;
 		existing->dirty = true;
-		if (auto table = _table.get()) {
+		if (auto table = _t.table.get()) {
 			Frame frame;
 			if (FrameOf(table.get(), frame)) {
 				Audio::Play(Audio::Bank::kChip, ToWorld(frame, a_bet.spot.x, a_bet.spot.y, rl::table::kFeltZ), 0.7f);
@@ -919,7 +998,7 @@ namespace fr
 
 	void Game::TakeBack(RE::TESFormID a_owner, const std::string& a_key)
 	{
-		for (auto it = _stakes.begin(); it != _stakes.end(); ++it) {
+		for (auto it = _t.stakes.begin(); it != _t.stakes.end(); ++it) {
 			if (it->owner == a_owner && it->bet.key == a_key && it->won < 0) {
 				if (a_owner == 0) {
 					GivePlayer(it->amount);
@@ -927,7 +1006,7 @@ namespace fr
 					AddToPurse(a_owner, it->amount);
 				}
 				DespawnStake(*it);
-				_stakes.erase(it);
+				_t.stakes.erase(it);
 				return;
 			}
 		}
@@ -936,7 +1015,7 @@ namespace fr
 	void Game::TakeAllBack(RE::TESFormID a_owner)
 	{
 		std::vector<std::string> keys;
-		for (const auto& s : _stakes) {
+		for (const auto& s : _t.stakes) {
 			if (s.owner == a_owner && s.won < 0) {
 				keys.push_back(s.bet.key);
 			}
@@ -949,7 +1028,7 @@ namespace fr
 	void Game::RefundEverything()
 	{
 		int yours = 0;
-		for (auto& s : _stakes) {
+		for (auto& s : _t.stakes) {
 			if (s.won < 0) {
 				if (s.owner == 0) {
 					yours += s.amount;
@@ -959,14 +1038,14 @@ namespace fr
 			}
 			DespawnStake(s);
 		}
-		_stakes.clear();
+		_t.stakes.clear();
 		if (yours > 0) {
 			GivePlayer(yours);
 			Notify(std::format("Roulette: your {} caps on the table are back", yours));
 		}
-		if (_phase == Phase::kSpinning) {
-			_phase = Phase::kBetting;
-			_planning = false;
+		if (_t.phase == Phase::kSpinning) {
+			_t.phase = Phase::kBetting;
+			_t.planning = false;
 		}
 	}
 
@@ -991,9 +1070,9 @@ namespace fr
 		}
 		static constexpr std::array<std::pair<double, double>, 6> offsets{ { { 1.7, 1.3 }, { -1.7, 1.3 }, { 1.7, -1.3 }, { -1.7, -1.3 },
 			{ 0.0, 2.1 }, { 0.0, -2.1 } } };
-		for (std::size_t i = 0; i < _seats.size(); ++i) {
-			if (_seats[i].id == a_owner) {
-				const auto& o = offsets[static_cast<std::size_t>(_seats[i].spot) % offsets.size()];
+		for (std::size_t i = 0; i < _t.seats.size(); ++i) {
+			if (_t.seats[i].id == a_owner) {
+				const auto& o = offsets[static_cast<std::size_t>(_t.seats[i].spot) % offsets.size()];
 				return { o.first, o.second };
 			}
 		}
@@ -1004,7 +1083,7 @@ namespace fr
 	{
 		using namespace rl::table;
 		std::uniform_real_distribution<float> spinAngle(0.0f, 6.283f);
-		for (auto& st : _stakes) {
+		for (auto& st : _t.stakes) {
 			if (!st.dirty) {
 				continue;
 			}
@@ -1061,21 +1140,32 @@ namespace fr
 
 	void Game::BeforeSave()
 	{
-		if (!_table) {
+		if (_kitPlacing) {
+			CancelKit(true);  // a save mid-set-up: the kit back in your inventory, no half-made table saved
+		}
+		Remove(_ghost);
+		_ghostValue = -1;
+		BeforeSaveTable();
+		SwapTables();
+		BeforeSaveTable();
+		SwapTables();
+	}
+
+	void Game::BeforeSaveTable()
+	{
+		if (!_t.table) {
 			return;
 		}
 		// nothing of ours in the save: the chips, the ball and the markers off; your caps on the layout back in your
 		// pocket for the save (taken again once it's written); nobody held
 		_lifted = true;
-		_liftedCaps = OnTable(0);
-		GivePlayer(_liftedCaps);
-		for (auto& st : _stakes) {
+		_t.liftedCaps = OnTable(0);
+		GivePlayer(_t.liftedCaps);
+		for (auto& st : _t.stakes) {
 			DespawnStake(st);
 		}
-		Remove(_ball);
-		Remove(_ghost);
-		_ghostValue = -1;
-		for (auto& seat : _seats) {
+		Remove(_t.ball);
+		for (auto& seat : _t.seats) {
 			Remove(seat.walk.marker);
 			if (seat.held) {
 				if (auto actor = seat.actor.get()) {
@@ -1084,7 +1174,7 @@ namespace fr
 				seat.held = false;
 			}
 		}
-		log::info("before save: our objects off, {} caps back to you for the save", _liftedCaps);
+		log::info("before save: our objects off, {} caps back to you for the save", _t.liftedCaps);
 	}
 
 	void Game::AfterSave()
@@ -1093,15 +1183,23 @@ namespace fr
 			return;
 		}
 		_lifted = false;
-		if (_liftedCaps > 0 && !TakeFromPlayer(_liftedCaps)) {
+		AfterSaveTable();
+		SwapTables();
+		AfterSaveTable();
+		SwapTables();
+		log::info("after save: carrying on");
+	}
+
+	void Game::AfterSaveTable()
+	{
+		if (_t.liftedCaps > 0 && !TakeFromPlayer(_t.liftedCaps)) {
 			// (can't happen unless something took caps mid-save) the bets are void
-			log::warn("after save: couldn't take the {} caps back; your bets are void", _liftedCaps);
-			for (auto it = _stakes.begin(); it != _stakes.end();) {
-				it = it->owner == 0 && it->won < 0 ? _stakes.erase(it) : std::next(it);
+			log::warn("after save: couldn't take the {} caps back; your bets are void", _t.liftedCaps);
+			for (auto it = _t.stakes.begin(); it != _t.stakes.end();) {
+				it = it->owner == 0 && it->won < 0 ? _t.stakes.erase(it) : std::next(it);
 			}
 		}
-		_liftedCaps = 0;
-		log::info("after save: carrying on");
+		_t.liftedCaps = 0;
 	}
 
 	void Game::Forget()
@@ -1111,19 +1209,13 @@ namespace fr
 		BlockControls(false);
 		QuietNpcs(false);
 		_haveEntryView = false;
-		_table = {};
-		_ball = {};
+		_t = Slot{};
+		_other = Slot{};
+		_kitPlacing = false;  // (the preview went with the old game)
+		_kitPreview = {};
 		_ghost = {};
 		_ghostValue = -1;
-		_stakes.clear();
-		_seats.clear();
-		_phase = Phase::kBetting;
-		_planning = false;
 		_lifted = false;
-		_liftedCaps = 0;
-		_hudBanner = 0;
-		_log.clear();
-		_history.clear();
 		_wheelView = false;
 		_clearNpcs = true;
 		_haveLast = false;

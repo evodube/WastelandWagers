@@ -411,7 +411,7 @@ namespace fr::Hud
 		{
 			const auto st = Game::Get().Hud();
 			auto*      viewport = GetMainViewport();
-			if (!viewport || !(st.seated || st.nearby)) {
+			if (!viewport || !(st.seated || st.nearby || st.placing)) {
 				return;
 			}
 			Texture(Title().file);
@@ -430,6 +430,10 @@ namespace fr::Hud
 			v.origin = viewport->Pos;
 			v.w = viewport->Size.x / v.s;
 			v.h = viewport->Size.y / v.s;
+			if (st.placing) {
+				Keys(v, st);  // setting a kit table up: what the keys do
+				return;
+			}
 			History(v, st);
 			Banner(v, st);
 			if (st.seated) {

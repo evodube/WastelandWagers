@@ -103,7 +103,7 @@ namespace fr
 
 	void Game::OnActivated(RE::TESObjectREFR* a_ref)
 	{
-		if (!Forms::IsTable(a_ref) || _seated || IsGamePaused()) {
+		if (!Forms::IsTable(a_ref) || _seated || _kitPlacing || IsKitPreview(a_ref) || IsGamePaused()) {
 			return;
 		}
 		SitDown(a_ref);
@@ -118,9 +118,19 @@ namespace fr
 		if (!player || !camera || !FreeCamera()) {
 			return;
 		}
-		if (_table.get().get() != a_table) {
-			EndSession("you sat down at another table");
-			StartSession(a_table);
+		if (_t.table.get().get() != a_table) {
+			if (_other.table.get().get() == a_table) {
+				SwapTables();  // the other table in play: it's the one you're at now
+			} else {
+				if (_t.table) {
+					if (!_other.table) {
+						SwapTables();  // the one in play carries on as the other
+					} else {
+						EndSession("you sat down at a third table");
+					}
+				}
+				StartSession(a_table);
+			}
 		} else {
 			Settings::Get().Load();
 		}
@@ -143,7 +153,7 @@ namespace fr
 			_cursorY = c.y;
 			_mouseDX = _mouseDY = 0.0;
 		}
-		_wheelView = _phase == Phase::kSpinning && Settings::Get().wheelViewOnSpin;
+		_wheelView = _t.phase == Phase::kSpinning && Settings::Get().wheelViewOnSpin;
 		_viewBackIn = -1.0f;
 		_seated = true;
 		BlockControls(true);
@@ -260,7 +270,7 @@ namespace fr
 	std::optional<rl::Bet> Game::HoverBet() const
 	{
 		std::scoped_lock lock(_camMutex);
-		return rl::BetAt(_wheel, { _cursorX, _cursorY });
+		return rl::BetAt(_t.wheel, { _cursorX, _cursorY });
 	}
 
 	void Game::PlaceChip()
@@ -272,7 +282,7 @@ namespace fr
 			ToggleView();  // a click on the wheel view brings the layout back
 			return;
 		}
-		if (_phase != Phase::kBetting) {
+		if (_t.phase != Phase::kBetting) {
 			Say("NO MORE BETS", 2);
 			return;
 		}
@@ -285,7 +295,7 @@ namespace fr
 
 	void Game::RemoveChip()
 	{
-		if (!_seated || IsGamePaused() || _phase != Phase::kBetting) {
+		if (!_seated || IsGamePaused() || _t.phase != Phase::kBetting) {
 			return;
 		}
 		if (auto bet = HoverBet(); bet && StakeFor(0, bet->key)) {
@@ -296,16 +306,16 @@ namespace fr
 
 	void Game::Rebet()
 	{
-		if (!_seated || _phase != Phase::kBetting) {
+		if (!_seated || _t.phase != Phase::kBetting) {
 			return;
 		}
-		if (_lastRound.empty()) {
+		if (_t.lastRound.empty()) {
 			Say("NO BETS TO REPEAT");
 			return;
 		}
 		int placed = 0;
-		for (const auto& [key, amount] : _lastRound) {
-			if (auto bet = rl::BetFromKey(_wheel, key)) {
+		for (const auto& [key, amount] : _t.lastRound) {
+			if (auto bet = rl::BetFromKey(_t.wheel, key)) {
 				if (!AddChips(0, *bet, amount)) {
 					break;
 				}
@@ -321,7 +331,7 @@ namespace fr
 	{
 		using namespace rl::table;
 		const int  value = std::clamp(_chip.load(), 0, 3);
-		const bool show = _seated && !_wheelView && _phase == Phase::kBetting;
+		const bool show = Here() && !_wheelView && _t.phase == Phase::kBetting;
 		if (_ghostValue != value) {
 			Remove(_ghost);  // a different chip picked: a different object
 			_ghostValue = value;
@@ -333,7 +343,7 @@ namespace fr
 			y = _cursorY;
 		}
 		z = kFeltZ + 2.5;
-		if (auto bet = rl::BetAt(_wheel, { x, y })) {
+		if (auto bet = rl::BetAt(_t.wheel, { x, y })) {
 			x = bet->spot.x;
 			y = bet->spot.y;
 			// over the top of your stack there
@@ -463,8 +473,8 @@ namespace fr
 		HudState h;
 		h.seated = _seated;
 		h.nearby = false;  // the HUD is only for when you're sitting at the table
-		h.american = _wheel == rl::WheelType::kAmerican;
-		h.phase = static_cast<int>(_phase);
+		h.american = _t.wheel == rl::WheelType::kAmerican;
+		h.phase = static_cast<int>(_t.phase);
 		h.caps = PlayerCaps();
 		h.onTable = OnTable(0);
 		h.chip = std::clamp(_chip.load(), 0, 3);
@@ -472,7 +482,7 @@ namespace fr
 			if (auto bet = HoverBet()) {
 				h.hover = bet->Name();
 				h.hoverPays = bet->Payout();
-				for (const auto& s : _stakes) {
+				for (const auto& s : _t.stakes) {
 					if (s.bet.key == bet->key && s.won < 0) {
 						h.hoverAll += s.amount;
 						if (s.owner == 0) {
@@ -482,27 +492,34 @@ namespace fr
 				}
 			}
 		}
-		h.spinIn = _phase == Phase::kBetting ? _spinIn : -1.0f;
-		h.spinning = _phase != Phase::kBetting;
-		for (const auto& seat : _seats) {
+		h.spinIn = _t.phase == Phase::kBetting ? _t.spinIn : -1.0f;
+		h.spinning = _t.phase != Phase::kBetting;
+		for (const auto& seat : _t.seats) {
 			if (seat.step == Seat::Step::kPlaying) {
 				h.players.push_back(std::format("{}  {} CAPS", Upper(seat.name), Purse(seat.id) + OnTable(seat.id)));
 			}
 		}
-		h.history.assign(_history.begin(), _history.end());
-		h.log = _log;
-		h.banner = _hudBanner;
-		h.bannerTitle = _bannerTitle;
-		h.bannerSub = _bannerSub;
-		h.bannerNumber = _bannerNumber;
-		h.bannerAge = std::chrono::duration<float>(std::chrono::steady_clock::now() - _bannerTime).count();
+		h.history.assign(_t.history.begin(), _t.history.end());
+		h.log = _t.log;
+		h.banner = _t.hudBanner;
+		h.bannerTitle = _t.bannerTitle;
+		h.bannerSub = _t.bannerSub;
+		h.bannerNumber = _t.bannerNumber;
+		h.bannerAge = std::chrono::duration<float>(std::chrono::steady_clock::now() - _t.bannerTime).count();
 		h.wheelView = _wheelView;
-		h.lastWin = _lastWin;
+		h.lastWin = _t.lastWin;
 		const auto& s = Settings::Get();
 		auto key = [](int a_vk) { return Upper(Settings::Key(a_vk)); };
 		h.keys = std::format("LMB BET · RMB TAKE BACK · {}-{} CHIP · {} SPIN · {} SAME AGAIN · {} CLEAR · {} WHEEL · {} LEAVE", key(s.keyChip[0]),
 			key(s.keyChip[3]), key(s.keySpin > 0 ? s.keySpin : _activateVk.load()), key(s.keyRebet), key(s.keyClear), key(s.keyView),
 			key(s.keyLeave));
+		if (_seated && IsKitTable(_t.table.get().get())) {
+			h.keys += std::format(" · {} PACK UP", key(s.keyPackUp));
+		}
+		if (_kitPlacing) {
+			h.placing = true;
+			h.keys = KitPrompt();
+		}
 		std::scoped_lock lock(_hudMutex);
 		_hud = std::move(h);
 	}

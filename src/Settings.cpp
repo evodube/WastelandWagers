@@ -68,6 +68,7 @@ namespace fr
 		keyView = key(L"iView", keyView);
 		keyRebet = key(L"iRebet", keyRebet);
 		keyClear = key(L"iClear", keyClear);
+		keyPackUp = key(L"iPackUp", keyPackUp);
 		keyChip[0] = key(L"iChip1", keyChip[0]);
 		keyChip[1] = key(L"iChip5", keyChip[1]);
 		keyChip[2] = key(L"iChip25", keyChip[2]);

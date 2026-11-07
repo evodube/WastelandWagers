@@ -163,7 +163,7 @@ namespace fr
 	void Game::FindBettor(const Frame& a_frame)
 	{
 		const auto& s = Settings::Get();
-		if (!s.bettors || static_cast<int>(_seats.size()) >= s.maxBettors || _phase != Phase::kBetting) {
+		if (!s.bettors || static_cast<int>(_t.seats.size()) >= s.maxBettors || _t.phase != Phase::kBetting) {
 			return;
 		}
 		if (std::uniform_real_distribution<float>(0.0f, 1.0f)(_rng) > 0.6f) {
@@ -177,7 +177,8 @@ namespace fr
 				auto* actor = a_ref ? a_ref->As<RE::Actor>() : nullptr;
 				if (!Usable(actor) || actor == player || actor->IsChild() || actor->IsInCombat() || (player && actor->GetHostileToActor(player)) ||
 					(npcType && !actor->HasKeywordHelper(npcType, nullptr)) ||
-					std::ranges::any_of(_seats, [&](const Seat& st) { return st.id == actor->GetFormID(); }) ||
+					std::ranges::any_of(_t.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); }) ||
+					std::ranges::any_of(_other.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); }) ||  // (at the other table)
 					std::ranges::any_of(found, [&](const auto& f) { return f.second == actor; })) {
 					return RE::BSContainer::ForEachResult::kContinue;
 				}
@@ -199,7 +200,7 @@ namespace fr
 		// a free spot: nobody else's, and nobody (a settler sandboxing there, you) standing on it
 		int spot = -1;
 		for (int i = 0; i < kSpots && spot < 0; ++i) {
-			if (std::ranges::any_of(_seats, [&](const Seat& st) { return st.spot == i; })) {
+			if (std::ranges::any_of(_t.seats, [&](const Seat& st) { return st.spot == i; })) {
 				continue;
 			}
 			float      heading = 0.0f;
@@ -229,7 +230,7 @@ namespace fr
 		seat.rounds = std::uniform_int_distribution<int>(s.bettorMinRounds, s.bettorMaxRounds)(_rng);
 		log::info("{} ({:08X}) comes to play: {} caps, {} rounds, spot {}", seat.name, seat.id, Purse(seat.id), seat.rounds, spot);
 		Say(std::format("{} COMES TO PLAY", Upper(seat.name)));
-		_seats.push_back(std::move(seat));
+		_t.seats.push_back(std::move(seat));
 	}
 
 	void Game::SeatBets(Seat& a_seat)
@@ -245,13 +246,13 @@ namespace fr
 	void Game::TickSeats(const Frame& a_frame, float a_dt)
 	{
 		const auto& s = Settings::Get();
-		_seatTimer -= a_dt;
-		if (_seatTimer <= 0.0f) {
-			_seatTimer = s.bettorEvery * std::uniform_real_distribution<float>(0.7f, 1.3f)(_rng);
+		_t.seatTimer -= a_dt;
+		if (_t.seatTimer <= 0.0f) {
+			_t.seatTimer = s.bettorEvery * std::uniform_real_distribution<float>(0.7f, 1.3f)(_rng);
 			FindBettor(a_frame);
 		}
 		std::uniform_real_distribution<float> U(0.0f, 1.0f);
-		for (auto& seat : _seats) {
+		for (auto& seat : _t.seats) {
 			auto  ref = seat.actor.get();
 			auto* actor = ref ? ref->As<RE::Actor>() : nullptr;
 			if (!Usable(actor) || actor->IsInCombat()) {
@@ -288,14 +289,14 @@ namespace fr
 						SeatIdle(seat, actor, seat.roundNet > 0 ? 2 : seat.roundNet < 0 ? 3 : 4);
 						seat.nextIdle = std::uniform_real_distribution<float>(8.0f, 16.0f)(_rng);
 					}
-				} else if (_phase != Phase::kResult) {
+				} else if (_t.phase != Phase::kResult) {
 					seat.nextIdle -= a_dt;
 					if (seat.nextIdle <= 0.0f) {
 						seat.nextIdle = std::uniform_real_distribution<float>(9.0f, 22.0f)(_rng);
 						SeatIdle(seat, actor, 0);
 					}
 				}
-				if (_phase == Phase::kBetting) {
+				if (_t.phase == Phase::kBetting) {
 					if (seat.rounds <= 0 || Purse(seat.id) + OnTable(seat.id) < 1) {
 						if (!HasBets(seat.id)) {
 							Say(std::format("{} {}", Upper(seat.name), Purse(seat.id) < 1 ? "IS OUT OF CAPS" : "CALLS IT A NIGHT"));
@@ -306,7 +307,7 @@ namespace fr
 					if (seat.atSpot < kSettleIn) {
 						break;
 					}
-					if (!seat.betThisRound && _bettingTime > 2.0f) {
+					if (!seat.betThisRound && _t.bettingTime > 2.0f) {
 						SeatBets(seat);
 					}
 					if (seat.chipsToPlace > 0 && seat.budget > 0) {
@@ -315,7 +316,7 @@ namespace fr
 							seat.nextChip = std::uniform_real_distribution<float>(2.0f, 4.0f)(_rng);
 							--seat.chipsToPlace;
 							// the bet: even money half the time, dozens and columns a fifth, the rest on numbers
-							const auto all = rl::AllBets(_wheel);
+							const auto all = rl::AllBets(_t.wheel);
 							const float roll = U(_rng);
 							std::vector<const rl::Bet*> pool;
 							for (const auto& b : all) {
@@ -348,12 +349,12 @@ namespace fr
 				break;
 			}
 		}
-		for (auto& seat : _seats) {
+		for (auto& seat : _t.seats) {
 			if (seat.step == Seat::Step::kLeaving) {
 				ReleaseSeat(seat, nullptr);
 			}
 		}
-		std::erase_if(_seats, [](const Seat& st) { return st.step == Seat::Step::kLeaving; });
+		std::erase_if(_t.seats, [](const Seat& st) { return st.step == Seat::Step::kLeaving; });
 	}
 
 	void Game::SeatIdle(Seat& a_seat, RE::Actor* a_actor, int a_kind)
@@ -379,7 +380,7 @@ namespace fr
 	{
 		auto  ref = a_seat.actor.get();
 		auto* actor = ref ? ref->As<RE::Actor>() : nullptr;
-		if (_phase == Phase::kBetting) {
+		if (_t.phase == Phase::kBetting) {
 			TakeAllBack(a_seat.id);
 		}
 		if (actor) {

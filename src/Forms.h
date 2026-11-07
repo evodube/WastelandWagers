@@ -12,6 +12,7 @@ namespace fr::Forms
 	inline constexpr std::uint32_t kLinkID = 0x806;      // KYWD fo4rouletteLinkSpot
 	inline constexpr std::uint32_t kPackageID = 0x807;   // PACK fo4rouletteWalkToSpot
 	inline constexpr std::uint32_t kQuestID = 0x808;     // QUST fo4rouletteQuest
+	inline constexpr std::uint32_t kKitID = 0x80A;       // ALCH fo4rouletteTableKit
 
 	inline constexpr RE::TESFormID kXMarkerHeading = 0x00000034;
 	inline constexpr RE::TESFormID kCaps = 0x0000000F;
