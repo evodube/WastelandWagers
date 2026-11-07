@@ -15,8 +15,8 @@ namespace fr
 	{
 		constexpr RE::TESFormID kDugoutVendorBox = 0x001338B6;    // Fallout4.esm VendorDCDugoutInn (the container)
 		constexpr RE::TESFormID kDugoutVendorChest = 0x001338B7;  // ...and its reference (ServicesDmndDugoutInn's VENC)
-		constexpr float         kPlaceNear = 170.0f;  // the table's middle: where you look on the ground, this far...
-		constexpr float         kPlaceFar = 500.0f;   // ...to this far from you
+		constexpr float         kPlaceNear = 140.0f;  // the table's middle: where you look on the ground, this far...
+		constexpr float         kPlaceFar = 450.0f;   // ...to this far from you (as Playable Pool's kit)
 		constexpr float         kTurnStep = 0.2617994f;  // an arrow press turns it 15 degrees
 		constexpr float         kTooClose = 300.0f;   // not on top of another roulette table
 
@@ -113,6 +113,7 @@ namespace fr
 			return;
 		}
 		_kitPlacing = true;
+		_kitConfirmArmed = false;
 		_kitTurn = 0.0f;
 		_kitReady = false;
 		_kitSign = 0;
@@ -128,8 +129,8 @@ namespace fr
 	{
 		const std::string key = Upper(Settings::Key(_activateVk.load()));
 		const std::string cancel = Upper(Settings::Key(Settings::Get().keyLeave));
-		return _kitOk ? std::format("{} SET UP THE TABLE · LEFT/RIGHT TURN · {} CANCEL", key, cancel)
-		              : std::format("TOO CLOSE TO ANOTHER ROULETTE TABLE · {} CANCEL", cancel);
+		return _kitOk ? std::format("{}) SET UP THE TABLE  ·  LEFT/RIGHT TURN  ·  {}) CANCEL", key, cancel)
+		              : std::format("TOO CLOSE TO ANOTHER TABLE  ·  {}) CANCEL", cancel);
 	}
 
 	void Game::TickKitPlacement()
@@ -197,6 +198,7 @@ namespace fr
 			_kitPreview = dh ? dh->CreateReferenceAtLocation(data) : RE::ObjectRefHandle{};
 			if (auto made = _kitPreview.get()) {
 				g_previewID = made->GetFormID();
+				_kitMadeAngle = angle;
 			}
 			return;
 		}
@@ -205,11 +207,28 @@ namespace fr
 			return;  // (its 3D on the way)
 		}
 		if (!_kitReady) {
-			RE::bhkWorld::EnableCollision(root, false, true, true);  // nothing bumps into it while it follows you about
+			// nothing bumps into it while it follows you about; and which way round the 3D takes an angle (so the
+			// preview turns exactly as the table set down at that angle will stand)
+			RE::bhkWorld::EnableCollision(root, false, true, true);
+			RE::NiMatrix3 plus, minus;
+			plus.FromEulerAnglesXYZ(0.0f, 0.0f, _kitMadeAngle);
+			minus.FromEulerAnglesXYZ(0.0f, 0.0f, -_kitMadeAngle);
+			const auto& w = root->world.rotate;
+			auto diff = [&](const RE::NiMatrix3& a_m) {
+				float d = 0.0f;
+				for (int r = 0; r < 3; ++r) {
+					for (int c = 0; c < 3; ++c) {
+						d += std::abs(a_m.entry[r][c] - w.entry[r][c]);
+					}
+				}
+				return d;
+			};
+			_kitSign = diff(plus) <= diff(minus) ? 1 : -1;
 			_kitReady = true;
 		}
-		PlaceNode(preview.get(), pos, angle, false);
-		preview->data.angle.z = angle;
+		RE::NiMatrix3 rot;
+		rot.FromEulerAnglesXYZ(0.0f, 0.0f, static_cast<float>(_kitSign) * angle);
+		PlaceRoot(preview.get(), pos, rot);
 
 		// clear of the other roulette tables
 		bool crowded = false;
@@ -223,6 +242,33 @@ namespace fr
 			});
 		});
 		_kitOk = !crowded;
+	}
+
+	void Game::PlaceRoot(RE::TESObjectREFR* a_ref, const RE::NiPoint3& a_pos, const RE::NiMatrix3& a_rot)
+	{
+		auto* root = a_ref ? a_ref->Get3D() : nullptr;
+		if (!root) {
+			return;
+		}
+		// we know the world transform we want; the node stores it relative to its parent
+		RE::NiTransform local;
+		if (auto* parent = root->parent) {
+			const auto& p = parent->GetWorldTransform();
+			const float ps = p.scale != 0.0f ? p.scale : 1.0f;
+			local.rotate = a_rot * p.rotate.Transpose();
+			local.translate = (p.rotate * (a_pos - p.translate)) * (1.0f / ps);
+			local.scale = 1.0f / ps;
+		} else {
+			local.rotate = a_rot;
+			local.translate = a_pos;
+			local.scale = 1.0f;
+		}
+		root->SetLocalTransform(local);
+		RE::NiUpdateData update;
+		root->Update(update);
+		a_ref->data.location.x = a_pos.x;
+		a_ref->data.location.y = a_pos.y;
+		a_ref->data.location.z = a_pos.z;
 	}
 
 	void Game::TurnKit(int a_dir)

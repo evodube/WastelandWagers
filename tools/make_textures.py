@@ -396,11 +396,11 @@ def main() -> int:
     put(load("lambert1SG_normal").convert("RGB").resize((SIZE, SIZE), Image.LANCZOS), "table_n", "BC7")
     put(spec_from(load("lambert1SG_roughness"), load("lambert1SG_metallic"), 1024), "table_s")
     # the rotor (build_meshes.py makes it, with planar UVs on the disc) and its metal
-    put(rotor_disc(EU, 2048), "wheel_eu_d", "BC7")
-    put(rotor_disc(US, 2048), "wheel_us_d", "BC7")
-    put(rotor_spec(1024), "wheel_s")
+    put(rotor_disc(EU, SIZE, 4), "wheel_eu_d", "BC7")
+    put(rotor_disc(US, SIZE, 4), "wheel_us_d", "BC7")
+    put(rotor_spec(min(SIZE, 1024)), "wheel_s")
     put(flat(), "flat_n")
-    md, ms = metal(1024)
+    md, ms = metal(min(SIZE, 1024))
     put(md, "metal_d", "BC7")
     put(ms, "metal_s")
     put(flat(16, (255, 255, 255)), "metal_m")   # the env map's mask: all of it shines
@@ -419,7 +419,7 @@ def main() -> int:
 
 
 PREVIEW = "--preview" in sys.argv
-SIZE = 4096 if "--4k" in sys.argv else 2048  # the wood and felt: 2048 (BC7) by default, --4k for the big ones
+SIZE = 4096 if "--4k" in sys.argv else 2048 if "--2k" in sys.argv else 1024  # every big texture: 1024 (BC7) by default
 if __name__ == "__main__":
-    sys.argv = [a for a in sys.argv if a not in ("--preview", "--4k")]
+    sys.argv = [a for a in sys.argv if a not in ("--preview", "--4k", "--2k")]
     sys.exit(main())

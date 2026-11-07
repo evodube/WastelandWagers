@@ -68,19 +68,34 @@ namespace fr
 		for (std::size_t i = 0; i < keys.size(); ++i) {
 			const bool down = focus && keys[i] > 0 && (::GetAsyncKeyState(keys[i]) & 0x8000) != 0;
 			const bool pressed = down && !_keyWasDown[i];
+			const bool released = !down && _keyWasDown[i];
 			_keyWasDown[i] = down;  // (tracked always, so the press that sat you down isn't also a spin)
+			if (placing && i == 12) {
+				// setting a kit table up: the activate key sets it down when you let go of it (a press that began
+				// before the kit was used, in the Pip-Boy, doesn't count)
+				if (pressed) {
+					_kitConfirmArmed = true;
+				} else if (released && _kitConfirmArmed && tasks) {
+					_kitConfirmArmed = false;
+					tasks->AddTask([this]() {
+						if (!IsGamePaused()) {
+							ConfirmKit();
+						}
+					});
+				}
+				continue;
+			}
 			if (!pressed || !tasks) {
 				continue;
 			}
 			if (placing) {
-				// setting a kit table up: activate puts it there, the arrows turn it, the leave key puts the kit away
-				if (i == 12 || i == 1 || i == 10 || i == 11) {
+				// setting a kit table up: the arrows turn it, the leave key puts the kit away
+				if (i == 1 || i == 10 || i == 11) {
 					tasks->AddTask([this, i]() {
 						if (IsGamePaused()) {
 							return;
 						}
 						switch (i) {
-						case 12: ConfirmKit(); break;
 						case 1: CancelKit(true); break;
 						case 10: TurnKit(-1); break;
 						default: TurnKit(1); break;

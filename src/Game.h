@@ -235,6 +235,9 @@ namespace fr
 		RE::ObjectRefHandle _kitPreview;
 		RE::NiPoint3        _kitPos;
 		float               _kitAngle{ 0.0f };
+		float               _kitMadeAngle{ 0.0f };  // the angle the preview was made at (to tell which way its 3D turns)
+		bool                _kitConfirmArmed{ false };  // the activate key went down while setting up: setting down on letting go
+		static void         PlaceRoot(RE::TESObjectREFR* a_ref, const RE::NiPoint3& a_pos, const RE::NiMatrix3& a_rot);
 
 		// the NPCs betting
 		static constexpr int kSpots = 4;  // places to stand round the layout
