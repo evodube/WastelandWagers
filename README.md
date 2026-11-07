@@ -16,7 +16,11 @@ wander over and bet with their own caps, cheering or shaking their heads at the 
 
 ## Playing
 
-1. **Build the table**: workshop menu, Furniture > Tables > Roulette Table.
+1. **Get a table**: build one in a settlement (workshop menu, Furniture > Tables > Roulette Table), or use a
+   **Roulette Table Kit** anywhere: Vadim sells them at the Dugout Inn, and you can make one at a chem station
+   (Utility). Use the kit from the Pip-Boy, aim where the table should go, Left/Right to turn it, activate to set it
+   down (X puts the kit away). Sitting at a kit table, **P** packs it back into the kit. Up to two tables near you
+   are in play at once.
 2. **Sit down**: activate it (E). The camera goes over the layout.
    - **Move the mouse** to move the chip over the layout; it snaps to the bet under it (straight up, split, street,
      corner, six line, trio, first four / top line, dozens, columns, red/black, odd/even, 1-18/19-36). The HUD shows
