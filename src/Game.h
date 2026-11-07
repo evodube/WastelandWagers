@@ -206,7 +206,7 @@ namespace fr
 		void         FindBettor(const Frame& a_frame);
 		void         ReleaseSeat(Seat& a_seat, const char* a_why);
 		void         SeatBets(Seat& a_seat);
-		void         SeatIdle(Seat& a_seat, RE::Actor* a_actor, int a_kind);  // 0 waiting, 1 placing a chip, 2 won, 3 lost, 4 someone else won
+		void         SeatIdle(Seat& a_seat, RE::Actor* a_actor, int a_kind);  // 0 waiting, 1 placing a chip, 2 won, 3 lost
 		RE::NiPoint3 SeatSpot(const Frame& a_frame, int a_spot, float& a_heading) const;
 		float        HeadingOf(const Frame& a_frame, double a_dx, double a_dy) const;  // a direction in table space as a heading
 		float        CeilingAbove(const Frame& a_frame, double a_x, double a_y, float a_upTo) const;

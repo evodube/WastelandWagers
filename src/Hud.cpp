@@ -255,7 +255,7 @@ namespace fr::Hud
 			if (a_st.history.empty()) {
 				return;
 			}
-			const std::size_t n = std::min<std::size_t>(a_st.history.size(), 12);
+			const std::size_t n = std::min<std::size_t>(a_st.history.size(), 5);
 			const float       r = 17.0f, gap = 40.0f;
 			const float       w = std::max(34.0f + gap * static_cast<float>(n), TextWidth(Mono(), "LAST NUMBERS", 13, 2.0f) + 40.0f);
 			const float       x = a_v.w - 24.0f - w, y = 24.0f;

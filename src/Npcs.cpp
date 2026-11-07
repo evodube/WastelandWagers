@@ -24,9 +24,8 @@ namespace fr
 		// vanilla idles (Fallout4.esm IDLE)
 		constexpr std::array<RE::TESFormID, 4> kWaitIdles{ 0x0001F86C, 0x0001FA11, 0x0001FA12, 0x001E81AC };  // shopping looks A-C, thinking
 		constexpr RE::TESFormID                kPlaceIdle = 0x001A8A0D;  // IdlePlaceEnvelopeOnTable
-		constexpr std::array<RE::TESFormID, 3> kWinIdles{ 0x0010BA3A, 0x00118013, 0x0010F9C0 };  // cheering, laughing, fight winner
-		constexpr std::array<RE::TESFormID, 2> kLoseIdles{ 0x00038C7A, 0x0010BA3D };            // head shake no, booing
-		constexpr RE::TESFormID                kClapIdle = 0x00141F3C;  // IdleClapping
+		constexpr std::array<RE::TESFormID, 2> kWinIdles{ 0x0010BA3A, 0x0010F9C0 };  // cheering, fight winner
+		constexpr RE::TESFormID                kLoseIdle = 0x00038C7A;               // HeadShakeNo
 		constexpr float kStepBack = 32.0f;       // where people stand: this far out from the table's edge
 
 		float Distance2D(const RE::NiPoint3& a, const RE::NiPoint3& b) { return std::hypot(a.x - b.x, a.y - b.y); }
@@ -356,12 +355,8 @@ namespace fr
 		case 0: idle = pick(kWaitIdles); break;
 		case 1: idle = kPlaceIdle; break;
 		case 2: idle = pick(kWinIdles); break;
-		case 3: idle = pick(kLoseIdles); break;
-		default:
-			if (std::uniform_real_distribution<float>(0.0f, 1.0f)(_rng) < 0.5f) {
-				idle = kClapIdle;  // someone else's win
-			}
-			break;
+		case 3: idle = kLoseIdle; break;
+		default: break;
 		}
 		if (idle) {
 			Npc::PlayIdle(a_actor, idle);

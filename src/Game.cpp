@@ -690,7 +690,6 @@ namespace fr
 		}
 		_bannerTime = std::chrono::steady_clock::now();
 		Say(yourStake == 0 ? name : std::format("{} · {}", name, _bannerSub), yourStake == 0 ? 0 : yourWin > 0 ? 1 : 2);
-		const bool someoneWon = yourWin > 0 || std::ranges::any_of(npcNet, [](const auto& a_n) { return a_n.second > 0; });
 		for (auto& seat : _seats) {
 			seat.roundNet = 0;
 			if (auto it = npcNet.find(seat.id); it != npcNet.end()) {
@@ -699,8 +698,8 @@ namespace fr
 					Say(std::format("{} WINS {}", Upper(seat.name), it->second), 1);
 				}
 			}
-			// a moment to see where the ball went, then a reaction: their own result, or someone else's win
-			if (seat.step == Seat::Step::kPlaying && (seat.betThisRound || someoneWon)) {
+			// a moment to see where the ball went, then a reaction to how they did
+			if (seat.step == Seat::Step::kPlaying && seat.betThisRound && seat.roundNet != 0) {
 				seat.reactIn = std::uniform_real_distribution<float>(0.4f, 1.4f)(_rng);
 			}
 			if (seat.betThisRound) {

@@ -52,8 +52,6 @@ def main():
         mesh = bpy.data.meshes.new_from_object(src.evaluated_get(deps))
         s = src.scale  # (no rotation on these; some mirror X with a negative scale)
         mesh.transform(Matrix.Diagonal((s.x, s.y, s.z, 1.0)))
-        if s.x * s.y * s.z < 0:
-            mesh.flip_normals()
         xs = [v.co.x for v in mesh.vertices]
         ys = [v.co.y for v in mesh.vertices]
         zs = [v.co.z for v in mesh.vertices]
@@ -63,6 +61,22 @@ def main():
         sizes[value] = (max(zs) - min(zs)) * k
         if not mesh.uv_layers:
             mesh.uv_layers.new(name="UVMap")
+        # for the game's per-vertex normals: hard edges split (as Blender's smooth-by-angle shows them, 30 degrees,
+        # and any marked sharp), and every face made triangles properly (the numbers are concave n-gons, which a
+        # simple fan breaks: the 1s vanished)
+        bm = bmesh.new()
+        bm.from_mesh(mesh)
+        # every face facing outwards: the set's numbers (mirrored, solidified text) come in with their faces turned
+        # inwards, which Blender draws two-sided but the game culls (the 1 of the 100 vanished, dark patches)
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+        sharp = bm.edges.layers.bool.get("sharp_edge")
+        hard = [e for e in bm.edges if len(e.link_faces) == 2 and (e.calc_face_angle(0.0) > math.radians(30.0) or (sharp and e[sharp]))]
+        bmesh.ops.split_edges(bm, edges=hard)
+        bmesh.ops.triangulate(bm, faces=bm.faces[:], quad_method='BEAUTY', ngon_method='BEAUTY')
+        for f in bm.faces:
+            f.smooth = True
+        bm.to_mesh(mesh)
+        bm.free()
 
         root = bpy.data.objects.new(f"Chip{value}", None)
         bpy.context.scene.collection.objects.link(root)
