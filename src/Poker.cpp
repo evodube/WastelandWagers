@@ -351,6 +351,14 @@ namespace fr
 		if (!PkFrame(frame)) {
 			return;
 		}
+		// trouble: a fight breaks out (you're in combat) and you're up from the table, your seat and caps kept
+		if (_pkSeated) {
+			if (auto* player = RE::PlayerCharacter::GetSingleton(); player && player->IsInCombat()) {
+				log::info("poker: you're in a fight: up from the table");
+				PkStandUp(false);
+				Notify("Poker: trouble! You're up from the table (your seat and caps are kept)");
+			}
+		}
 		_pk.bannerAge += a_dt;
 		_pk.potHold = std::max(0.0f, _pk.potHold - a_dt);
 		_pk.pushAge += a_dt;
