@@ -1,0 +1,4 @@
+DejaVuSerifCondensed-Bold.ttf and DejaVuSans-Bold.ttf: the DejaVu fonts (https://dejavu-fonts.github.io/).
+Fonts are (c) Bitstream (see below). DejaVu changes are in public domain. Glyphs imported from Arev fonts are (c)
+Tavmjong Bah. Bitstream Vera Fonts Copyright (c) 2003 by Bitstream, Inc.: free to use, copy, modify and distribute
+(the Bitstream Vera licence: https://dejavu-fonts.github.io/License.html).
