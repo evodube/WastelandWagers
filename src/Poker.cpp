@@ -1214,7 +1214,9 @@ namespace fr
 							g_sitKnown = true;
 							log::info("poker: someone sitting is ({:.1f}, {:.1f}, {:.1f}) from their chair", g_sitOffset.x, g_sitOffset.y, g_sitOffset.z);
 						}
-						marker->data.location = actor->data.location;
+						marker->data.location.x = actor->data.location.x;
+						marker->data.location.y = actor->data.location.y;
+						marker->data.location.z = actor->data.location.z;
 						Npc::SitOn(actor, chair.get(), marker.get(), false);  // (linked to where they are; not sat again)
 						st.anchored = true;
 					}
@@ -1238,7 +1240,10 @@ namespace fr
 							}
 							// (their walk's end where they'll sit, once that's known: else the chair)
 							if (marker && g_sitKnown) {
-								marker->data.location = seatAt(g_sitOffset);
+								const auto at = seatAt(g_sitOffset);
+								marker->data.location.x = at.x;
+								marker->data.location.y = at.y;
+								marker->data.location.z = at.z;
 							}
 							Npc::SitOn(actor, chair.get(), marker && g_sitKnown ? marker.get() : chair.get(), true);
 						}

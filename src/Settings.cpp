@@ -15,7 +15,9 @@ namespace fr
 		{
 			wchar_t buf[512]{};
 			constexpr auto kNone = L"\x01";
-			::GetPrivateProfileStringW(a_section, a_key, kNone, buf, static_cast<DWORD>(std::size(buf)), kUserIniPath);
+			wchar_t full[MAX_PATH]{};
+			const auto* user = ::GetFullPathNameW(kUserIniPath, MAX_PATH, full, nullptr) ? full : kUserIniPath;
+			::GetPrivateProfileStringW(a_section, a_key, kNone, buf, static_cast<DWORD>(std::size(buf)), user);
 			if (std::wstring_view(buf) == kNone) {
 				::GetPrivateProfileStringW(a_section, a_key, a_default.c_str(), buf, static_cast<DWORD>(std::size(buf)), kIniPath);
 			}

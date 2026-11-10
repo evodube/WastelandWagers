@@ -177,8 +177,21 @@ namespace fr::SettingsMenu
 				}
 				break;
 			}
-			if (!::WritePrivateProfileStringW(a_e.section, a_e.key, value.c_str(), kIniPath)) {
-				log::warn("settings menu: could not write [{}] to the INI", static_cast<int>(a_e.kind));
+			// (the file made first if it isn't there: the INI functions wouldn't make a new one under a mod manager's
+			// virtual Data folder, and the setting was lost, read back from fo4roulette.ini the next time it was loaded)
+			wchar_t full[MAX_PATH]{};
+			const auto* path = ::GetFullPathNameW(kIniPath, MAX_PATH, full, nullptr) ? full : kIniPath;
+			if (const HANDLE f = ::CreateFileW(path, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+				f != INVALID_HANDLE_VALUE) {
+				::CloseHandle(f);
+			}
+			if (!::WritePrivateProfileStringW(a_e.section, a_e.key, value.c_str(), path)) {
+				// (no luck: into fo4roulette.ini itself, as before)
+				if (!::WritePrivateProfileStringW(a_e.section, a_e.key, value.c_str(), L"Data\\F4SE\\Plugins\\fo4roulette.ini")) {
+					log::warn("settings menu: could not write [{}] to the INI", static_cast<int>(a_e.kind));
+				} else {
+					log::warn("settings menu: fo4roulette_user.ini couldn't be written: saved to fo4roulette.ini");
+				}
 			}
 		}
 
