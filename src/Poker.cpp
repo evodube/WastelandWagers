@@ -275,6 +275,30 @@ namespace fr
 
 		// a new object's 3D fades in over a moment (the game's way with things that load in): chips and cards on the table
 		// are there at once, so they move rather than fade from place to place
+		// a still object's motion: none. Its last frame's place (previousWorld, what motion blur, TAA, upscalers and
+		// frame generation take its motion from) set to where it is, it and every part of it: put somewhere once by us
+		// and not again, it kept the place before that as its last frame's, forever, so it seemed to be moving every
+		// frame by that much and shook (until a pause or a menu started the picture over)
+		void Still(RE::NiAVObject* a_obj)
+		{
+			if (!a_obj) {
+				return;
+			}
+			a_obj->previousWorld = a_obj->world;
+			if (auto* node = a_obj->IsNode()) {
+				for (auto& child : node->children) {
+					Still(child.get());
+				}
+			}
+		}
+
+		void Still(const RE::ObjectRefHandle& a_handle)
+		{
+			if (auto ref = a_handle.get()) {
+				Still(ref->Get3D());
+			}
+		}
+
 		void NoFade(const RE::ObjectRefHandle& a_handle)
 		{
 			if (auto ref = a_handle.get()) {
@@ -639,26 +663,43 @@ namespace fr
 		PkTickMoves(frame, dt);
 		PkWatchChips(frame, dt, "camera update");
 		// (and every chip and card held unfaded every frame, not only on the table's own tick: away from the table the
-		// chip log caught the game fading chips to nothing between our ticks)
+		// chip log caught the game fading chips to nothing between our ticks; and every chip that isn't on its way
+		// somewhere, still: Still)
+		std::unordered_set<RE::TESFormID> onTheMove;
+		for (const auto& m : _pk.moves) {
+			if (auto r = m.ref.get()) {
+				onTheMove.insert(r->GetFormID());
+			}
+		}
+		auto still = [&](const RE::ObjectRefHandle& a_h) {
+			auto r = a_h.get();
+			if (r && !onTheMove.contains(r->GetFormID())) {
+				Still(r->Get3D());
+			}
+		};
+		auto both = [&](const RE::ObjectRefHandle& a_h) {
+			NoFade(a_h);
+			still(a_h);
+		};
 		for (const auto& seat : _pk.stackChips) {
 			for (const auto& v : seat) {
 				for (const auto& h : v) {
-					NoFade(h);
+					both(h);
 				}
 			}
 		}
 		for (const auto& v : _pk.betChips) {
 			for (const auto& h : v) {
-				NoFade(h);
+				both(h);
 			}
 		}
 		for (const auto& v : _pk.landed) {
 			for (const auto& h : v) {
-				NoFade(h);
+				both(h);
 			}
 		}
 		for (const auto& h : _pk.potChips) {
-			NoFade(h);
+			both(h);
 		}
 		for (const auto& c : _pk.cards) {
 			NoFade(c.ref);
