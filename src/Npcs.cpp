@@ -342,7 +342,7 @@ namespace fr
 			auto* actor = ref ? ref->As<RE::Actor>() : nullptr;
 			// (a fight: everyone up. Held, their AI is off and they'd not notice it themselves)
 			const auto* you = RE::PlayerCharacter::GetSingleton();
-			if (!Usable(actor) || actor->IsInCombat() || (you && you->IsInCombat())) {
+			if (!Usable(actor) || actor->IsInCombat() || (you && you->IsInCombat()) || Npc::AtPool(actor)) {  // (or called over to pool)
 				seat.step = Seat::Step::kLeaving;
 				continue;
 			}

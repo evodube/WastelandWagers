@@ -244,6 +244,12 @@ namespace fr::Npc
 		return CallActor(a_actor, "ClearLookAt");
 	}
 
+	bool AtPool(RE::Actor* a_actor)
+	{
+		const char* why = Busy(a_actor);
+		return why && std::strcmp(why, "at the pool table") == 0;
+	}
+
 	const char* Busy(RE::Actor* a_actor)
 	{
 		if (!a_actor) {
@@ -260,6 +266,11 @@ namespace fr::Npc
 				const char* id = l.keyword ? l.keyword->formEditorID.c_str() : nullptr;
 				if (l.REFR && id && (std::strstr(id, "LinkWork") || std::strstr(id, "Caravan"))) {
 					return "has a job";
+				}
+				// watching pool: Playable Pool links its watchers to their spot with its own keyword
+				auto* kf = l.keyword ? l.keyword->GetFile(0) : nullptr;
+				if (l.REFR && kf && _stricmp(std::string(kf->GetFilename()).c_str(), "fo4pool.esl") == 0) {
+					return "at the pool table";
 				}
 			}
 		}

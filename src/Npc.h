@@ -26,6 +26,9 @@ namespace fr::Npc
 	bool MoveTo(RE::Actor* a_actor, RE::TESObjectREFR* a_target);
 	// Papyrus Actor.SetRestrained: kept where they are. Saved with the game, so undone before every save
 	bool SetRestrained(RE::Actor* a_actor, bool a_on);
+
+	// at another game: Playable Pool's (playing or watching pool)
+	bool AtPool(RE::Actor* a_actor);
 	// Papyrus Actor.SetLookAt / ClearLookAt
 	bool LookAt(RE::Actor* a_actor, RE::TESObjectREFR* a_target);
 	bool ClearLookAt(RE::Actor* a_actor);
