@@ -499,6 +499,10 @@ namespace fr
 		if (!PkFrame(frame)) {
 			return;
 		}
+		if (!_animHad) {
+			_animHad = true;
+			log::info("poker: the cards and chips moved with the camera's update, once a frame");
+		}
 		_animAt = now;
 		PkTickCards(frame, dt);
 		PkTickMoves(frame, dt);
@@ -1561,7 +1565,13 @@ namespace fr
 			const auto  p = m.from + (m.to - m.from) * e;
 			const float up = m.t < 0.25f ? m.t / 0.25f : m.t > 0.8f ? (1.0f - m.t) / 0.2f : 1.0f;
 			NoFade(m.ref);
-			PlaceNode(ref.get(), ToWorld(a_frame, p.x, p.y, kFeltZ + p.z + up * 2.2f), m.yaw, false);
+			// moved as it is, turned as the game turned it: our own yaw matrix turned it the other way round from the
+			// game's, so a chip snapped round as it set off and again whenever the game put it back to its own
+			if (!m.haveRot) {
+				m.rot = ref->Get3D()->world.rotate;
+				m.haveRot = true;
+			}
+			PlaceRoot(ref.get(), ToWorld(a_frame, p.x, p.y, kFeltZ + p.z + up * 2.2f), m.rot);
 			if (m.t >= 1.0f && m.remove) {
 				Remove(m.ref);
 			}

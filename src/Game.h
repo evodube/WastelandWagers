@@ -375,6 +375,8 @@ namespace fr
 			float               dur{ 0.45f };
 			float               yaw{ 0.0f };
 			bool                remove{ true };
+			RE::NiMatrix3       rot{};            // (its turn as the game set it, kept as it moves)
+			bool                haveRot{ false };
 		};
 		// your sitting at the poker table, from buying in to cashing out
 		struct PkSession
@@ -439,6 +441,7 @@ namespace fr
 		std::chrono::steady_clock::time_point _animLast{};
 		std::chrono::steady_clock::time_point _animAt{};
 		bool                                  _animHave{ false };
+		bool                                  _animHad{ false };
 		std::atomic<std::int64_t> _afterTable{ 0 };  // (up from the poker table: the click or button that did it kept from the game until let go)
 		int               _pkYou{ -1 };       // your seat (sitting there, or away with it kept)
 		float             _camPitch{ -1.0f };  // the view's pitch at a poker table (below 0: straight down, the roulette layout)
