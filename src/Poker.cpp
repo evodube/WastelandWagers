@@ -460,6 +460,84 @@ namespace fr
 		_pk = PokerState{};
 	}
 
+	void Game::PkSweep(const Frame& a_frame)
+	{
+		// chips on the table that none of ours know of (left behind: a save made without our chips taken off first, a
+		// hand that ended some way they weren't cleared): gone. And the pot's chips checked against the pot
+		std::unordered_set<RE::TESFormID> ours;
+		auto add = [&](const RE::ObjectRefHandle& a_h) {
+			if (auto r = a_h.get()) {
+				ours.insert(r->GetFormID());
+			}
+		};
+		for (const auto& seat : _pk.stackChips) {
+			for (const auto& v : seat) {
+				std::ranges::for_each(v, add);
+			}
+		}
+		for (const auto& v : _pk.betChips) {
+			std::ranges::for_each(v, add);
+		}
+		for (const auto& v : _pk.landed) {
+			std::ranges::for_each(v, add);
+		}
+		std::ranges::for_each(_pk.potChips, add);
+		for (const auto& m : _pk.moves) {
+			add(m.ref);
+		}
+		std::vector<RE::TESObjectREFR*> strays;
+		util::ForEachLoadedCell([&](RE::TESObjectCELL* a_cell) {
+			a_cell->ForEachReferenceInRange(a_frame.origin, 110.0f * a_frame.scale, [&](RE::TESObjectREFR* a_ref) {
+				if (a_ref && !a_ref->IsDisabled() && !ours.contains(a_ref->GetFormID())) {
+					const auto* base = a_ref->GetObjectReference();
+					for (int d = 0; d < 4; ++d) {
+						if (base && base == Forms::Chip(d) && std::abs(a_ref->data.location.z - (a_frame.origin.z + kFeltZ * a_frame.scale)) < 30.0f) {
+							strays.push_back(a_ref);
+							break;
+						}
+					}
+				}
+				return RE::BSContainer::ForEachResult::kContinue;
+			});
+		});
+		if (!strays.empty()) {
+			log::warn("poker: {} chips on the table that aren't anyone's (left behind): taken off", strays.size());
+			for (auto* r : strays) {
+				auto h = r->GetHandle();
+				Remove(h);
+			}
+		}
+		// the pot's chips against the pot (what went in on the streets before this one), once they've all landed
+		if (_pk.inHand && _pk.phase != PkPhase::kShowdown && _pk.potShown >= 0) {
+			int pot = 0;
+			for (const auto& p : _pk.hand.players) {
+				pot += p.committed - p.bet;
+			}
+			int  shown = 0;
+			bool moving = false;
+			for (const auto& h : _pk.potChips) {
+				if (auto r = h.get()) {
+					shown += rl::kChipValues[ChipIndex(r.get())];
+					moving |= std::ranges::any_of(_pk.moves, [&](const PkChipMove& a_m) { return a_m.ref == h; });
+				}
+			}
+			if (!moving && shown != pot) {
+				log::warn("poker: the pot's chips come to {}, the pot's {}: the pot's chips made again", shown, pot);
+				for (auto& h : _pk.potChips) {
+					Remove(h);
+				}
+				_pk.potChips.clear();
+				_pk.potCount.fill(0);
+				std::uniform_real_distribution<float> spin(0.0f, 6.283f);
+				for (int v : rl::ChipsFor(pot)) {
+					const int  d = static_cast<int>(std::ranges::find(rl::kChipValues, v) - std::begin(rl::kChipValues));
+					const auto p = PotSpot(d, _pk.potCount[d]++);
+					_pk.potChips.push_back(Spawn(Forms::Chip(d), ToWorld(a_frame, p.x, p.y, kFeltZ + p.z), a_frame.yaw + spin(_rng)));
+				}
+			}
+		}
+	}
+
 	void Game::PkClearTable(bool a_cards)
 	{
 		for (auto& c : _pk.cards) {
@@ -766,6 +844,10 @@ namespace fr
 			PkTickCards(frame, a_dt);
 		}
 		PkMakeChips(frame);
+		if ((_pk.sweep -= a_dt) <= 0.0f) {
+			_pk.sweep = 2.0f;
+			PkSweep(frame);
+		}
 		if (!PkAnimating()) {
 			PkTickMoves(frame, a_dt);  // (when the camera's update isn't moving them: away from the table)
 			PkWatchChips(frame, a_dt, "tick");

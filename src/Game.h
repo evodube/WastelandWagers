@@ -452,6 +452,7 @@ namespace fr
 			std::vector<int>                                       winFive;           // the showdown's winning five (cards), its winner's two, who
 			std::array<int, 2>                                     winHole{ -1, -1 };
 			std::string                                            winWho, winName;
+			float                                                  sweep{ 0.0f };  // (seconds to the next look for stray chips)
 			int                                                    winnerSeat{ -1 };  // chips on their way in: the pot's stack after  // 1 you won, 2 you lost, 0 neither
 			int                                                    lifted{ 0 };  // your stack, back in your pocket over a save
 			bool                                                   peeking{ false };  // you're looking at your cards: they're turned up
@@ -516,6 +517,7 @@ namespace fr
 		void         PkRemember(const PkSeat& a_st, int a_change);  // a hand played at your table, for their memory
 		void         PkSessionEnd(int a_cashOut);              // your session's summary
 		void         PkSitDown(RE::TESObjectREFR* a_table);
+		void         PkSweep(const Frame& a_frame);
 		void         PkIdle(int a_seat, int a_kind);  // a settler's idle: 0 looking on, 1 thinking, 2 chips in, 3 won, 4 folded or lost
 		void         PkHoldMenuKeys(bool a_hold);
 		void         PkStandUp(bool a_cashOut = false);  // up from the table: your seat kept (or cashed out)
