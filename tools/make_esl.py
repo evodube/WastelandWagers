@@ -247,7 +247,7 @@ def build() -> bytes:
     own = 0x01000000  # our records come after the one master
     table = own | FIRST_ID
     acti = [activator(table, "fo4rouletteTable", "Roulette Table", "fo4roulette\\RouletteTable.nif",
-                      (-118, -72, 0, 118, 72, 63), "Play",
+                      (-118, -65, 0, 118, 65, 66), "Play",
                       0x001A03DD)]  # the vanilla pool table's preview framing (PoolTable01's PTRN): a table of much the same size
     stats = [stat(own | (FIRST_ID + 1), "fo4rouletteBall", "fo4roulette\\Ball.nif", bound=2)]
     for i, v in enumerate((1, 5, 25, 100)):

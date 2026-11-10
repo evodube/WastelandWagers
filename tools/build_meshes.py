@@ -35,6 +35,13 @@ TEMPLATE = r"C:\Users\Dan\Desktop\table\work\PoolTable01.nif"
 OUT = r"C:\Users\Dan\Desktop\table\work\Data"
 
 SCALE = 5.6  # (6.6 until 0.4.3; src/rl/Table.h kScale)
+# then (0.5.2) 10% narrower and 5% higher: across the table (Y) by WIDE, up (Z) by HIGH. The wheel stays round: within
+# WHEEL_R of its axis it's only moved (in Y, to where its centre goes), and between there and WHEEL_R + BLEND the
+# one way blends into the other (src/rl/Table.h kWide, kHigh)
+WIDE = 0.9
+HIGH = 1.05
+WHEEL_R = 7.2 * SCALE  # (the bowl reaches 7.1 from the axis; the table round it starts at 7.0 below the felt, 9.4 above)
+BLEND = 2.0 * SCALE
 ORIGIN = Vector((12.005, 3.755, -8.22))   # model units: footprint centre, floor
 BALL_R = 0.16 * SCALE
 TEX = "textures\\fo4roulette\\"
@@ -100,6 +107,26 @@ def make_material(tmpl, name, diffuse, normal, specular, spec_str=1.0, flags1=No
     return m
 
 
+def wheel_centre():
+    """the wheel's axis in the table's space, before narrowing (the model's origin)"""
+    return Vector((-ORIGIN.x * SCALE, -ORIGIN.y * SCALE, 0))
+
+
+def narrow(o):
+    """WIDE across and HIGH up, the wheel kept round (see WIDE)"""
+    c = wheel_centre()
+    for v in o.data.vertices:
+        p = v.co
+        d = math.hypot(p.x - c.x, p.y - c.y)
+        moved = p.y + (WIDE - 1.0) * c.y   # (the wheel: only moved)
+        scaled = p.y * WIDE                 # (the rest: narrower)
+        t = min(1.0, max(0.0, (d - WHEEL_R) / BLEND))
+        t = t * t * (3.0 - 2.0 * t)
+        p.y = moved + (scaled - moved) * t
+        p.z = p.z * HIGH
+    o.data.update()
+
+
 def import_model():
     with ctx():
         bpy.ops.wm.obj_import(filepath=OBJ, use_split_groups=True, forward_axis='NEGATIVE_Z', up_axis='Y')
@@ -108,6 +135,7 @@ def import_model():
         o.data.transform(o.matrix_world)
         o.matrix_world = Matrix.Identity(4)
         o.data.transform(xf)
+        narrow(o)
     return list(bpy.data.objects)
 
 
@@ -295,6 +323,7 @@ def frets(name, n):
 def to_table(o):
     """model units to the table's space, as import_model does"""
     o.data.transform(Matrix.Scale(SCALE, 4) @ Matrix.Translation(-ORIGIN))
+    narrow(o)
 
 
 def add_envmap(path, shape_names):
@@ -366,7 +395,8 @@ def main():
     parent_keep(l_eu, root)
     parent_keep(l_us, root)
 
-    centre = Vector((-ORIGIN.x * SCALE, -ORIGIN.y * SCALE, 0))
+    centre = wheel_centre()
+    centre.y *= WIDE  # (where narrow() moved the wheel to)
     rotors = {}
     metal_shapes = ["Diamonds"]
     for tag, mat, pockets in (("EU", m_eu, 37), ("US", m_us, 38)):
