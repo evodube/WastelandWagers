@@ -118,6 +118,7 @@ namespace fr
 				case 14: pk = 5; break;
 				case 1: pk = 6; break;
 				case 4: pk = 8; break;
+				case 2: pk = 9; break;
 				case 9: pk = 7; break;
 				default: break;
 				}

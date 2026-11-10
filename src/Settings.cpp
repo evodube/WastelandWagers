@@ -94,6 +94,8 @@ namespace fr
 		pkMaxPlayers = std::clamp(static_cast<int>(ReadInt(L"Poker", L"iMaxSettlers", pkMaxPlayers)), 0, 6);
 		pkNpcBuyIn = std::clamp(static_cast<int>(ReadInt(L"Poker", L"iSettlerBuyIn", pkNpcBuyIn)), pkBigBlind * 2, 100000);
 		pkThink = std::clamp(ReadFloat(L"Poker", L"fThinkTime", pkThink), 0.2f, 5.0f);
+		pkTopDown = ReadBool(L"Poker", L"bTopDown", pkTopDown);
+		pkTopHeight = std::clamp(ReadFloat(L"Poker", L"fTopHeight", pkTopHeight), 40.0f, 400.0f);
 		bettorEvery = std::clamp(ReadFloat(L"Bettors", L"fEvery", bettorEvery), 2.0f, 600.0f);
 		bettorRange = std::clamp(ReadFloat(L"Bettors", L"fRange", bettorRange), 200.0f, 6000.0f);
 		bettorMinRounds = std::clamp(static_cast<int>(ReadInt(L"Bettors", L"iMinRounds", bettorMinRounds)), 1, 50);

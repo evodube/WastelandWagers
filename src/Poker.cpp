@@ -23,7 +23,7 @@ namespace fr
 
 	namespace
 	{
-		constexpr float kFeltZ = 53.0f;
+		constexpr float kFeltZ = 63.0f;  // (build_poker.py: 53 at the model's proportions, raised 10)
 		constexpr float kFeltR = 20.0f;   // the felt: half its width (and its ends' radius)...
 		constexpr float kFeltC = 43.0f;   // ...and where its straight sides end
 		constexpr float kRailR = 45.0f;   // the rail's outside
@@ -317,14 +317,22 @@ namespace fr
 				_mouseDX = _mouseDY = 0.0;
 				yaw = baseYaw + _pkLookYaw;
 				pitch = basePitch + _pkLookPitch;
-				_camWant = eye;
-				_camYaw = yaw;
-				_camPitch = pitch;
+				if (_pkTopView) {
+					// from above the middle of the table, your side at the bottom of the screen (Q and E turn it)
+					_camWant = ToWorld(frame, 0.0, 0.0, kFeltZ + Settings::Get().pkTopHeight);
+					_camYaw = baseYaw + _pkLookYaw;
+					_camPitch = -1.0f;  // (straight down)
+				} else {
+					_camWant = eye;
+					_camYaw = yaw;
+					_camPitch = pitch;
+				}
 			}
 			// where the middle of the view meets the felt: on your cards, they're up for you (put back down when you
 			// look away); not at a showdown, when they're up for everyone anyway
-			bool over = false;
-			if (pitch > 0.05f) {
+			// (or the right mouse button held, in either view)
+			bool over = focus && (::GetAsyncKeyState(VK_RBUTTON) & 0x8000);
+			if (!over && !_pkTopView && pitch > 0.05f) {
 				const float  reach = 36.0f / std::tan(pitch);
 				const auto   at = eye + RE::NiPoint3{ std::sin(yaw) * reach, std::cos(yaw) * reach, -36.0f };
 				const auto   cards = ToWorld(frame, mid.x, mid.y, kFeltZ);
@@ -1078,6 +1086,7 @@ namespace fr
 			_pkLookYaw = _pkLookPitch = 0.0f;
 			_mouseDX = _mouseDY = 0.0;
 		}
+		_pkTopView = Settings::Get().pkTopDown;
 		_pkSeated = true;
 		BlockControls(true);
 		QuietNpcs(true);
@@ -1148,6 +1157,10 @@ namespace fr
 	void Game::PkKey(int a_key)
 	{
 		if (!_pkSeated || _pkYou < 0) {
+			return;
+		}
+		if (a_key == 9) {
+			_pkTopView = !_pkTopView;  // the view from your seat <-> from above
 			return;
 		}
 		if (a_key == 6 || a_key == 8) {
@@ -1252,8 +1265,8 @@ namespace fr
 				h.players[hi].stack + h.players[hi].bet);
 		} else {
 			auto table = _pk.table.get();
-			a_h.keys = std::format("ON YOUR TURN: {} FOLD · {} CHECK/CALL · {} RAISE · {} ALL IN    {} STEP AWAY · {} CASH OUT{}", key(s.keyChip[0]),
-				key(s.keyChip[1]), key(s.keyChip[2]), key(s.keyChip[3]), key(s.keyLeave), key(s.keyClear),
+			a_h.keys = std::format("ON YOUR TURN: {} FOLD · {} CHECK/CALL · {} RAISE · {} ALL IN    {} VIEW · {} STEP AWAY · {} CASH OUT{}",
+				key(s.keyChip[0]), key(s.keyChip[1]), key(s.keyChip[2]), key(s.keyChip[3]), key(s.keyView), key(s.keyLeave), key(s.keyClear),
 				table && IsKitTable(table.get()) ? std::format(" · {} PACK UP", key(s.keyPackUp)) : std::string());
 		}
 		// what's going on, in a line under the board
@@ -1268,10 +1281,10 @@ namespace fr
 			             : coming > 0 ? std::string("WAITING FOR PLAYERS TO GET TO THE TABLE")
 			                          : std::string("WAITING FOR SETTLERS TO JOIN · THE TABLE DEALS ONCE TWO ARE SEATED");
 		} else if (!a_h.pkYourTurn) {
-			a_h.pkHelp = hi >= 0 && !h.players[hi].folded ? "WAIT FOR YOUR TURN · LOOK DOWN AT YOUR CARDS TO SEE THEM"
+			a_h.pkHelp = hi >= 0 && !h.players[hi].folded ? "WAIT FOR YOUR TURN · LOOK DOWN AT YOUR CARDS (OR HOLD RIGHT MOUSE) TO SEE THEM"
 			                                               : "YOU'RE OUT OF THIS HAND · THE NEXT ONE DEALS YOU IN";
 		} else if (!_pk.peeking) {
-			a_h.pkHelp = "YOUR TURN · LOOK DOWN AT YOUR CARDS TO SEE THEM";
+			a_h.pkHelp = "YOUR TURN · LOOK DOWN AT YOUR CARDS (OR HOLD RIGHT MOUSE) TO SEE THEM";
 		}
 		a_h.log = _pk.log;
 		if (_pk.bannerAge < 5.0f && !_pk.bannerTitle.empty()) {

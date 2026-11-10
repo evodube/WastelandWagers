@@ -355,6 +355,7 @@ namespace fr
 		float             _camPitch{ -1.0f };  // the view's pitch at a poker table (below 0: straight down, the roulette layout)
 		float             _pkLookYaw{ 0.0f }, _pkLookPitch{ 0.0f };  // looking about from your poker seat (under _camMutex)
 		bool              _pkMenusHeld{ false };
+		bool              _pkTopView{ false };  // looking down on the poker table (V)
 		RE::BSTSmartPointer<RE::BSInputEnableLayer> _pkMenuLayer;
 
 		bool         PkFrame(Frame& a_out) const;

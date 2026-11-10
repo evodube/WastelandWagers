@@ -1,7 +1,7 @@
 """Builds the poker table and the 52 cards in Blender (with PyNifly), for Fallout 4.
 
     the table: Pieter Ferreira's "Poker Table" (Sketchfab, CC BY 4.0), with the few chips and cards modelled lying
-               on its felt taken off (the plugin deals its own). Scaled so the felt is 53 units (76 cm) up; origin on
+               on its felt taken off (the plugin deals its own). Scaled to the felt 53 units (76 cm) up, then its pedestal stretched so the felt's 63 up (90 cm, for standing); origin on
                the floor under the middle of the felt; X across the table (the chip tray, the dealer's place, at +X),
                Y along it, Z up. One convex collision body round it. -> Meshes\\fo4roulette\\PokerTable.nif
     the cards: a playing card each (56 x 89 mm, the art's 5:8, rounded corners), face up with its top towards +Y, origin in the middle of its
@@ -21,7 +21,9 @@ from mathutils import Matrix, Vector
 HERE = r"C:\Users\Dan\Desktop\table\work"
 POKER_OBJ = r"C:\Users\Dan\Desktop\poker table\latest poker table.obj"
 DATA = os.path.join(HERE, "Data")
-FELT_HEIGHT = 53.0                    # units from the floor to the felt
+FELT_HEIGHT = 53.0                    # the model's felt height at its own proportions (76 cm)...
+RAISE = 10.0                          # ...raised for standing players: the pedestal (below PEDESTAL_TOP) stretched, 63 units (90 cm)
+PEDESTAL_TOP = 44.0
 FELT_MODEL = 2.862                    # the felt's height in the model (Y up)
 CARD_W, CARD_H, CARD_T = 3.9, 6.24, 0.06  # the art's 5:8, 89 mm tall (a unit is 1.43 cm)
 CARD_R = 0.24                         # the corners' radius (3.4 mm)
@@ -79,6 +81,8 @@ def import_table():
     cy = (min(v.y for v in vs) + max(v.y for v in vs)) / 2
     k = FELT_HEIGHT / (FELT_MODEL - floor)
     o.data.transform(Matrix.Scale(k, 4) @ Matrix.Translation((-cx, -cy, -floor)))
+    for v in o.data.vertices:
+        v.co.z = v.co.z * (PEDESTAL_TOP + RAISE) / PEDESTAL_TOP if v.co.z < PEDESTAL_TOP else v.co.z + RAISE
     return o, len(drop), k
 
 

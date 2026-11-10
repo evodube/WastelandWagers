@@ -102,6 +102,9 @@ namespace fr::SettingsMenu
 						{ L"Poker", L"iMaxSettlers", "Most settlers at the table", Kind::kInt, &s.pkMaxPlayers, 0, 6, nullptr },
 						{ L"Poker", L"iSettlerBuyIn", "A settler's buy-in (most)", Kind::kInt, &s.pkNpcBuyIn, 20, 20000, nullptr },
 						{ L"Poker", L"fThinkTime", "Settlers' thinking time", Kind::kFloat, &s.pkThink, 0.2f, 5.0f, "%.1fx" },
+						{ L"Poker", L"bTopDown", "View from above", Kind::kBool, &s.pkTopDown, 0, 0, nullptr,
+							"start at the poker table looking down on it rather than from your seat (V switches either way at the table)" },
+						{ L"Poker", L"fTopHeight", "Height of the view from above", Kind::kFloat, &s.pkTopHeight, 40.0f, 400.0f, "%.0f" },
 					} },
 				{ "HUD & sound", "The HUD sizes itself to your screen height; the scale makes it bigger or smaller on top of that.",
 					{

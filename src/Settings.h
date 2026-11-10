@@ -55,6 +55,8 @@ namespace fr
 		int   pkMaxPlayers{ 5 };           // settlers at the table at once (up to 6)
 		int   pkNpcBuyIn{ 300 };           // the most a settler sits down with
 		float pkThink{ 1.0f };             // how long settlers think (x)
+		bool  pkTopDown{ false };          // the view from above the table rather than from your seat (V switches at the table)
+		float pkTopHeight{ 120.0f };       // ...that view's height over the felt
 
 		// [HUD]
 		float hudScale{ 1.4f };
