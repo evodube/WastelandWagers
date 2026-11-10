@@ -98,6 +98,10 @@ namespace fr
 		pkThink = std::clamp(ReadFloat(L"Poker", L"fThinkTime", pkThink), 0.2f, 5.0f);
 		pkTopDown = ReadBool(L"Poker", L"bTopDown", pkTopDown);
 		pkTopHeight = std::clamp(ReadFloat(L"Poker", L"fTopHeight", pkTopHeight), 40.0f, 400.0f);
+		pkTopShift = std::clamp(ReadFloat(L"Poker", L"fTopShift", pkTopShift), -40.0f, 60.0f);
+		pkSeatBack = std::clamp(ReadFloat(L"Poker", L"fSeatBack", pkSeatBack), 0.0f, 150.0f);
+		pkSeatHeight = std::clamp(ReadFloat(L"Poker", L"fSeatHeight", pkSeatHeight), 10.0f, 150.0f);
+		pkSeatAim = std::clamp(ReadFloat(L"Poker", L"fSeatAim", pkSeatAim), 0.0f, 120.0f);
 		bettorEvery = std::clamp(ReadFloat(L"Bettors", L"fEvery", bettorEvery), 2.0f, 600.0f);
 		bettorRange = std::clamp(ReadFloat(L"Bettors", L"fRange", bettorRange), 200.0f, 6000.0f);
 		bettorMinRounds = std::clamp(static_cast<int>(ReadInt(L"Bettors", L"iMinRounds", bettorMinRounds)), 1, 50);

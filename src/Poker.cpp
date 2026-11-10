@@ -308,8 +308,10 @@ namespace fr
 			const auto  mid = (a + b) * 0.5f;
 			const float baseYaw = HeadingOf(frame, -n.x, -n.y);
 			// (back far enough to see the rail in front of you)
-			const auto  eye = ToWorld(frame, mid.x + n.x * 42.0f, mid.y + n.y * 42.0f, kFeltZ + 46.0f);
-			const float basePitch = std::atan2(46.0f, 42.0f + 30.0f);  // (down onto the felt 30 in front of your cards)
+			const auto& cs = Settings::Get();
+			const float back = cs.pkSeatBack, up = cs.pkSeatHeight;
+			const auto  eye = ToWorld(frame, mid.x + n.x * back, mid.y + n.y * back, kFeltZ + up);
+			const float basePitch = std::atan2(up, back + cs.pkSeatAim);  // (down onto the felt that far in front of your cards)
 			const bool  focus = util::GameHasFocus();
 			const auto& ks = Settings::Get();
 			const bool  left = focus && ks.keyTurnLeft > 0 && (::GetAsyncKeyState(ks.keyTurnLeft) & 0x8000);
@@ -339,7 +341,7 @@ namespace fr
 				pitch = basePitch + _pkLookPitch;
 				if (_pkTopView) {
 					// from above the middle of the table, your side at the bottom of the screen (the turn keys turn it)
-					_camWant = ToWorld(frame, 0.0, 0.0, kFeltZ + Settings::Get().pkTopHeight);
+					_camWant = ToWorld(frame, n.x * cs.pkTopShift, n.y * cs.pkTopShift, kFeltZ + cs.pkTopHeight);
 					_camYaw = baseYaw + _pkLookYaw;
 					_camPitch = -1.0f;  // (straight down)
 				} else {
@@ -353,8 +355,8 @@ namespace fr
 			// (or the SHOW MY CARDS button, or the right mouse button held, in either view)
 			bool over = _pkShowCards || (focus && (::GetAsyncKeyState(VK_RBUTTON) & 0x8000));
 			if (!over && !_pkTopView && pitch > 0.05f) {
-				const float  reach = 46.0f / std::tan(pitch);
-				const auto   at = eye + RE::NiPoint3{ std::sin(yaw) * reach, std::cos(yaw) * reach, -46.0f };
+				const float  reach = up / std::tan(pitch);
+				const auto   at = eye + RE::NiPoint3{ std::sin(yaw) * reach, std::cos(yaw) * reach, -up };
 				const auto   cards = ToWorld(frame, mid.x, mid.y, kFeltZ);
 				over = std::hypot(at.x - cards.x, at.y - cards.y) < kCardW * 1.6f;
 			}

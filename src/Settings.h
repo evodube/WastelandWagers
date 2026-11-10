@@ -59,6 +59,10 @@ namespace fr
 		float pkThink{ 1.0f };             // how long settlers think (x)
 		bool  pkTopDown{ false };          // the view from above the table rather than from your seat (V switches at the table)
 		float pkTopHeight{ 108.0f };       // ...that view's height over the felt
+		float pkTopShift{ 0.0f };          // ...and how far it's moved towards your side from the middle of the table
+		float pkSeatBack{ 42.0f };         // the view from your seat: how far behind your cards
+		float pkSeatHeight{ 46.0f };       // ...how high over the felt
+		float pkSeatAim{ 30.0f };          // ...how far in front of your cards it looks
 
 		// [HUD]
 		float hudScale{ 0.9f };

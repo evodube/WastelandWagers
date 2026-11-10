@@ -104,7 +104,11 @@ namespace fr::SettingsMenu
 						{ L"Poker", L"fThinkTime", "Settlers' thinking time", Kind::kFloat, &s.pkThink, 0.2f, 5.0f, "%.1fx" },
 						{ L"Poker", L"bTopDown", "View from above", Kind::kBool, &s.pkTopDown, 0, 0, nullptr,
 							"start at the poker table looking down on it rather than from your seat (V switches either way at the table)" },
-						{ L"Poker", L"fTopHeight", "Height of the view from above", Kind::kFloat, &s.pkTopHeight, 40.0f, 400.0f, "%.0f" },
+						{ L"Poker", L"fSeatBack", "Seat view: distance behind your cards", Kind::kFloat, &s.pkSeatBack, 0.0f, 150.0f, "%.0f" },
+						{ L"Poker", L"fSeatHeight", "Seat view: height over the table", Kind::kFloat, &s.pkSeatHeight, 10.0f, 150.0f, "%.0f" },
+						{ L"Poker", L"fSeatAim", "Seat view: how far ahead it looks", Kind::kFloat, &s.pkSeatAim, 0.0f, 120.0f, "%.0f" },
+						{ L"Poker", L"fTopHeight", "View from above: height", Kind::kFloat, &s.pkTopHeight, 40.0f, 400.0f, "%.0f" },
+						{ L"Poker", L"fTopShift", "View from above: moved towards you", Kind::kFloat, &s.pkTopShift, -40.0f, 60.0f, "%.0f" },
 					} },
 				{ "HUD & sound", "The HUD sizes itself to your screen height; the scale makes it bigger or smaller on top of that.",
 					{
