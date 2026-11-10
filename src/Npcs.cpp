@@ -14,7 +14,7 @@ namespace fr
 {
 	namespace
 	{
-		constexpr float kArrived = 30.0f;        // this close to the spot: there
+		constexpr float kArrived = 12.0f;        // this close to the spot: there (then put exactly on it)
 		constexpr float kSettleIn = 2.5f;        // seconds standing at their spot before they start betting
 		constexpr float kAtSpot = 40.0f;         // ...and only while they're this close to it
 		constexpr float kStallResend = 6.0f;     // no closer in this long: the walk is sent again
@@ -352,10 +352,13 @@ namespace fr
 			case Seat::Step::kWalking:
 				if (WalkTo(actor, seat.walk, a_frame, spot, heading, a_dt, false, 40.0f)) {
 					seat.step = Seat::Step::kPlaying;
+					// (put exactly on their spot and turned to the table, always: a step put, their walk's last stride and its
+					// turn to face are cut off, where they'd turn hard while the table held them facing it: the spin the
+					// turning log showed on arriving, turning 100-180 degrees a second for a moment)
 					// (their walk package stays on, linked to the spot they're now on: its travel done, it holds them there.
 					// Unlinked, as it was, it went on travelling with nowhere to go: stepping and turning on the spot, the
 					// turning log showed, procedure 0 at speed 15)
-					if (auto marker = seat.walk.marker.get(); marker && Distance2D(actor->data.location, spot) > kSnap) {
+					if (auto marker = seat.walk.marker.get(); marker && Distance2D(actor->data.location, spot) > 0.5f) {
 						Npc::MoveTo(actor, marker.get());  // stopped short (maybe at someone's elbow): onto their own spot
 					}
 					seat.nextIdle = std::uniform_real_distribution<float>(4.0f, 10.0f)(_rng);

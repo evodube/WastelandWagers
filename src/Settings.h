@@ -26,6 +26,7 @@ namespace fr
 		int keyPackUp{ 0x50 };   // P: at a table set up from a kit, pack it back into the kit
 		int keyTurnLeft{ 0x51 };  // Q: turn the view left at the poker table
 		int keyTurnRight{ 0x45 }; // E
+		int keyZoom{ 0x5A };      // Z: poker, held: a close look at the board (the button keeps it)
 		std::array<int, 4> keyChip{ 0x31, 0x32, 0x33, 0x34 };  // 1-4: the 1, 5, 25 and 100 chips
 
 		// [Table]
@@ -44,6 +45,7 @@ namespace fr
 		bool  bettors{ true };
 		int   maxBettors{ 4 };
 		bool  bettorIdles{ true };         // they cheer, clap, shake their heads, look the layout over
+		bool  logChips{ true };            // log the poker table's chips: moves, and anything else moving, hiding or fading them ([chip])
 		bool  logTurning{ true };          // log what settlers held at a table are doing when they turn (fo4roulette.log, [turn])
 		float bettorEvery{ 12.0f };        // seconds between looking for someone to come over
 		float bettorRange{ 1500.0f };      // ...within this far of the table

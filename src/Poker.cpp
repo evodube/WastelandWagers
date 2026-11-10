@@ -485,6 +485,137 @@ namespace fr
 	// work (the hand, the settlers, what's made and what goes) is the task each frame queues from the render thread,
 	// which doesn't keep step: some frames it ran twice and some not at all, so a chip on the move went in little jumps
 	// (and opening a menu and closing it again put it back in step for a while)
+	// ---------------------------------------------------------------- the chip log ([chip], bLogChips)
+	// Every frame, every chip on the table: where its 3D is against where it was last frame (and, for one on the
+	// move, where it should be), whether its 3D was swapped for another, hidden, or faded. A chip that moves when
+	// nothing of ours moved it, or jumps on its way, or flickers out, says so (at most 30 lines a second, 3000 a
+	// session)
+	namespace
+	{
+		struct ChipSeen
+		{
+			RE::NiPoint3   pos;
+			RE::NiAVObject* root{ nullptr };
+			bool           culled{ false };
+			float          fade{ 1.0f };
+			std::uint32_t  frame{ 0 };
+		};
+		std::unordered_map<RE::TESFormID, ChipSeen> g_chipSeen;
+		std::uint32_t                                g_chipFrame = 0;
+		int                                          g_chipLines = 0;
+		int                                          g_chipThisSecond = 0;
+		std::chrono::steady_clock::time_point        g_chipSecond{};
+
+		bool ChipLog()
+		{
+			const auto now = std::chrono::steady_clock::now();
+			if (now - g_chipSecond > std::chrono::seconds(1)) {
+				g_chipSecond = now;
+				g_chipThisSecond = 0;
+			}
+			if (g_chipLines >= 3000 || g_chipThisSecond >= 30) {
+				return false;
+			}
+			++g_chipLines;
+			++g_chipThisSecond;
+			return true;
+		}
+	}
+
+	void Game::PkWatchChips(const Frame& a_frame, float a_dt, const char* a_from)
+	{
+		if (!Settings::Get().logChips) {
+			return;
+		}
+		++g_chipFrame;
+		std::unordered_map<RE::TESFormID, const PkChipMove*> moving;
+		for (const auto& m : _pk.moves) {
+			if (auto r = m.ref.get()) {
+				moving[r->GetFormID()] = &m;
+			}
+		}
+		auto watch = [&](const RE::ObjectRefHandle& a_h, const char* a_where) {
+			auto ref = a_h.get();
+			if (!ref) {
+				return;
+			}
+			auto*       root = ref->Get3D();
+			const auto  id = ref->GetFormID();
+			auto        it = g_chipSeen.find(id);
+			const bool  isNew = it == g_chipSeen.end();
+			auto&       seen = g_chipSeen[id];
+			if (!root) {
+				if (!isNew && seen.root && ChipLog()) {
+					log::info("[chip] {:08X} ({}): its 3D is gone ({})", id, a_where, a_from);
+				}
+				seen.root = nullptr;
+				return;
+			}
+			const auto  pos = root->world.translate;
+			const bool  culled = root->GetAppCulled();
+			float       fade = 1.0f;
+			if (auto* f = root->IsFadeNode()) {
+				fade = f->currentFade;
+			}
+			const auto mv = moving.find(id);
+			const bool onTheMove = mv != moving.end() && mv->second->delay <= 0.0f;
+			if (isNew) {
+				if (ChipLog()) {
+					log::info("[chip] {:08X} ({}): there, at ({:.2f}, {:.2f}, {:.2f}){}{}", id, a_where, pos.x, pos.y, pos.z, culled ? ", hidden" : "",
+						fade < 1.0f ? std::format(", faded {:.2f}", fade) : std::string());
+				}
+			} else {
+				const float d = (pos - seen.pos).Length();
+				if (seen.root && seen.root != root && ChipLog()) {
+					log::info("[chip] {:08X} ({}): its 3D was swapped for another ({})", id, a_where, a_from);
+				}
+				if (culled != seen.culled && ChipLog()) {
+					log::info("[chip] {:08X} ({}): {} ({})", id, a_where, culled ? "hidden" : "shown again", a_from);
+				}
+				if (fade < 0.99f && (seen.fade >= 0.99f || g_chipFrame % 30 == 0) && ChipLog()) {
+					log::info("[chip] {:08X} ({}): fading, {:.2f} ({})", id, a_where, fade, a_from);
+				}
+				if (!onTheMove && d > 0.01f && ChipLog()) {
+					log::info("[chip] {:08X} ({}): moved {:.3f} with nothing of ours moving it, to ({:.2f}, {:.2f}, {:.2f}), {} frames since last seen ({})",
+						id, a_where, d, pos.x, pos.y, pos.z, g_chipFrame - seen.frame, a_from);
+				}
+				if (onTheMove) {
+					const auto& m = *mv->second;
+					const float span = (m.to - m.from).Length() * a_frame.scale;
+					const float step = span / std::max(0.05f, m.dur) * std::max(a_dt, 1.0f / 240.0f) * 2.5f + 2.5f;  // (the most a frame should move it, with the lift)
+					if (d > step && ChipLog()) {
+						log::info("[chip] {:08X} ({}): jumped {:.2f} in one frame (the most expected {:.2f}), t {:.2f}, dt {:.4f} ({})", id, a_where, d, step, m.t,
+							a_dt, a_from);
+					}
+				}
+			}
+			seen.pos = pos;
+			seen.root = root;
+			seen.culled = culled;
+			seen.fade = fade;
+			seen.frame = g_chipFrame;
+		};
+		for (int i = 0; i < kPkSeats; ++i) {
+			for (const auto& col : _pk.stackChips[i]) {
+				for (const auto& h : col) {
+					watch(h, "stack");
+				}
+			}
+			for (const auto& h : _pk.betChips[i]) {
+				watch(h, "bet");
+			}
+			for (const auto& h : _pk.landed[i]) {
+				watch(h, "won");
+			}
+		}
+		for (const auto& h : _pk.potChips) {
+			watch(h, "pot");
+		}
+		for (const auto& m : _pk.moves) {
+			watch(m.ref, "moving");
+		}
+	}
+
 	void Game::PkAnimate()
 	{
 		const auto now = std::chrono::steady_clock::now();
@@ -506,6 +637,7 @@ namespace fr
 		_animAt = now;
 		PkTickCards(frame, dt);
 		PkTickMoves(frame, dt);
+		PkWatchChips(frame, dt, "camera update");
 	}
 
 	bool Game::PkAnimating() const
@@ -564,6 +696,7 @@ namespace fr
 		PkMakeChips(frame);
 		if (!PkAnimating()) {
 			PkTickMoves(frame, a_dt);  // (when the camera's update isn't moving them: away from the table)
+			PkWatchChips(frame, a_dt, "tick");
 		}
 		for (const auto& seat : _pk.stackChips) {
 			for (const auto& v : seat) {
@@ -607,14 +740,15 @@ namespace fr
 					allIn |= p.allIn && !p.folded;
 				}
 			}
-			const bool  pushIn = _pk.inHand && (_pk.boardShown >= 5 || allIn || _pk.phase == PkPhase::kShowdown);
+			const bool  pushIn = false;  // (no push in nor drift at the river, an all in or the showdown: the view holds still)
+			(void)allIn;
 			_pk.pushLevel += ((pushIn ? 1.0f : 0.0f) - _pk.pushLevel) * std::min(1.0f, a_dt * (pushIn ? 2.2f : 1.2f));
 			const float push = std::clamp(_pk.pushLevel, 0.0f, 1.0f);
 			const float pe = push * push * (3.0f - 2.0f * push);
 			const float back = cs.pkSeatBack * (1.0f - 0.25f * pe), up = cs.pkSeatHeight * (1.0f - 0.15f * pe);
 			{
 				float target = 0.0f;
-				if (_pk.phase == PkPhase::kShowdown && _pk.winnerSeat >= 0 && _pk.winnerSeat != _pkYou && _pk.potHold > 0.0f) {
+				if (false) {
 					const auto w = (HoleSpot(_pk.winnerSeat, 0) + HoleSpot(_pk.winnerSeat, 1)) * 0.5f;
 					const float to = HeadingOf(frame, w.x - mid.x, w.y - mid.y);
 					target = std::clamp(util::AngleDiff(to, baseYaw) * 0.4f, -0.6f, 0.6f);
@@ -653,7 +787,17 @@ namespace fr
 				_mouseDX = _mouseDY = 0.0;
 				yaw = baseYaw + _pkLookYaw + _pk.driftYaw;
 				pitch = basePitch + _pkLookPitch;
-				if (_pkTopView) {
+				const bool zoomKey = focus && ks.keyZoom > 0 && (::GetAsyncKeyState(ks.keyZoom) & 0x8000);
+				if (_pkZoom || zoomKey) {
+					// the zoom: in close over the board, looking down at it from your side of it
+					const auto   b = BoardSpot(2);
+					RE::NiPoint3 dir{ mid.x - b.x, mid.y - b.y, 0.0f };
+					const float  l = std::max(1.0f, std::hypot(dir.x, dir.y));
+					dir = dir * (1.0f / l);
+					_camWant = ToWorld(frame, b.x + dir.x * 13.0f, b.y + dir.y * 13.0f, kFeltZ + 24.0f);
+					_camYaw = HeadingOf(frame, -dir.x, -dir.y) + _pkLookYaw;
+					_camPitch = std::atan2(24.0f, 13.0f);
+				} else if (_pkTopView) {
 					// from above the middle of the table, your side at the bottom of the screen (the turn keys turn it)
 					_camWant = ToWorld(frame, n.x * cs.pkTopShift, n.y * cs.pkTopShift, kFeltZ + cs.pkTopHeight);
 					_camYaw = baseYaw + _pkLookYaw;
@@ -912,10 +1056,13 @@ namespace fr
 			case Seat::Step::kWalking:
 				if (WalkTo(actor, st.walk, a_frame, spot, heading, a_dt, false, 15.0f)) {
 					st.step = Seat::Step::kPlaying;
+					// (put exactly on their spot and turned to the table, always: a step put, their walk's last stride and its
+					// turn to face are cut off, where they'd turn hard while the table held them facing it: the spin the
+					// turning log showed on arriving, turning 100-180 degrees a second for a moment)
 					// (their walk package stays on, linked to the spot they're now on: its travel done, it holds them there.
 					// Unlinked, as it was, it went on travelling with nowhere to go: stepping and turning on the spot, the
 					// turning log showed, procedure 0 at speed 15)
-					if (auto marker = st.walk.marker.get(); marker && Distance2D(actor->data.location, spot) > kSnap) {
+					if (auto marker = st.walk.marker.get(); marker && Distance2D(actor->data.location, spot) > 0.5f) {
 						Npc::MoveTo(actor, marker.get());
 					}
 				}
@@ -1994,6 +2141,10 @@ namespace fr
 			_pkTopView = !_pkTopView;  // the view from your seat <-> from above
 			return;
 		}
+		if (a_key == 12) {
+			_pkZoom = !_pkZoom;  // a close look at the board, kept (the zoom key does it while it's held)
+			return;
+		}
 		if (a_key == 10) {
 			_pkShowCards = !_pkShowCards;
 			return;
@@ -2133,6 +2284,7 @@ namespace fr
 		}
 		a_h.pkPeek = _pk.peeking || _pkShowCards;
 		a_h.pkTop = _pkTopView;
+		a_h.pkZoom = _pkZoom;
 		a_h.pkAge = _pk.seatedAge;
 		a_h.pkPad = _padUsed.load();
 		if (auto table = _pk.table.get()) {

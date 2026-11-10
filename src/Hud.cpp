@@ -390,7 +390,7 @@ namespace fr::Hud
 		constexpr float kPkRow = 46.0f;
 		constexpr float kPkBottom = 66.0f;  // the button row's room along the bottom
 		constexpr float kPkSideW = 170.0f;  // the column of buttons on the right
-		constexpr float kPkSideH = 5 * 34.0f;
+		constexpr float kPkSideH = 6 * 34.0f;
 
 		float PokerStatusW(const Game::HudState& a_st)
 		{
@@ -618,7 +618,7 @@ namespace fr::Hud
 			next(3, tag("(Y)", allIn), wAll, false, Rgba(170, 100, 20));
 			}
 			// the table's buttons, bottom right: in the corner, or above the action buttons when they'd run into them
-			const int   nSide = a_st.pkKit ? 5 : 4;
+			const int   nSide = a_st.pkKit ? 6 : 5;
 			const float sx = a_v.w - kPkMargin - kPkSideW;
 			const float barRight = a_v.w * 0.5f + w * k * 0.5f;
 			const float sideFoot = barRight + gap < sx ? a_v.h - 12.0f : a_v.h - kPkBottom - 8.0f;
@@ -629,6 +629,7 @@ namespace fr::Hud
 			};
 			side(10, tag("(RS)", a_st.pkPeek ? "HIDE MY CARDS" : "SHOW MY CARDS"), a_st.pkHole[0] >= 0);
 			side(9, tag("(START)", a_st.pkTop ? "VIEW: MY SEAT" : "VIEW: FROM ABOVE"), true);
+			side(12, a_st.pkZoom ? "ZOOM OUT" : "ZOOM ON THE BOARD", true);
 			side(6, tag("(BACK)", "STEP AWAY"), true);
 			side(8, tag("(LS)", "CASH OUT"), true);
 			if (a_st.pkKit) {

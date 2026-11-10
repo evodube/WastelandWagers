@@ -74,7 +74,7 @@ namespace fr
 		void BeforeFreeCameraUpdate(RE::FreeCameraState* a_free);
 		void OnFreeCameraLook(RE::FreeCameraState* a_free, const RE::BSTPoint2<float>& a_before);
 		void OnFreeCameraUpdate(RE::FreeCameraState* a_free);
-		void PkAnimate();  // the poker table's cards and chips moved, once a frame (from the camera's update)
+		void PkAnimate();
 		bool FreeCameraTranslation(const RE::FreeCameraState* a_free, RE::NiPoint3& a_out);
 
 		struct HudLine
@@ -143,6 +143,7 @@ namespace fr
 			bool                  pkKit{ false };
 			bool                  pkPeek{ false };
 			bool                  pkTop{ false };
+			bool                  pkZoom{ false };
 			float                 pkAge{ 99.0f };     // seconds since you sat down (the panels slide in)
 			bool                  pkPad{ false };     // a controller in use: its buttons on the HUD
 			std::string           pkHelp;             // what's happening / what to do, under the board
@@ -437,6 +438,7 @@ namespace fr
 		};
 		PokerState        _pk;
 		std::atomic<bool> _pkSeated{ false };
+		bool              _pkZoom{ false };  // (the zoom on the board, kept on)
 		bool                                  PkAnimating() const;  // (the camera's update is moving them)
 		std::chrono::steady_clock::time_point _animLast{};
 		std::chrono::steady_clock::time_point _animAt{};
@@ -480,6 +482,7 @@ namespace fr
 		void         PkSound(Audio::Bank a_bank, float a_gain);  // a sound at the poker table
 		void         PkThrowChips(std::vector<RE::ObjectRefHandle>& a_chips, float a_delay);  // into the pot, onto its stack of each colour
 		void         PkTickMoves(const Frame& a_frame, float a_dt);
+		void         PkWatchChips(const Frame& a_frame, float a_dt, const char* a_from);  // (the chip log)
 		void         PkMuck(int a_seat);  // a fold: their cards slide back to the dealer (-2: every card on the table)
 		void         PkTickCards(const Frame& a_frame, float a_dt);
 		void         PkMakeChips(const Frame& a_frame);
