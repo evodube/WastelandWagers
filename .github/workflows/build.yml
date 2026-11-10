@@ -29,6 +29,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+          fetch-depth: 0  # (the history: each file dated by its last commit, below)
 
       - uses: xmake-io/github-action-setup-xmake@v1
         with:
@@ -58,11 +59,13 @@ jobs:
           key: xmake-build-${{ runner.os }}-${{ steps.clib.outputs.sha }}-${{ github.sha }}
           restore-keys: xmake-build-${{ runner.os }}-${{ steps.clib.outputs.sha }}-
 
-      - name: Date CommonLibF4's sources in the past
+      - name: Date the sources (CommonLibF4's in the past, ours by their last commit)
         shell: pwsh
         run: |
           $old = Get-Date "2020-01-01"
           Get-ChildItem -Recurse -File lib/commonlibf4 | ForEach-Object { $_.LastWriteTime = $old }
+          pip install --quiet git-restore-mtime
+          git restore-mtime --quiet src xmake.lua
 
       - name: Configure
         run: xmake f -m releasedbg -y
