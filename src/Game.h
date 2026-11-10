@@ -97,6 +97,13 @@ namespace fr
 			int                  hoverPays{ 0 };
 			int                  hoverMine{ 0 };
 			int                  hoverAll{ 0 };        // everyone's caps on it
+			struct MyBet
+			{
+				std::string name;    // "SPLIT 17/20"
+				int         amount{ 0 };
+				int         won{ -1 };  // -1 not settled, 0 lost, else what it paid
+			};
+			std::vector<MyBet>   myBets;               // your bets on the layout
 			float                spinIn{ -1.0f };      // seconds before the wheel spins itself; -1 no bets yet
 			bool                 spinning{ false };
 			std::vector<std::string> players;          // the NPCs at the table, "PIPER  120 CAPS"

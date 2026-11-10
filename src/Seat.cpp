@@ -535,6 +535,11 @@ namespace fr
 				}
 			}
 		}
+		for (const auto& s : _t.stakes) {
+			if (s.owner == 0 && s.amount > 0) {
+				h.myBets.push_back({ s.bet.Name(), s.amount, s.won });
+			}
+		}
 		h.spinIn = _t.phase == Phase::kBetting ? _t.spinIn : -1.0f;
 		h.spinning = _t.phase != Phase::kBetting;
 		for (const auto& seat : _t.seats) {

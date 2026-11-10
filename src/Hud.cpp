@@ -338,6 +338,43 @@ namespace fr::Hud
 			Print(a_v, Mono(), tail, cx, y + 38, 13, kDim, 0, 1.5f, Align::kCentre);
 		}
 
+		// your bets, top middle: what each is on and how much (won in green, lost in red once the ball's in)
+		void MyBets(const View& a_v, const Game::HudState& a_st)
+		{
+			if (a_st.myBets.empty()) {
+				return;
+			}
+			constexpr int   kCols = 2, kRows = 3;
+			constexpr float kRow = 17.0f, colW = 190.0f, pad = 14.0f;
+			const int       n = static_cast<int>(a_st.myBets.size());
+			const int       cols = n > kRows ? kCols : 1;
+			const int       shown = std::min(n, kCols * kRows);
+			const int       rows = std::min(n, kRows);
+			const float     w = colW * static_cast<float>(cols) + pad * 2.0f;
+			const float     h = 30.0f + kRow * static_cast<float>(rows) + 8.0f;
+			const float     x = a_v.w * 0.5f - w * 0.5f, y = 24.0f;
+			Chamfer(a_v, x, y, w, h, 10.0f, kPanel, kEdge);
+			int total = 0;
+			for (const auto& b : a_st.myBets) {
+				total += b.amount;
+			}
+			Print(a_v, Mono(), std::format("YOUR BETS · {}", Commas(total)), x + w * 0.5f, y + 8.0f, 12, kDim, 0, 2.0f, Align::kCentre);
+			for (int i = 0; i < shown; ++i) {
+				const auto& b = a_st.myBets[i];
+				const bool  more = i == shown - 1 && n > shown;
+				const float cx = x + pad + colW * static_cast<float>(i / kRows), cy = y + 28.0f + kRow * static_cast<float>(i % kRows);
+				if (more) {
+					Print(a_v, Mono(), std::format("+{} MORE", n - shown + 1), cx, cy, 12, kDim, 0, 1.0f);
+					continue;
+				}
+				const ImU32 col = b.won > 0 ? kBright : b.won == 0 ? kRedText : kText;
+				const float size = std::min(12.0f, 12.0f * (colW - 70.0f) / std::max(1.0f, TextWidth(Mono(), b.name, 12, 1.0f)));
+				Print(a_v, Mono(), b.name, cx, cy, size, col, 0, 1.0f);
+				const std::string amt = b.won > 0 ? std::format("+{}", Commas(b.won)) : Commas(b.amount);
+				Print(a_v, Mono(), amt, cx + colW - 14.0f, cy, 12, col, 0, 1.0f, Align::kRight);
+			}
+		}
+
 		// the key hints, in a strip along the bottom
 		void Keys(const View& a_v, const Game::HudState& a_st)
 		{
@@ -872,6 +909,7 @@ namespace fr::Hud
 			Banner(v, st);
 			if (st.seated) {
 				Status(v, st);
+				MyBets(v, st);
 				Hover(v, st);
 				RouletteButtons(v, st, viewport);
 				Log(v, st, v.h - 140.0f);
