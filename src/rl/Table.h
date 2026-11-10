@@ -10,8 +10,8 @@ namespace rl::table
 	inline constexpr double kScale = 5.6;  // (6.6 until 0.4.3: a table as high as the poker table's, 85% the size)
 
 	// the wheel
-	inline constexpr double kWheelX = -79.233;
-	inline constexpr double kWheelY = -24.783;
+	inline constexpr double kWheelX = -79.233 * kScale / 6.6;  // (build_meshes.py's wheel_centre)
+	inline constexpr double kWheelY = -24.783 * kScale / 6.6;
 	inline constexpr double kBallRadius = 0.16 * kScale;
 	inline constexpr double kPocketInner = 2.83 * kScale;    // the pocket ring (the pockets' floor)
 	inline constexpr double kPocketOuter = 3.73 * kScale;
