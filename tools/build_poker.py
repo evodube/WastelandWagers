@@ -19,7 +19,7 @@ import bpy
 from mathutils import Matrix, Vector
 
 HERE = r"C:\Users\Dan\Desktop\table\work"
-OBJ = r"C:\Users\Dan\Desktop\poker table\latest poker table.obj"
+POKER_OBJ = r"C:\Users\Dan\Desktop\poker table\latest poker table.obj"
 DATA = os.path.join(HERE, "Data")
 FELT_HEIGHT = 53.0                    # units from the floor to the felt
 FELT_MODEL = 2.862                    # the felt's height in the model (Y up)
@@ -36,9 +36,11 @@ TEX = "textures\\fo4roulette\\"
 
 
 def import_table():
+    before = set(bpy.data.objects)
     with ctx():
-        bpy.ops.wm.obj_import(filepath=OBJ, forward_axis='NEGATIVE_Z', up_axis='Y')
-    o = [x for x in bpy.data.objects if x.type == 'MESH'][0]
+        bpy.ops.wm.obj_import(filepath=POKER_OBJ, forward_axis='NEGATIVE_Z', up_axis='Y')
+    # (POKER_OBJ: build_meshes.py has its own OBJ, the roulette table)
+    o = next(x for x in bpy.data.objects if x.type == 'MESH' and x not in before)
     o.data.transform(o.matrix_world)
     o.matrix_world = Matrix.Identity(4)
     # the chips and cards lying on the felt: off (single-face cards, and the little chip stacks in the middle; the
