@@ -68,6 +68,7 @@ namespace fr
 		static void Revert(const F4SE::SerializationInterface* a_intfc);
 
 		// camera hooks (CameraHook.cpp)
+		RE::TESObjectREFR* PkChairTable(const RE::TESObjectREFR* a_ref) const;  // one of the poker table's chairs: its table
 		bool AtATable() const { return _seated.load() || _pkSeated.load(); }  // sitting at a roulette or poker table
 		bool SwallowButton(const RE::ButtonEvent* a_event);  // a menu key that's ours at the poker table (Q, E, the workshop's)
 		bool OnLookMouse(const RE::MouseMoveEvent* a_event);
@@ -516,7 +517,6 @@ namespace fr
 		void         PkRemember(const PkSeat& a_st, int a_change);  // a hand played at your table, for their memory
 		void         PkSessionEnd(int a_cashOut);              // your session's summary
 		void         PkSitDown(RE::TESObjectREFR* a_table);
-		RE::TESObjectREFR* PkChairTable(const RE::TESObjectREFR* a_ref) const;  // one of the poker table's chairs: its table
 		void         PkIdle(int a_seat, int a_kind);  // a settler's idle: 0 looking on, 1 thinking, 2 chips in, 3 won, 4 folded or lost
 		void         PkHoldMenuKeys(bool a_hold);
 		void         PkStandUp(bool a_cashOut = false);  // up from the table: your seat kept (or cashed out)
