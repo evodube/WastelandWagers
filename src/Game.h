@@ -368,6 +368,7 @@ namespace fr
 			std::string                                            bannerTitle;
 			std::string                                            bannerSub;
 			float                                                  bannerAge{ 99.0f };
+			int                                                    bannerTone{ 0 };  // 1 you won, 2 you lost, 0 neither
 			int                                                    lifted{ 0 };  // your stack, back in your pocket over a save
 			bool                                                   peeking{ false };  // you're looking at your cards: they're turned up
 		};

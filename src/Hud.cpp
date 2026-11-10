@@ -470,15 +470,21 @@ namespace fr::Hud
 			if (a_st.banner == 0) {
 				return;
 			}
+			// green when you won, red when you lost, plain when it wasn't your hand
+			const bool  lost = a_st.banner == 3;
+			const bool  won = a_st.banner == 2;
 			const float alpha = std::min(1.0f, a_st.bannerAge * 4.0f) * std::clamp((5.0f - a_st.bannerAge) / 0.6f, 0.0f, 1.0f);
 			const float w = std::max({ 380.0f, TextWidth(Title(), a_st.bannerTitle, 28, 3.0f) + 60.0f, TextWidth(Mono(), a_st.bannerSub, 14, 2.0f) + 60.0f });
 			const float cx = a_v.w * 0.5f, y = a_v.h * 0.42f - 46.0f;
-			Chamfer(a_v, cx - w * 0.5f, y, w, 92, 16, Fade(kPanel, alpha), Fade(kEdge, alpha));
-			Print(a_v, Title(), a_st.bannerTitle, cx, y + 12, 28, Fade(kBright, alpha), Fade(kGlow, alpha), 3.0f, Align::kCentre);
+			const ImU32 edge = lost ? Rgba(255, 110, 90, 0.7f) : won ? kBright : kEdge;
+			Chamfer(a_v, cx - w * 0.5f, y, w, 92, 16, Fade(lost ? Rgba(30, 6, 6, 0.8f) : kPanel, alpha), Fade(edge, alpha));
+			Print(a_v, Title(), a_st.bannerTitle, cx, y + 12, 28, Fade(lost ? kRedText : won ? kBright : kText, alpha),
+				Fade(lost ? kRedGlow : won ? kGlow : 0, alpha), 3.0f, Align::kCentre);
 			if (!a_st.bannerSub.empty()) {
-				Print(a_v, Mono(), a_st.bannerSub, cx, y + 58, 14, Fade(kText, alpha), 0, 2.0f, Align::kCentre);
+				Print(a_v, Mono(), a_st.bannerSub, cx, y + 58, 14, Fade(lost ? kRedText : kText, alpha), 0, 2.0f, Align::kCentre);
 			}
 		}
+
 
 		// the log, bottom left: as wide as the room left of your cards
 		void PokerLog(const View& a_v, const Game::HudState& a_st)

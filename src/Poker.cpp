@@ -848,6 +848,14 @@ namespace fr
 				won[w] += share;
 			}
 		}
+		// (this hand's banner: the last one's was never cleared, so an old "YOU WIN" kept coming back)
+		_pk.bannerTitle.clear();
+		_pk.bannerSub.clear();
+		_pk.bannerTone = 0;
+		bool youIn = false;
+		for (const auto& st : _pk.seats) {
+			youIn |= st.used && st.you && st.hi >= 0;
+		}
 		std::string youResult;
 		for (int i = 0; i < kPkSeats; ++i) {
 			const auto& st = _pk.seats[i];
@@ -863,6 +871,7 @@ namespace fr
 			}
 			if (st.you) {
 				youResult = "won";
+				_pk.bannerTone = 1;
 			}
 			PkIdle(i, 3);
 		}
@@ -873,6 +882,9 @@ namespace fr
 					PkIdle(i, 4);  // shown down and lost
 				}
 			}
+		}
+		if (youIn && youResult.empty()) {
+			_pk.bannerTone = 2;  // you were in the hand and didn't take any of it: the banner in red
 		}
 		_pk.bannerAge = 0.0f;
 		Audio::PlayUI(Audio::Bank::kChip, 0.9f);
@@ -1336,7 +1348,7 @@ namespace fr
 			a_h.pkMaxRaise = h.MaxRaiseTo(hi);
 		}
 		if (_pk.bannerAge < 5.0f && !_pk.bannerTitle.empty()) {
-			a_h.banner = 2;
+			a_h.banner = _pk.bannerTone == 1 ? 2 : _pk.bannerTone == 2 ? 3 : 4;  // you won / you lost / not yours
 			a_h.bannerTitle = _pk.bannerTitle;
 			a_h.bannerSub = _pk.bannerSub;
 			a_h.bannerAge = _pk.bannerAge;
