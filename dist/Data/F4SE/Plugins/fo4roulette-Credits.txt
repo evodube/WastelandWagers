@@ -1,0 +1,34 @@
+Real Roulette (fo4roulette): credits and licences for the models it's built from
+
+The tables' and cards' meshes and textures in Meshes\fo4roulette and Textures\fo4roulette are made from these models,
+each under Creative Commons Attribution 4.0 (CC BY 4.0, https://creativecommons.org/licenses/by/4.0/), and are shared
+under the same licence. Changes for the game: scaled, split into parts, given collision, textures redone or re-encoded.
+
+Roulette table
+  "Roulette Table 2" by dudzy
+  https://sketchfab.com/3d-models/roulette-table-2-downloadable-b1d33eebb4f54b8aa250be2f49e87fbb
+  CC Attribution (CC BY 4.0)
+
+Poker table
+  "Poker Table" by Pieter Ferreira
+  https://sketchfab.com/3d-models/poker-table-a48473a5ae7c437496a7aa388f8c458b
+  CC Attribution (CC BY 4.0)
+
+Blackjack table
+  "Blackjack Table" by ddemon26
+  https://sketchfab.com/3d-models/blackjack-table-27a26194c5cf45688d0863289aec0d1d
+  CC Attribution (CC BY 4.0)
+
+Playing cards
+  "Playing Cards" by jdastine
+  https://sketchfab.com/3d-models/playing-cards-2dd7c45bf68a4ce3bf63c995b1bf12bf
+  CC Attribution (CC BY 4.0)
+
+Sounds
+  Roulette ball: recorded by Maxwell Dufresne, GFXSounds (https://gfxsounds.com), Standard licence
+  Cards: "Casino Audio" by Kenney (https://kenney.nl/assets/casino-audio), CC0
+
+HUD fonts
+  Chakra Petch and Share Tech Mono, SIL Open Font License (their licences are in fo4roulette\hud)
+
+The plugin's code: GPL-3.0 (fo4roulette-LICENSE.txt).

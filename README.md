@@ -128,6 +128,7 @@ g++ -std=c++20 -O2 -Isrc tests/layout_test.cpp src/rl/Layout.cpp src/rl/Wheel.cp
 
 - Roulette table model: ["Roulette Table 2"](https://sketchfab.com/3d-models/roulette-table-2-downloadable-b1d33eebb4f54b8aa250be2f49e87fbb) by [Dudzy](https://sketchfab.com/Dudzy) on Sketchfab, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Changed for the game: split into parts, scaled, given collision; the rotor rebuilt from its profile with frets and metal parts, new felt and layout textures (European and American).
 - Poker table model: ["Poker Table"](https://sketchfab.com/3d-models/poker-table-a48473a5ae7c437496a7aa388f8c458b) by Pieter Ferreira on Sketchfab, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Changed for the game: the props on the felt removed, scaled, given collision, textures re-encoded.
+- Blackjack table model: ["Blackjack Table"](https://sketchfab.com/3d-models/blackjack-table-27a26194c5cf45688d0863289aec0d1d) by [ddemon26](https://sketchfab.com/ddemon26) on Sketchfab, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 - Playing cards: ["Playing Cards"](https://sketchfab.com/3d-models/playing-cards-2dd7c45bf68a4ce3bf63c995b1bf12bf) by jdastine on Sketchfab, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Changed for the game: the faces packed into one atlas, each card its own mesh.
 - Roulette ball sound: recorded by [Maxwell Dufresne](https://gfxsounds.com/blog/maxwell-dufresne/), [GFXSounds](https://gfxsounds.com) (Standard licence).
 - Card sounds: ["Casino Audio"](https://kenney.nl/assets/casino-audio) by Kenney, CC0.
@@ -136,4 +137,4 @@ g++ -std=c++20 -O2 -Isrc tests/layout_test.cpp src/rl/Layout.cpp src/rl/Wheel.cp
 
 ## License
 
-GPL-3.0 (the code). The meshes and textures made from the table, poker table and card models are CC BY 4.0, like the models.
+GPL-3.0 (the code). The meshes and textures made from the roulette, poker and blackjack table models and the card model are CC BY 4.0, like the models (their credits ship with the mod in `fo4roulette-Credits.txt`).
