@@ -99,7 +99,7 @@ namespace fr
 	{
 		// at the poker table: A check / call, B fold, X raise, Y all in, the D-pad up / down the raise, LB / RB turn,
 		// Back step away, Start the view, the right stick's click your cards, the left stick's cash out
-		const bool poker = _pkSeated.load();
+		const bool poker = AtCardTable();
 		const auto pad = poker && util::GameHasFocus() ? ReadPad() : PadState{};
 		const WORD now = pad.ok ? pad.buttons : 0;
 		const WORD pressed = now & ~_padWas;
@@ -114,6 +114,21 @@ namespace fr
 		}
 		static constexpr std::array<std::pair<WORD, int>, 10> kMap{ { { 0x1000, 1 }, { 0x2000, 0 }, { 0x4000, 2 }, { 0x8000, 3 },
 			{ 0x0001, 4 }, { 0x0002, 5 }, { 0x0020, 6 }, { 0x0010, 9 }, { 0x0080, 10 }, { 0x0040, 8 } } };
+		// (blackjack: A, B, X, Y as the 1-4 keys; Back leave; Start the view)
+		static constexpr std::array<std::pair<WORD, int>, 6> kBjMap{ { { 0x1000, 80 }, { 0x2000, 81 }, { 0x4000, 82 }, { 0x8000, 83 },
+			{ 0x0020, 67 }, { 0x0010, 66 } } };
+		if (_bjSeated) {
+			for (const auto& [mask, key] : kBjMap) {
+				if (pressed & mask) {
+					tasks->AddTask([this, key]() {
+						if (!IsGamePaused()) {
+							BjKey(key);
+						}
+					});
+				}
+			}
+			return;
+		}
 		for (const auto& [mask, key] : kMap) {
 			if (pressed & mask) {
 				tasks->AddTask([this, key]() {
@@ -132,7 +147,7 @@ namespace fr
 		const bool  seated = _seated.load();
 		const int   spin = s.keySpin > 0 ? s.keySpin : _activateVk.load();
 		const bool  placing = _kitPlacing.load();
-		const bool  poker = _pkSeated.load();
+		const bool  poker = AtCardTable();  // (poker or blackjack: the pointer and its buttons)
 		const std::array<int, 15> keys{ spin, s.keyLeave, s.keyView, s.keyRebet, s.keyClear, s.keyChip[0], s.keyChip[1], s.keyChip[2],
 			s.keyChip[3], s.keyPackUp, VK_LEFT, VK_RIGHT, _activateVk.load(), VK_UP, VK_DOWN };
 		auto* tasks = F4SE::GetTaskInterface();
@@ -156,11 +171,11 @@ namespace fr
 						}
 					}
 				}
-				_pkDragging = id == 11;  // (the raise slider: dragged while the button's held, below)
-				if (id >= 0 && id != 11) {
+				_pkDragging = id == 11 && !_bjSeated;  // (the raise slider: dragged while the button's held, below)
+				if (id >= 0 && (id != 11 || _bjSeated)) {
 					tasks->AddTask([this, id]() {
 						if (!IsGamePaused()) {
-							PkKey(id);
+							CardKey(id);
 						}
 					});
 				}
@@ -225,6 +240,32 @@ namespace fr
 						case 1: CancelKit(true); break;
 						case 10: TurnKit(-1); break;
 						default: TurnKit(1); break;
+						}
+					});
+				}
+				continue;
+			}
+			if (_bjSeated) {
+				// at the blackjack table: 1-4 the chips while bets are open, hit / stand / double / split on your turn
+				// (insurance: 1 yes, 2 no); the spin key deals; same bet, take it back; the view; leave; pack up
+				int bk = -1;
+				switch (i) {
+				case 5: bk = 80; break;
+				case 6: bk = 81; break;
+				case 7: bk = 82; break;
+				case 8: bk = 83; break;
+				case 0: bk = 55; break;
+				case 3: bk = 56; break;
+				case 4: bk = 54; break;
+				case 1: bk = 67; break;
+				case 2: bk = 66; break;
+				case 9: bk = 68; break;
+				default: break;
+				}
+				if (bk >= 0) {
+					tasks->AddTask([this, bk]() {
+						if (!IsGamePaused() || bk == 67) {
+							BjKey(bk);
 						}
 					});
 				}
@@ -399,6 +440,12 @@ namespace fr
 				PkStandUp();
 			}
 		}
+		if (_bjSeated) {
+			if (menus::Open(menus::kDialogue)) {
+				log::info("a conversation started while you were at the blackjack table: getting up");
+				BjStandUp();
+			}
+		}
 		if (IsGamePaused()) {
 			return;  // (menus, the Pip-Boy, the workshop: everything holds still; a conversation doesn't)
 		}
@@ -421,8 +468,10 @@ namespace fr
 			_scanTimer = kScanEvery;
 			ScanTables();
 			PkScan();
+			BjScan();
 		}
 		TickPoker(dt);
+		TickBlackjack(dt);
 		if (_t.table) {
 			TickTable(dt);
 		}
@@ -711,6 +760,7 @@ namespace fr
 	void Game::OnLoadingStarts()
 	{
 		PkEnd("a loading screen");
+		BjEnd("a loading screen");
 		if (_kitPlacing) {
 			CancelKit(true);  // travelling while setting a kit up: the kit back
 		}
@@ -1410,6 +1460,7 @@ namespace fr
 			CancelKit(true);  // a save mid-set-up: the kit back in your inventory, no half-made table saved
 		}
 		PkBeforeSave();
+		BjBeforeSave();
 		Remove(_ghost);
 		_ghostValue = -1;
 		BeforeSaveTable();
@@ -1447,6 +1498,7 @@ namespace fr
 	void Game::AfterSave()
 	{
 		PkAfterSave();
+		BjAfterSave();
 		if (!_lifted) {
 			return;
 		}
@@ -1482,6 +1534,9 @@ namespace fr
 		_pk = PokerState{};
 		_pkSeated = false;
 		_pkYou = -1;
+		_bj = BlackjackState{};
+		_bjSeated = false;
+		_bjYou = -1;
 		_camPitch = -1.0f;
 		_kitPlacing = false;  // (the preview went with the old game)
 		_kitPreview = {};

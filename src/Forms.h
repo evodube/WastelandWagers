@@ -17,6 +17,8 @@ namespace fr::Forms
 	inline constexpr std::uint32_t kCardID = 0x810;      // STAT fo4rouletteCard_2c .. _As: 0x810 + suit * 13 + rank
 	inline constexpr std::uint32_t kPokerTableID = 0x844;  // ACTI fo4roulettePokerTable: Meshes\fo4roulette\PokerTable.nif
 	inline constexpr std::uint32_t kPokerKitID = 0x846;  // ALCH fo4roulettePokerKit
+	inline constexpr std::uint32_t kBlackjackTableID = 0x84A;  // ACTI fo4rouletteBlackjackTable: Meshes\fo4roulette\BlackjackTable.nif
+	inline constexpr std::uint32_t kBlackjackKitID = 0x84C;    // ALCH fo4rouletteBlackjackKit
 
 	inline constexpr RE::TESFormID kXMarkerHeading = 0x00000034;
 	inline constexpr RE::TESFormID kCaps = 0x0000000F;
@@ -75,6 +77,17 @@ namespace fr::Forms
 	{
 		auto* base = a_ref ? a_ref->GetObjectReference() : nullptr;
 		auto* table = PokerTable();
+		return base && table && base == table;
+	}
+	inline RE::TESBoundObject* BlackjackTable()
+	{
+		auto* f = Own(kBlackjackTableID);
+		return f && f->IsBoundObject() ? static_cast<RE::TESBoundObject*>(f) : nullptr;
+	}
+	inline bool IsBlackjackTable(const RE::TESObjectREFR* a_ref)
+	{
+		auto* base = a_ref ? a_ref->GetObjectReference() : nullptr;
+		auto* table = BlackjackTable();
 		return base && table && base == table;
 	}
 }

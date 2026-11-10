@@ -28,19 +28,22 @@ namespace fr
 
 		std::mutex                        g_kitMutex;
 		std::unordered_set<RE::TESFormID> g_kitTables;          // tables set up from a kit (created refs: FF......)
-		std::uint8_t                      g_kitStocked{ 0 };    // the Dugout Inn got its first kits in this save: 1 roulette, 2 poker
+		std::uint8_t                      g_kitStocked{ 0 };    // the Dugout Inn got its first kits in this save: 1 roulette, 2 poker, 4 blackjack
 		std::atomic<RE::TESFormID>        g_previewID{ 0 };       // the table following the crosshair while you set one up
 
-		// the kits: 0 the Roulette Table Kit, 1 the Poker Table Kit
+		// the kits: 0 the Roulette Table Kit, 1 the Poker Table Kit, 2 the Blackjack Table Kit
+		constexpr int kKinds = 3;
 		RE::TESBoundObject* KitForm(int a_kind = 0)
 		{
-			return util::ResolveForm(Settings::Get().plugin, a_kind == 1 ? Forms::kPokerKitID : Forms::kKitID);
+			return util::ResolveForm(Settings::Get().plugin, a_kind == 2 ? Forms::kBlackjackKitID : a_kind == 1 ? Forms::kPokerKitID : Forms::kKitID);
 		}
 
 		RE::TESBoundObject* KitTable(int a_kind)
 		{
-			return a_kind == 1 ? Forms::PokerTable() : Forms::Table();
+			return a_kind == 2 ? Forms::BlackjackTable() : a_kind == 1 ? Forms::PokerTable() : Forms::Table();
 		}
+
+		const char* KitName(int a_kind) { return a_kind == 2 ? "Blackjack" : a_kind == 1 ? "Poker" : "Roulette"; }
 
 		void GiveKit(int a_kind)
 		{
@@ -53,7 +56,7 @@ namespace fr
 		{
 			RE::BSEventNotifyControl ProcessEvent(const RE::TESEquipEvent& a_event, RE::BSTEventSource<RE::TESEquipEvent>*) override
 			{
-				for (int kind = 0; kind < 2; ++kind) {
+				for (int kind = 0; kind < kKinds; ++kind) {
 					auto* kit = KitForm(kind);
 					if (a_event.equipped && kit && a_event.baseObject == kit->GetFormID() && a_event.actor &&
 						a_event.actor.get() == RE::PlayerCharacter::GetSingleton()) {
@@ -80,8 +83,10 @@ namespace fr
 		// touches the vendor)
 		if (auto* box = RE::TESForm::GetFormByID<RE::TESObjectCONT>(kDugoutVendorBox)) {
 			box->AddObject(kit, 1, nullptr);
-			if (auto* poker = KitForm(1)) {
-				box->AddObject(poker, 1, nullptr);
+			for (int kind = 1; kind < kKinds; ++kind) {
+				if (auto* other = KitForm(kind)) {
+					box->AddObject(other, 1, nullptr);
+				}
 			}
 			log::info("kit: added to the Dugout Inn's stock ({:08X})", kDugoutVendorBox);
 		} else {
@@ -98,7 +103,7 @@ namespace fr
 		// a save from before a kit existed: one in Vadim's stock now, not just after his next restock
 		auto* chest = RE::TESForm::GetFormByID<RE::TESObjectREFR>(kDugoutVendorChest);
 		std::scoped_lock lock(g_kitMutex);
-		for (int kind = 0; kind < 2; ++kind) {
+		for (int kind = 0; kind < kKinds; ++kind) {
 			auto*              kit = KitForm(kind);
 			const std::uint8_t bit = static_cast<std::uint8_t>(1u << kind);
 			if ((g_kitStocked & bit) || !kit || !chest) {
@@ -107,7 +112,7 @@ namespace fr
 			g_kitStocked |= bit;
 			if (chest->GetInventoryObjectCount(kit) == 0) {
 				chest->AddObjectToContainer(kit, nullptr, 1, nullptr, RE::ITEM_REMOVE_REASON::kNone);
-				log::info("kit: a {} kit in the Dugout Inn's stock", kind == 1 ? "poker" : "roulette");
+				log::info("kit: a {} kit in the Dugout Inn's stock", KitName(kind));
 			}
 		}
 	}
@@ -126,7 +131,7 @@ namespace fr
 
 	void Game::BeginKitPlacement(int a_kind)
 	{
-		if (_kitPlacing || _seated || _pkSeated) {
+		if (_kitPlacing || _seated || _pkSeated || _bjSeated) {
 			GiveKit(a_kind);  // (a second kit used while one's being set up, or from a table: that one back)
 			return;
 		}
@@ -262,7 +267,7 @@ namespace fr
 		bool crowded = false;
 		util::ForEachLoadedCell([&](RE::TESObjectCELL* a_cell) {
 			a_cell->ForEachReferenceInRange(pos, kTooClose, [&](RE::TESObjectREFR* a_ref) {
-				if (a_ref && a_ref != preview.get() && !a_ref->IsDisabled() && (Forms::IsTable(a_ref) || Forms::IsPokerTable(a_ref))) {
+				if (a_ref && a_ref != preview.get() && !a_ref->IsDisabled() && (Forms::IsTable(a_ref) || Forms::IsPokerTable(a_ref) || Forms::IsBlackjackTable(a_ref))) {
 					crowded = true;
 					return RE::BSContainer::ForEachResult::kStop;
 				}
@@ -362,7 +367,7 @@ namespace fr
 		}
 		_scanTimer = 0.0f;  // in play straight away
 		log::info("kit: table {:08X} set up at ({:.0f}, {:.0f}, {:.0f})", table->GetFormID(), pos.x, pos.y, pos.z);
-		Notify(std::format("{}: table set up. Sit at it and press {} to pack it away again", _kitKind == 1 ? "Poker" : "Roulette", Upper(Settings::Key(Settings::Get().keyPackUp))));
+		Notify(std::format("{}: table set up. Sit at it and press {} to pack it away again", KitName(_kitKind), Upper(Settings::Key(Settings::Get().keyPackUp))));
 	}
 
 	void Game::PackUpTable()
@@ -406,6 +411,24 @@ namespace fr
 		a_table->SetWantsDelete(true);
 		GiveKit(1);
 		Notify("Poker: table packed up. The kit's in your inventory");
+	}
+
+	void Game::PackUpBlackjackTable(RE::TESObjectREFR* a_table)
+	{
+		if (!a_table || !IsKitTable(a_table)) {
+			return;
+		}
+		const RE::TESFormID id = a_table->GetFormID();
+		BjEnd("packed up");
+		{
+			std::scoped_lock lock(g_kitMutex);
+			g_kitTables.erase(id);
+		}
+		log::info("kit: blackjack table {:08X} packed up", id);
+		a_table->Disable();
+		a_table->SetWantsDelete(true);
+		GiveKit(2);
+		Notify("Blackjack: table packed up. The kit's in your inventory");
 	}
 
 	void Game::SaveKit(const F4SE::SerializationInterface* a_intfc)

@@ -27,6 +27,10 @@ Form IDs (src/Forms.h expects these):
     xx000848  KYWD fo4rouletteLinkSeat     a poker player's linked ref: their chair
     xx000849  PACK fo4rouletteSitInSeat    Sit in that linked ref (as vanilla DefaultSitLinkCustom01NoEating), carried by
                                            the quest's third collection, 2 Sitters
+    xx00084A  ACTI fo4rouletteBlackjackTable  Blackjack Table (Meshes/fo4roulette/BlackjackTable.nif)
+    xx00084B  COBJ workshop_co_fo4rouletteBlackjackTable  in the workshop menu, Furniture > Tables
+    xx00084C  ALCH fo4rouletteBlackjackKit  Blackjack Table Kit (sold by Vadim too)
+    xx00084D  COBJ fo4rouletteco_BlackjackKit  the blackjack kit at a chem station (Utility)
 
 Record layouts follow Playable Pool's tools/make_esl.py (laid out as Fallout4.esm's own records).
 """
@@ -325,12 +329,27 @@ def build() -> bytes:
                           [(0x0001FAC2, 10), (0x001223C7, 6), (0x0003D294, 2), (0x0001FAA5, 2)],
                           0x00102158, 0x0006980C))
 
+    # ---- blackjack
+    bjt = own | (FIRST_ID + 0x4A)
+    acti.append(activator(bjt, "fo4rouletteBlackjackTable", "Blackjack Table", "fo4roulette\\BlackjackTable.nif",
+                          (-73, -49, 0, 73, 49, 69), "Play", 0x001A03DD))
+    recipes.append(workshop_recipe(own | (FIRST_ID + 0x4B), "workshop_co_fo4rouletteBlackjackTable", bjt,
+                                   [(0x0001FAC2, 12), (0x001223C7, 6), (0x0003D294, 2), (0x0001FAA5, 1)]))
+    bkit = own | (FIRST_ID + 0x4C)
+    potions.append(potion(bkit, "fo4rouletteBlackjackKit", "Blackjack Table Kit",
+                          "A folding blackjack table, shoe and all. Use it to set the table up in front of you; sit at "
+                          "it and press P to pack it away again.",
+                          "", bytes(12), 300, 20.0))
+    recipes.append(recipe(own | (FIRST_ID + 0x4D), "fo4rouletteco_BlackjackKit", bkit,
+                          [(0x0001FAC2, 12), (0x001223C7, 6), (0x0003D294, 2), (0x0001FAA5, 2)],
+                          0x00102158, 0x0006980C))
+
     count = len(acti) + len(stats) + len(keywords) + len(packages) + len(quests) + len(recipes) + len(potions)
     header = record(
         b"TES4",
         FLAG_MASTER | FLAG_LIGHT,
         0,
-        subrecord(b"HEDR", struct.pack("<fiI", 1.0, count, FIRST_ID + 0x4A))
+        subrecord(b"HEDR", struct.pack("<fiI", 1.0, count, FIRST_ID + 0x4E))
         + subrecord(b"CNAM", zstring("evodube"))
         + subrecord(b"SNAM", zstring("Real Roulette: a playable roulette table"))
         + subrecord(b"MAST", zstring("Fallout4.esm"))

@@ -1044,7 +1044,7 @@ namespace fr
 					}
 				}
 				if (!Usable(actor) || actor == player || actor->IsChild() || actor->IsInCombat() || (player && actor->GetHostileToActor(player)) ||
-					(npcType && !actor->HasKeywordHelper(npcType, nullptr)) || PkHasSeat(actor->GetFormID()) ||
+					(npcType && !actor->HasKeywordHelper(npcType, nullptr)) || PkHasSeat(actor->GetFormID()) || BjHasSeat(actor->GetFormID()) ||
 					std::ranges::any_of(_t.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); }) ||
 					std::ranges::any_of(_other.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); })) {
 					return RE::BSContainer::ForEachResult::kContinue;
@@ -2722,7 +2722,7 @@ namespace fr
 		if (!a_event) {
 			return false;
 		}
-		if (!_pkSeated) {
+		if (!AtCardTable()) {
 			// just up from the table: the mouse button or pad button that got you up (Step away, Cash out) is kept from
 			// the game until it's let go, or it'd draw your gun or swing at the table. (For a second and a half at
 			// most)

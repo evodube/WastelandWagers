@@ -433,7 +433,7 @@ namespace fr::Hud
 		{
 			float w = 320.0f;
 			w = std::max(w, TextWidth(Mono(), a_st.pkInfo, 12, 1.0f) + 36.0f);
-			w = std::max(w, TextWidth(Mono(), "POKER · NO LIMIT HOLD'EM", 13, 2.0f) + 36.0f);
+			w = std::max(w, TextWidth(Mono(), a_st.pkTitle.empty() ? std::string("POKER · NO LIMIT HOLD'EM") : a_st.pkTitle, 13, 2.0f) + 36.0f);
 			return w;
 		}
 		float PokerStatusH(const Game::HudState& a_st) { return 100.0f + kPkRow * static_cast<float>(a_st.pkRows.size()); }
@@ -447,7 +447,7 @@ namespace fr::Hud
 		{
 			const float x = kPkMargin, y = kPkMargin, w = PokerStatusW(a_st);
 			Chamfer(a_v, x, y, w, PokerStatusH(a_st), 12.0f, kPanel, kEdge);
-			Print(a_v, Mono(), "POKER · NO LIMIT HOLD'EM", x + 18, y + 12, 13, kDim, 0, 2.0f);
+			Print(a_v, Mono(), a_st.pkTitle.empty() ? std::string("POKER · NO LIMIT HOLD'EM") : a_st.pkTitle, x + 18, y + 12, 13, kDim, 0, 2.0f);
 			Print(a_v, Title(), Commas(a_st.caps), x + 18, y + 28, 30, kBright, kGlow, 2.0f);
 			Print(a_v, Mono(), "CAPS", x + 22 + TextWidth(Title(), Commas(a_st.caps), 30, 2.0f), y + 44, 12, kDim, 0, 2.0f);
 			Print(a_v, Mono(), a_st.pkInfo, x + 18, y + 72, 12, kText, 0, 1.0f);
@@ -515,7 +515,7 @@ namespace fr::Hud
 			Chamfer(a_v, x, y, w, PokerBoardH(), 12.0f, kPanel, kEdge);
 			const float mid = x + w * 0.5f;
 			// just the pot: the word, the number under it
-			Print(a_v, Mono(), "POT", mid, y + 8, 11, kDim, 0, 2.0f, Align::kCentre);
+			Print(a_v, Mono(), a_st.pkBoardLabel.empty() ? std::string("POT") : a_st.pkBoardLabel, mid, y + 8, 11, kDim, 0, 2.0f, Align::kCentre);
 			Print(a_v, Title(), Commas(a_st.pkPot), mid, y + 23, 24, a_st.pkPot > 0 ? kBright : kDim, a_st.pkPot > 0 ? kGlow : 0, 1.5f, Align::kCentre);
 		}
 
@@ -937,6 +937,165 @@ namespace fr::Hud
 			PokerButtons(a_v, a_st, a_viewport);
 		}
 
+		// ------------------------------------------------------------ blackjack (Blackjack.cpp): poker's panels, its own cards and buttons
+
+		// the dealer's cards and what they come to, top middle under the turn panel
+		void BjDealer(const View& a_v, const Game::HudState& a_st)
+		{
+			if (a_st.bjDealer.empty()) {
+				return;
+			}
+			constexpr float cw = 44.0f, ch = 70.0f, gap = 7.0f, pad = 8.0f;
+			const float     n = static_cast<float>(std::max<std::size_t>(a_st.bjDealer.size(), 2));
+			const float     w = std::max(cw * n + gap * (n - 1.0f) + pad * 2.0f, 200.0f), h = ch + pad * 2.0f + 22.0f;
+			const float     x = a_v.w * 0.5f - w * 0.5f, y = kPkMargin + PokerHoleH() + 8.0f;
+			Chamfer(a_v, x, y, w, h, 10.0f, kPanel, kEdge);
+			Print(a_v, Mono(), "DEALER · " + a_st.bjDealerValue, x + w * 0.5f, y + 6.0f, 12, kBright, 0, 1.5f, Align::kCentre);
+			const float rowW = cw * static_cast<float>(a_st.bjDealer.size()) + gap * static_cast<float>(a_st.bjDealer.size() - 1);
+			float       cx = x + (w - rowW) * 0.5f;
+			for (int c : a_st.bjDealer) {
+				HudCard(a_v, c, cx, y + 22.0f + pad * 0.5f);
+				cx += cw + gap;
+			}
+		}
+
+		// your hand (or two, split), bottom middle above the buttons: the cards, what they come to, the bet, the result
+		void BjMine(const View& a_v, const Game::HudState& a_st)
+		{
+			if (a_st.bjHands.empty()) {
+				return;
+			}
+			constexpr float cw = 44.0f, ch = 70.0f, gap = 5.0f, pad = 8.0f, between = 16.0f;
+			float total = 0.0f;
+			std::vector<float> widths;
+			for (const auto& hd : a_st.bjHands) {
+				const float n = static_cast<float>(std::max<std::size_t>(hd.cards.size(), 2));
+				const float hw = std::max(cw * n + gap * (n - 1.0f), 130.0f);
+				widths.push_back(hw);
+				total += hw;
+			}
+			total += between * static_cast<float>(a_st.bjHands.size() - 1) + pad * 2.0f;
+			const float h = ch + pad * 2.0f + 40.0f;
+			const float x0 = a_v.w * 0.5f - total * 0.5f, y = a_v.h - kPkBottom - h - 6.0f;
+			Chamfer(a_v, x0, y, total, h, 10.0f, kPanel, kEdge);
+			float x = x0 + pad;
+			for (std::size_t i = 0; i < a_st.bjHands.size(); ++i) {
+				const auto& hd = a_st.bjHands[i];
+				const float hw = widths[i];
+				if (hd.active) {
+					Chamfer(a_v, x - 4.0f, y + 4.0f, hw + 8.0f, h - 8.0f, 6.0f, Rgba(40, 160, 70, 0.16f), kBright);
+				}
+				const float rowW = cw * static_cast<float>(hd.cards.size()) + gap * static_cast<float>(hd.cards.size() > 0 ? hd.cards.size() - 1 : 0);
+				float       cx = x + (hw - rowW) * 0.5f;
+				for (int c : hd.cards) {
+					HudCard(a_v, c, cx, y + pad);
+					cx += cw + gap;
+				}
+				const std::string line = hd.result.empty() ? std::format("{} · BET {}", hd.value, Commas(hd.bet)) : std::format("{} · {}", hd.value, hd.result);
+				const ImU32 col = hd.result.starts_with("WON") ? kBright : hd.result == "LOST" ? kRedText : kText;
+				const float size = std::min(13.0f, 13.0f * hw / std::max(1.0f, TextWidth(Mono(), line, 13, 1.0f)));
+				Print(a_v, Mono(), line, x + hw * 0.5f, y + pad + ch + 10.0f, size, col, 0, 1.0f, Align::kCentre);
+				x += hw + between;
+			}
+		}
+
+		void BlackjackButtons(const View& a_v, const Game::HudState& a_st, ImGuiViewport* a_viewport)
+		{
+			std::vector<Game::PkButton> out;
+			constexpr float h = 40.0f, gap = 8.0f;
+			const bool      pad = a_st.pkPad;
+			auto            tag = [&](const char* a_b, const std::string& a_s) { return pad ? std::format("{} {}", a_b, a_s) : a_s; };
+			const float     y = a_v.h - 52.0f;
+			std::vector<std::tuple<int, std::string, float, bool, bool, ImU32>> row;  // id, label, width, on, strong, accent
+			switch (a_st.bjPhase) {
+			case 0:
+				{
+					static constexpr std::array<const char*, 4> kChips{ "+1", "+5", "+25", "+100" };
+					for (int i = 0; i < 4; ++i) {
+						row.emplace_back(50 + i, tag(std::array<const char*, 4>{ "(A)", "(B)", "(X)", "(Y)" }[i], kChips[i]), 80.0f, true, false, 0);
+					}
+					row.emplace_back(54, "TAKE BACK", 120.0f, a_st.bjBet > 0, false, Rgba(150, 30, 30));
+					row.emplace_back(56, a_st.bjLastBet > 0 ? std::format("SAME BET {}", Commas(a_st.bjLastBet)) : std::string("SAME BET"), 150.0f,
+						a_st.bjBet == 0 && a_st.bjLastBet > 0, false, 0);
+					const std::string deal = a_st.bjBet > 0 ? (a_st.bjDealIn >= 0.0f ? std::format("DEAL · {}", static_cast<int>(std::ceil(a_st.bjDealIn))) : std::string("DEAL")) : std::string("PUT A BET DOWN");
+					row.emplace_back(55, deal, 170.0f, a_st.bjBet > 0, true, 0);
+					break;
+				}
+			case 3:
+				row.emplace_back(64, tag("(A)", std::format("INSURANCE {}", Commas(a_st.bjInsurance))), 200.0f, a_st.bjInsurance > 0, true, 0);
+				row.emplace_back(65, tag("(B)", "NO INSURANCE"), 180.0f, true, false, 0);
+				break;
+			default:
+				{
+					const bool turn = a_st.bjPhase == 2;
+					row.emplace_back(60, tag("(A)", "HIT"), 120.0f, turn, turn, 0);
+					row.emplace_back(61, tag("(B)", "STAND"), 120.0f, turn, false, 0);
+					row.emplace_back(62, tag("(X)", "DOUBLE"), 130.0f, turn && a_st.bjCanDouble, false, Rgba(170, 100, 20));
+					row.emplace_back(63, tag("(Y)", "SPLIT"), 120.0f, turn && a_st.bjCanSplit, false, 0);
+					break;
+				}
+			}
+			float w = 0.0f;
+			for (const auto& r : row) {
+				w += std::get<2>(r) + gap;
+			}
+			w -= gap;
+			const float k = std::min(1.0f, (a_v.w - kPkMargin * 2.0f - kPkSideW) / w);
+			float       x = a_v.w * 0.5f - w * k * 0.5f;
+			for (const auto& [id, label, bw, on, strong, accent] : row) {
+				Button(a_v, a_st, out, id, label, x, y, bw * k, h, on, strong, 14.0f, accent);
+				x += (bw + gap) * k;
+			}
+			// the table's own, bottom right
+			const int   nSide = a_st.pkKit ? 3 : 2;
+			const float sx = a_v.w - kPkMargin - kPkSideW;
+			float       sy = a_v.h - kPkBottom - 8.0f - (34.0f * static_cast<float>(nSide) - 6.0f);
+			auto side = [&](int a_id, const std::string& a_label, bool a_on) {
+				Button(a_v, a_st, out, a_id, a_label, sx, sy, kPkSideW, 28.0f, a_on, false, 12.0f);
+				sy += 34.0f;
+			};
+			side(66, tag("(START)", a_st.pkTop ? "VIEW: MY PLACE" : "VIEW: FROM ABOVE"), true);
+			side(67, tag("(BACK)", "LEAVE THE TABLE"), true);
+			if (a_st.pkKit) {
+				side(68, "PACK UP THE TABLE", a_st.bjPhase == 0);
+			}
+			Game::Get().SetPkButtons(std::move(out), a_viewport->Size.x, a_viewport->Size.y);
+			if (a_st.pkPtrX >= 0.0f) {
+				const ImVec2 p{ a_v.origin.x + a_st.pkPtrX, a_v.origin.y + a_st.pkPtrY };
+				const float  s = std::max(0.6f, a_v.s);
+				const ImVec2 a{ p.x, p.y }, b{ p.x, p.y + 20.0f * s }, c{ p.x + 13.0f * s, p.y + 14.0f * s };
+				DL::AddTriangleFilled(a_v.dl, a, b, c, Rgba(230, 255, 230));
+				DL::AddTriangle(a_v.dl, a, b, c, Rgba(10, 40, 15), std::max(1.0f, 1.5f * s));
+			}
+		}
+
+		void DrawBlackjack(View a_v, const Game::HudState& a_st, ImGuiViewport* a_viewport)
+		{
+			const float needW = std::max(PokerStatusW(a_st) + 380.0f + PokerBoardW() + kPkMargin * 4.0f, 560.0f + kPkSideW);
+			const float needH = kPkMargin + std::max(PokerStatusH(a_st), PokerHoleH() + 120.0f) + 16.0f + std::max(PokerLogH(a_st), 140.0f) + kPkBottom;
+			const float f = std::min({ 1.0f, a_v.w / needW, a_v.h / needH });
+			if (f < 1.0f) {
+				a_v.s *= f;
+				a_v.w /= f;
+				a_v.h /= f;
+			}
+			auto slid = [&](float a_delay, float a_dir) {
+				const float t = std::clamp((a_st.pkAge - a_delay) / 0.45f, 0.0f, 1.0f);
+				const float e = 1.0f - (1.0f - t) * (1.0f - t) * (1.0f - t);
+				View v = a_v;
+				v.origin.x += a_dir * (1.0f - e) * 420.0f * a_v.s;
+				return v;
+			};
+			PokerStatus(slid(0.0f, -1.0f), a_st);
+			PokerBoard(slid(0.08f, 1.0f), a_st);
+			PokerLog(slid(0.16f, -1.0f), a_st);
+			PokerHole(a_v, a_st);
+			BjDealer(a_v, a_st);
+			BjMine(a_v, a_st);
+			PokerBanner(a_v, a_st);
+			BlackjackButtons(a_v, a_st, a_viewport);
+		}
+
 		// ------------------------------------------------------------ plain fallback (the art didn't load)
 
 		constexpr ImGuiWindowFlags kFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize |
@@ -1007,6 +1166,10 @@ namespace fr::Hud
 			}
 			if (st.poker) {
 				DrawPoker(v, st, viewport);
+				return;
+			}
+			if (st.blackjack) {
+				DrawBlackjack(v, st, viewport);
 				return;
 			}
 			History(v, st);

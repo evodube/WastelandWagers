@@ -299,7 +299,7 @@ namespace fr
 					(npcType && !actor->HasKeywordHelper(npcType, nullptr)) ||
 					std::ranges::any_of(_t.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); }) ||
 					std::ranges::any_of(_other.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); }) ||  // (at the other table)
-					PkHasSeat(actor->GetFormID()) ||                                                                 // (playing poker)
+					PkHasSeat(actor->GetFormID()) || BjHasSeat(actor->GetFormID()) ||                                                                 // (playing poker)
 					std::ranges::any_of(found, [&](const auto& f) { return f.second == actor; })) {
 					return RE::BSContainer::ForEachResult::kContinue;
 				}

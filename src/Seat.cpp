@@ -47,7 +47,8 @@ namespace fr
 			{
 				auto* player = RE::PlayerCharacter::GetSingleton();
 				if (a_event.objectActivated && a_event.actionRef && a_event.actionRef.get() == player &&
-					(Forms::IsTable(a_event.objectActivated.get()) || Forms::IsPokerTable(a_event.objectActivated.get()))) {
+					(Forms::IsTable(a_event.objectActivated.get()) || Forms::IsPokerTable(a_event.objectActivated.get()) ||
+					 Forms::IsBlackjackTable(a_event.objectActivated.get()))) {
 					auto handle = a_event.objectActivated->GetHandle();
 					if (auto* tasks = F4SE::GetTaskInterface()) {
 						tasks->AddTask([handle]() {
@@ -136,11 +137,15 @@ namespace fr
 
 	void Game::OnActivated(RE::TESObjectREFR* a_ref)
 	{
-		if (_seated || _pkSeated || _kitPlacing || IsKitPreview(a_ref) || IsGamePaused()) {
+		if (_seated || _pkSeated || _bjSeated || _kitPlacing || IsKitPreview(a_ref) || IsGamePaused()) {
 			return;
 		}
 		if (Forms::IsPokerTable(a_ref)) {
 			PkSitDown(a_ref);
+			return;
+		}
+		if (Forms::IsBlackjackTable(a_ref)) {
+			BjSitDown(a_ref);
 			return;
 		}
 		if (!Forms::IsTable(a_ref)) {
@@ -413,7 +418,7 @@ namespace fr
 
 	bool Game::OnLookMouse(const RE::MouseMoveEvent* a_event)
 	{
-		if ((!_seated && !_pkSeated) || !a_event) {
+		if ((!_seated && !AtCardTable()) || !a_event) {
 			return false;
 		}
 		std::scoped_lock lock(_camMutex);
@@ -429,7 +434,7 @@ namespace fr
 
 	void Game::BeforeFreeCameraUpdate(RE::FreeCameraState* a_free)
 	{
-		if ((!_seated && !_pkSeated) || !a_free) {
+		if ((!_seated && !AtCardTable()) || !a_free) {
 			return;
 		}
 		if (auto* camera = a_free->camera) {
@@ -448,7 +453,7 @@ namespace fr
 
 	void Game::OnFreeCameraLook(RE::FreeCameraState* a_free, const RE::BSTPoint2<float>& a_before)
 	{
-		if ((!_seated && !_pkSeated) || !a_free) {
+		if ((!_seated && !AtCardTable()) || !a_free) {
 			return;
 		}
 		std::scoped_lock lock(_camMutex);
@@ -462,7 +467,7 @@ namespace fr
 
 	void Game::OnFreeCameraUpdate(RE::FreeCameraState* a_free)
 	{
-		if ((!_seated && !_pkSeated) || !a_free) {
+		if ((!_seated && !AtCardTable()) || !a_free) {
 			return;
 		}
 		std::scoped_lock lock(_camMutex);
@@ -504,7 +509,7 @@ namespace fr
 
 	bool Game::FreeCameraTranslation(const RE::FreeCameraState* a_free, RE::NiPoint3& a_out)
 	{
-		if ((!_seated && !_pkSeated) || !a_free) {
+		if ((!_seated && !AtCardTable()) || !a_free) {
 			return false;
 		}
 		std::scoped_lock lock(_camMutex);
@@ -519,6 +524,13 @@ namespace fr
 
 	void Game::UpdateHud()
 	{
+		if (_bjSeated) {
+			HudState h;
+			BjHud(h);
+			std::scoped_lock lock(_hudMutex);
+			_hud = std::move(h);
+			return;
+		}
 		if (_pkSeated) {
 			HudState h;
 			PkHud(h);

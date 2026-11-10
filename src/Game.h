@@ -3,6 +3,7 @@
 #include "rl/Layout.h"
 #include "rl/Wheel.h"
 #include "pk/Holdem.h"
+#include "bj/Blackjack.h"
 #include "Audio.h"
 
 namespace fr
@@ -69,7 +70,9 @@ namespace fr
 
 		// camera hooks (CameraHook.cpp)
 		RE::TESObjectREFR* PkChairTable(const RE::TESObjectREFR* a_ref) const;  // one of the poker table's chairs: its table
-		bool AtATable() const { return _seated.load() || _pkSeated.load(); }  // sitting at a roulette or poker table
+		bool AtATable() const { return _seated.load() || _pkSeated.load() || _bjSeated.load(); }  // sitting at a roulette, poker or blackjack table
+		bool AtCardTable() const { return _pkSeated.load() || _bjSeated.load(); }  // (poker or blackjack: the pointer and the buttons)
+		void BjAnimate();  // the blackjack table's cards and chips moved, once a frame (the camera's update)
 		bool SwallowButton(const RE::ButtonEvent* a_event);  // a menu key that's ours at the poker table (Q, E, the workshop's)
 		bool OnLookMouse(const RE::MouseMoveEvent* a_event);
 		void BeforeFreeCameraUpdate(RE::FreeCameraState* a_free);
@@ -165,6 +168,29 @@ namespace fr
 			float                 pkAge{ 99.0f };     // seconds since you sat down (the panels slide in)
 			bool                  pkPad{ false };     // a controller in use: its buttons on the HUD
 			std::string           pkHelp;             // what's happening / what to do, under the board
+			std::string           pkTitle;            // the status panel's heading (empty: poker's)
+			std::string           pkBoardLabel;       // the panel top right: what its number is (empty: POT)
+
+			// at the blackjack table (Blackjack.cpp; poker's panels and buttons where they fit)
+			bool                  blackjack{ false };
+			struct BjHand
+			{
+				std::vector<int> cards;
+				std::string      value;     // "16", "SOFT 18", "BLACKJACK", "BUST"
+				int              bet{ 0 };
+				bool             active{ false };
+				std::string      result;    // "WON 50", "LOST", "PUSH" once it's settled
+			};
+			std::vector<BjHand>   bjHands;            // yours
+			std::vector<int>      bjDealer;           // the dealer's cards (52: the one face down)
+			std::string           bjDealerValue;
+			int                   bjPhase{ 0 };       // 0 bets, 1 dealing / others playing, 2 your turn, 3 insurance offered, 4 the dealer, 5 settled
+			int                   bjBet{ 0 };         // your bet for the next hand
+			int                   bjLastBet{ 0 };
+			bool                  bjCanDouble{ false };
+			bool                  bjCanSplit{ false };
+			int                   bjInsurance{ 0 };   // what insurance would cost you
+			float                 bjDealIn{ -1.0f };  // seconds before the cards come out (-1: waiting for a bet)
 		};
 		HudState Hud() const;
 
@@ -178,6 +204,7 @@ namespace fr
 			float t0{ 0 }, t1{ 0 };  // (the slider) its track's ends: x0..x1 is the whole of it, to grab anywhere on
 		};
 		void SetPkButtons(std::vector<PkButton> a_buttons, float a_screenW, float a_screenH);
+		void CardKey(int a_key);  // a button at the poker or the blackjack table
 		void PkSetRaise(float a_frac);  // the raise slider dragged: 0 the smallest raise .. 1 all in
 
 	private:
@@ -311,6 +338,7 @@ namespace fr
 		void                ConfirmKit();
 		void                PackUpTable();  // the kit table you're at, back into a kit
 		void                PackUpPokerTable(RE::TESObjectREFR* a_table);
+		void                PackUpBlackjackTable(RE::TESObjectREFR* a_table);
 		int                 _kitKind{ 0 };
 		std::atomic<bool>   _kitPlacing{ false };
 		float               _kitTurn{ 0.0f };
@@ -528,6 +556,125 @@ namespace fr
 		void         PkBeforeSave();
 		void         PkAfterSave();
 		bool         PkHasSeat(RE::TESFormID a_id) const;
+
+		// ------------------------------------------------------------ blackjack (Blackjack.cpp)
+		static constexpr int kBjSeats = 7;
+		struct BjHand
+		{
+			std::vector<int>                 cards;
+			std::vector<std::size_t>         refs;    // their cards on the table (indexes into _bj.cards)
+			int                              bet{ 0 };
+			bool                             doubled{ false };
+			bool                             split{ false };  // one of a split pair
+			bool                             done{ false };
+			std::vector<RE::ObjectRefHandle> chips;   // the bet on the circle (and the double beside it)
+			std::vector<RE::ObjectRefHandle> paid;    // winnings set down beside it
+			double                           result{ -1.0 };  // what it got back for its bet (bj::Return), -1 not settled
+		};
+		struct BjSeat
+		{
+			bool                used{ false };
+			bool                you{ false };
+			RE::ObjectRefHandle actor;
+			RE::TESFormID       id{ 0 };
+			std::string         name;
+			Walker              walk;
+			Seat::Step          step{ Seat::Step::kWalking };
+			bool                held{ false };
+			int                 rounds{ 0 };       // rounds left before they go
+			int                 bet{ 0 };          // put down for the next hand
+			int                 lastBet{ 0 };
+			std::vector<BjHand> hands;             // this hand (two after a split)
+			int                 insurance{ 0 };
+			std::vector<RE::ObjectRefHandle> insChips;
+			std::vector<RE::ObjectRefHandle> betChips;  // the bet on the circle before the deal
+			std::string         last;              // what they last did
+			float               atSpot{ 0.0f };
+			float               nextIdle{ 8.0f };
+		};
+		enum class BjPhase
+		{
+			kBetting,
+			kDealing,
+			kInsurance,
+			kPlayers,
+			kDealer,
+			kSettle,
+			kClear,
+		};
+		struct BlackjackState
+		{
+			RE::ObjectRefHandle             table;
+			std::array<BjSeat, kBjSeats>    seats;
+			bj::Shoe                        shoe;
+			BjPhase                         phase{ BjPhase::kBetting };
+			float                           timer{ 0.0f };
+			float                           dealIn{ -1.0f };   // betting: seconds before the deal (-1 no bets yet)
+			std::vector<int>                dealer;            // the dealer's cards
+			std::vector<std::size_t>        dealerRefs;
+			bool                            holeUp{ false };
+			std::vector<PkCard>             cards;
+			std::vector<PkChipMove>         moves;
+			int                             turnSeat{ -1 }, turnHand{ 0 };
+			float                           think{ 0.0f };
+			float                           seatTimer{ 4.0f };
+			std::deque<HudLine>             log;
+			std::string                     bannerTitle, bannerSub;
+			float                           bannerAge{ 99.0f };
+			int                             bannerTone{ 0 };
+			float                           seatedAge{ 99.0f };
+			// the dealer: a settler behind the chip rack (or none: the table deals itself)
+			RE::ObjectRefHandle             dealerActor;
+			RE::TESFormID                   dealerId{ 0 };
+			std::string                     dealerName;
+			Walker                          dealerWalk;
+			bool                            dealerHeld{ false };
+			float                           dealerLook{ 0.0f };
+			int                             lifted{ 0 };       // your bets back in your pocket over a save
+			bool                            shuffleSaid{ false };
+		};
+		BlackjackState    _bj;
+		std::atomic<bool> _bjSeated{ false };
+		int               _bjYou{ -1 };
+		bool              _bjTopView{ false };
+		float             _bjLookYaw{ 0.0f };
+		std::chrono::steady_clock::time_point _bjAnimLast{}, _bjAnimAt{};
+		bool              _bjAnimHave{ false };
+		bool         BjFrame(Frame& a_out) const;
+		bool         BjHasSeat(RE::TESFormID a_id) const;
+		RE::NiPoint3 BjStand(const Frame& a_frame, int a_seat, float& a_heading) const;
+		void         BjScan();
+		void         BjStart(RE::TESObjectREFR* a_table);
+		void         BjEnd(const char* a_why);
+		void         TickBlackjack(float a_dt);
+		void         BjFindPlayer(const Frame& a_frame);
+		void         BjFindDealer(const Frame& a_frame);
+		void         BjTickSeats(const Frame& a_frame, float a_dt);
+		void         BjRelease(int a_seat, const char* a_why);
+		void         BjTickRound(float a_dt);
+		void         BjStartDeal();
+		std::size_t  BjDeal(int a_card, const RE::NiPoint3& a_to, float a_yaw, bool a_faceUp, float a_delay);
+		void         BjNextTurn();
+		void         BjAct(bj::Move a_move);
+		void         BjDealerPlay(float a_dt);
+		void         BjSettle();
+		void         BjClear();
+		void         BjTickCards(const Frame& a_frame, float a_dt);
+		void         BjTickMoves(const Frame& a_frame, float a_dt);
+		void         BjPlaceHandCards(int a_seat, int a_hand);
+		void         BjStack(std::vector<RE::ObjectRefHandle>& a_chips, int a_amount, const RE::NiPoint3& a_at);
+		void         BjSlide(std::vector<RE::ObjectRefHandle>& a_chips, const RE::NiPoint3& a_to, bool a_remove, float a_delay);
+		void         BjSay(const std::string& a_text, int a_tone = 0);
+		void         BjSound(Audio::Bank a_bank, float a_gain);
+		void         BjSitDown(RE::TESObjectREFR* a_table);
+		void         BjStandUp();
+		void         BjKey(int a_key);
+		void         BjBet(int a_amount);  // your bet for the next hand: up (or 0: taken back)
+		void         BjCamera(const Frame& a_frame, float a_dt);
+		void         BjHud(HudState& a_h) const;
+		void         BjBeforeSave();
+		void         BjAfterSave();
+		void         BjIdle(int a_seat, int a_kind);
 
 		// ------------------------------------------------------------ state (main thread)
 		// one table in play (up to two at once: Tick works on each in turn, with it in _t; the one you're at, or the
