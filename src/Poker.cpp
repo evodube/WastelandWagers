@@ -53,7 +53,7 @@ namespace fr
 		// sitting at the table (the chairs option): a dining chair of the game's, and the seated reactions
 		constexpr RE::TESFormID                kChair = 0x000E37D3;  // NpcChairIndustrialMetalDiningSit01
 		constexpr std::array<RE::TESFormID, 3> kSeatedWin{ 0x0010FF89, 0x0010FF8C, 0x00118014 };  // cheering sitting (A), laughing
-		constexpr float                        kChairOut = 14.0f;   // a chair's middle this far out from the rail
+		constexpr float                        kChairOut = 20.0f;   // a chair's middle this far out from the rail
 
 		// voice: the Combat Zone crowd's lines (custom topics by keyword, every common voice has them)
 		constexpr RE::TESFormID kCheer = 0x00110396;   // Crowd_ApprovalSounds_TopicSubType
@@ -994,7 +994,29 @@ namespace fr
 		if (free.empty()) {
 			return;
 		}
-		const int seat = free[std::uniform_int_distribution<std::size_t>(0, free.size() - 1)(_rng)];
+		// spread round the table: the free seat furthest from anyone already sitting (how far apart the seats are; the
+		// furthest ones alike, one of them at random)
+		int seat = free.front();
+		{
+			float            bestGap = -1.0f;
+			std::vector<int> best;
+			for (int f : free) {
+				float gap = 1e9f;
+				for (int i = 0; i < kPkSeats; ++i) {
+					if (_pk.seats[i].used) {
+						gap = std::min(gap, std::hypot(kHolders[f].first - kHolders[i].first, kHolders[f].second - kHolders[i].second));
+					}
+				}
+				if (gap > bestGap + 1.0f) {
+					bestGap = gap;
+					best.clear();
+				}
+				if (gap >= bestGap - 1.0f) {
+					best.push_back(f);
+				}
+			}
+			seat = best[std::uniform_int_distribution<std::size_t>(0, best.size() - 1)(_rng)];
+		}
 		auto&     st = _pk.seats[seat];
 		st = PkSeat{};
 		st.used = true;
