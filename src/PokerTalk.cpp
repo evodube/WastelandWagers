@@ -1,6 +1,5 @@
-// Table talk: the dealer's lines through a hand (in amber in the log), what settlers say when they sit back in
-// against you, your session's summary when you cash out, and what each settler remembers of your table (in the
-// co-save, record 'PKMM').
+// Table talk: what settlers say when they sit back in against you, your session's summary when you cash out, and what
+// each settler remembers of your table (in the co-save, record 'PKMM').
 
 #include "Game.h"
 #include "Settings.h"
@@ -19,68 +18,6 @@ namespace fr
 			return a_lines[std::uniform_int_distribution<std::size_t>(0, N - 1)(a_rng)];
 		}
 
-		constexpr std::array kNewHand{
-			"CARDS IN THE AIR.",
-			"SHUFFLE UP AND DEAL. NOBODY TOUCH THE RADIO.",
-			"ANTE UP, WASTELANDERS.",
-			"FRESH DECK. MOSTLY.",
-			"BLINDS IN, HANDS ABOVE THE TABLE.",
-			"NO PIPE PISTOLS AT THE TABLE, FRIENDS.",
-			"HERE WE GO AGAIN.",
-		};
-		constexpr std::array kFlopPaired{
-			"PAIRED BOARD. SOMEBODY'S SMILING.",
-			"A PAIR ON THE FLOP. CAREFUL NOW.",
-		};
-		constexpr std::array kFlopSuited{
-			"THREE OF A SUIT. FLUSH DRAWS ALL ROUND.",
-			"ALL ONE SUIT. SOMEBODY'S ALREADY THERE.",
-		};
-		constexpr std::array kFlopConnected{
-			"CONNECTED FLOP. STRAIGHTS EVERYWHERE.",
-			"THAT'S A WET ONE.",
-		};
-		constexpr std::array kFlopDry{
-			"DRY AS THE GLOWING SEA.",
-			"NOTHING MUCH THERE. OR IS THERE?",
-			"THE FLOP.",
-		};
-		constexpr std::array kTurn{
-			"THE TURN. STILL TIME TO RUN.",
-			"FOURTH STREET.",
-			"TURN CARD'S OUT.",
-		};
-		constexpr std::array kRiver{
-			"THE RIVER. MAY ATOM HAVE MERCY.",
-			"LAST CARD. MAKE IT COUNT.",
-			"RIVER'S OUT. NO MORE CARDS.",
-		};
-		constexpr std::array kAllIn{
-			"ALL IN. THERE GOES THE PRE-WAR MONEY.",
-			"EVERY CAP ON THE LINE.",
-			"ALL IN! SOMEBODY GET THE STIMPAKS.",
-			"THAT'S THE WHOLE STASH IN THE MIDDLE.",
-		};
-		constexpr std::array kBigPot{
-			"BIGGEST POT SINCE THE BOMBS DROPPED.",
-			"THAT'S A NUKA-COLA TRUCK'S WORTH OF CAPS.",
-			"NOW THAT'S A POT.",
-		};
-		constexpr std::array kUncontested{
-			"NO CALLERS. TAKE IT DOWN.",
-			"UNCONTESTED.",
-			"NOBODY WANTED IT.",
-		};
-		constexpr std::array kBadBeat{
-			"OUCH. THAT'S COLD, EVEN FOR THE WASTELAND.",
-			"A BEAT LIKE THAT LEAVES A RAD BURN.",
-			"BRUTAL. JUST BRUTAL.",
-		};
-		constexpr std::array kBust{
-			"{} IS TAPPED OUT. REST IN PIECES.",
-			"THAT'S ALL FOR {}. BETTER LUCK NEXT RAID.",
-			"{} IS OUT OF CAPS.",
-		};
 		constexpr std::array kBackLoser{
 			"{}: BACK FOR MORE OF MY CAPS?",
 			"{}: I'VE BEEN WAITING FOR A REMATCH.",
@@ -104,8 +41,6 @@ namespace fr
 			return a_s;
 		}
 
-		bool Roll(std::mt19937& a_rng, float a_p) { return std::uniform_real_distribution<float>(0.0f, 1.0f)(a_rng) < a_p; }
-
 		std::string Fill(const char* a_line, const std::string& a_name)
 		{
 			std::string s = a_line;
@@ -114,66 +49,6 @@ namespace fr
 			}
 			return s;
 		}
-	}
-
-	bool Game::PkDealer(PkTalk a_what, const std::string& a_name)
-	{
-		if (!Settings::Get().pkBanter) {
-			return false;
-		}
-		const char* line = nullptr;
-		switch (a_what) {
-		case PkTalk::kNewHand:
-			line = Roll(_rng, 0.3f) ? Pick(_rng, kNewHand) : nullptr;
-			break;
-		case PkTalk::kFlop:
-			{
-				const auto& b = _pk.hand.board;
-				if (b.size() < 3) {
-					break;
-				}
-				const int r0 = pk::Rank(b[0]), r1 = pk::Rank(b[1]), r2 = pk::Rank(b[2]);
-				const bool paired = r0 == r1 || r1 == r2 || r0 == r2;
-				const bool suited = pk::Suit(b[0]) == pk::Suit(b[1]) && pk::Suit(b[1]) == pk::Suit(b[2]);
-				const int  spread = std::max({ r0, r1, r2 }) - std::min({ r0, r1, r2 });
-				if (paired) {
-					line = Pick(_rng, kFlopPaired);
-				} else if (suited) {
-					line = Pick(_rng, kFlopSuited);
-				} else if (spread <= 4) {
-					line = Pick(_rng, kFlopConnected);
-				} else {
-					line = Pick(_rng, kFlopDry);
-				}
-				break;
-			}
-		case PkTalk::kTurn:
-			line = Roll(_rng, 0.5f) ? Pick(_rng, kTurn) : nullptr;
-			break;
-		case PkTalk::kRiver:
-			line = Roll(_rng, 0.6f) ? Pick(_rng, kRiver) : nullptr;
-			break;
-		case PkTalk::kAllIn:
-			line = Pick(_rng, kAllIn);
-			break;
-		case PkTalk::kBigPot:
-			line = Pick(_rng, kBigPot);
-			break;
-		case PkTalk::kUncontested:
-			line = Roll(_rng, 0.35f) ? Pick(_rng, kUncontested) : nullptr;
-			break;
-		case PkTalk::kBadBeat:
-			line = Pick(_rng, kBadBeat);
-			break;
-		case PkTalk::kBust:
-			line = Pick(_rng, kBust);
-			break;
-		}
-		if (!line) {
-			return false;
-		}
-		PkSay("DEALER: " + Fill(line, a_name), 3);
-		return true;
 	}
 
 	void Game::PkGreet(PkSeat& a_st)

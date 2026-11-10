@@ -792,9 +792,7 @@ namespace fr
 			}
 			// between hands: out of caps, or had enough
 			if (!_pk.inHand && st.step == Seat::Step::kPlaying && (st.stack < s.pkBigBlind || st.hands <= 0)) {
-				if (st.stack >= s.pkBigBlind || !PkDealer(PkTalk::kBust, Upper(st.name))) {
-					PkSay(std::format("{} {}", Upper(st.name), st.stack < s.pkBigBlind ? "IS OUT OF CAPS" : "CASHES OUT"));
-				}
+				PkSay(std::format("{} {}", Upper(st.name), st.stack < s.pkBigBlind ? "IS OUT OF CAPS" : "CASHES OUT"));
 				PkRelease(i, "done");
 			}
 		}
@@ -867,8 +865,6 @@ namespace fr
 		_pk.timer = delay + 0.4f;
 		_pk.think = 0.0f;
 		PkSay(std::format("NEW HAND · BLINDS {}/{}", s.pkSmallBlind, s.pkBigBlind));
-		_pk.allInSaid = false;
-		PkDealer(PkTalk::kNewHand);
 
 	}
 
@@ -912,9 +908,6 @@ namespace fr
 		if (seat >= 0) {
 			_pk.seats[seat].last = what;
 			PkSay(std::format("{} {}", _pk.seats[seat].you ? std::string("YOU") : Upper(_pk.seats[seat].name), what), p.folded ? 2 : 0);
-		}
-		if (p.allIn && paid > 0 && !_pk.allInSaid) {
-			_pk.allInSaid = PkDealer(PkTalk::kAllIn);
 		}
 		if (paid > 0) {
 			Audio::PlayUI(Audio::Bank::kChip, 0.6f);
@@ -966,19 +959,12 @@ namespace fr
 					PkDeal(_pk.hand.board[k], BoardSpot(k), yaw, true, 0.0f);
 					++_pk.boardShown;
 					_pk.timer = _pk.boardShown == 3 || _pk.boardShown == 4 || _pk.boardShown == 5 ? 0.9f : 0.25f;
-					// the street called (by the dealer, in their own words some of the time)
 					if (_pk.boardShown == 3) {
-						if (!PkDealer(PkTalk::kFlop)) {
-							PkSay("THE FLOP");
-						}
+						PkSay("THE FLOP");
 					} else if (_pk.boardShown == 4) {
-						if (!PkDealer(PkTalk::kTurn)) {
-							PkSay("THE TURN");
-						}
+						PkSay("THE TURN");
 					} else if (_pk.boardShown == 5) {
-						if (!PkDealer(PkTalk::kRiver)) {
-							PkSay("THE RIVER");
-						}
+						PkSay("THE RIVER");
 						_pk.pushAge = 0.0f;
 					}
 					return;
@@ -1155,11 +1141,7 @@ namespace fr
 		if (youIn && youResult.empty()) {
 			_pk.bannerTone = 2;  // you were in the hand and didn't take any of it: the banner in red
 		}
-		// your session's count, and the dealer's word on it
-		int total = 0;
-		for (int w : won) {
-			total += w;
-		}
+		// your session's count
 		if (youIn) {
 			++_pk.session.hands;
 			for (const auto& st : _pk.seats) {
@@ -1167,23 +1149,6 @@ namespace fr
 					++_pk.session.won;
 					_pk.session.biggest = std::max(_pk.session.biggest, won[st.hi]);
 				}
-			}
-		}
-		{
-			// a bad beat: a flush or better shown down and beaten
-			bool badBeat = false;
-			for (const auto& st : _pk.seats) {
-				if (h.showdown && st.used && st.hi >= 0 && won[st.hi] <= 0 && !h.players[st.hi].folded &&
-					pk::CategoryOf(h.scores[st.hi]) >= pk::Category::kFlush) {
-					badBeat = true;
-				}
-			}
-			if (badBeat) {
-				PkDealer(PkTalk::kBadBeat);
-			} else if (total >= Settings::Get().pkBigBlind * 25) {
-				PkDealer(PkTalk::kBigPot);
-			} else if (!h.showdown) {
-				PkDealer(PkTalk::kUncontested);
 			}
 		}
 		_pk.bannerAge = 0.0f;

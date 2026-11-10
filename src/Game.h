@@ -78,7 +78,7 @@ namespace fr
 		struct HudLine
 		{
 			std::string text;
-			int         tone{ 0 };  // 0 normal, 1 good (green), 2 bad (red), 3 the dealer (amber)
+			int         tone{ 0 };  // 0 normal, 1 good (green), 2 bad (red)
 		};
 
 		// what the HUD shows; safe from any thread
@@ -380,18 +380,6 @@ namespace fr
 			int biggest{ 0 };  // the biggest pot you took
 			int buyIn{ 0 };
 		};
-		enum class PkTalk
-		{
-			kNewHand,
-			kFlop,
-			kTurn,
-			kRiver,
-			kAllIn,
-			kBigPot,
-			kUncontested,
-			kBadBeat,
-			kBust,
-		};
 		enum class PkPhase
 		{
 			kWaiting,
@@ -437,7 +425,6 @@ namespace fr
 			int                                                    lifted{ 0 };  // your stack, back in your pocket over a save
 			bool                                                   peeking{ false };  // you're looking at your cards: they're turned up
 			PkSession                                              session;
-			bool                                                   allInSaid{ false };  // (the dealer's all in line: once a hand)
 		};
 		PokerState        _pk;
 		std::atomic<bool> _pkSeated{ false };
@@ -480,7 +467,6 @@ namespace fr
 		void         PkTickCards(const Frame& a_frame, float a_dt);
 		void         PkMakeChips(const Frame& a_frame);
 		void         PkSay(const std::string& a_text, int a_tone = 0);
-		bool         PkDealer(PkTalk a_what, const std::string& a_name = {});  // the dealer's line (some of the time): true if said
 		void         PkGreet(PkSeat& a_st);                     // a settler sitting back in: what they remember of you
 		void         PkRemember(const PkSeat& a_st, int a_change);  // a hand played at your table, for their memory
 		void         PkSessionEnd(int a_cashOut);              // your session's summary
