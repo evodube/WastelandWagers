@@ -1063,7 +1063,7 @@ namespace fr
 		auto  ref = st.actor.get();
 		auto* actor = ref ? ref->As<RE::Actor>() : nullptr;
 		if (actor) {
-			if (st.held && !Settings::Get().pkChairs) {
+			if (st.held && (!Settings::Get().pkChairs || st.standing)) {
 				Npc::SetRestrained(actor, false);
 			}
 			if (auto* proc = actor->currentProcess; proc && proc->GetOccupiedFurniture()) {
@@ -1158,7 +1158,7 @@ namespace fr
 				}
 				break;
 			case Seat::Step::kPlaying:
-				if (s.pkChairs) {
+				if (s.pkChairs && !st.standing) {
 					// sat in their chair: the chair holds them (and turns them to the table); now and then, if they've
 					// got up, back down
 					st.sitCheck -= a_dt;
@@ -1171,7 +1171,18 @@ namespace fr
 						const auto sit = actor->DoGetSitSleepState();
 						const bool down = sit == RE::SIT_SLEEP_STATE::kWantToSit || sit == RE::SIT_SLEEP_STATE::kWaitingForSitAnim ||
 						                  sit == RE::SIT_SLEEP_STATE::kIsSitting;
-						if (!down) {
+						if (down) {
+							st.sitTries = 0;
+						} else if (++st.sitTries > 3) {
+							// (three goes and they're not in it: something's in the way. They play standing at their spot)
+							log::info("poker: {} can't get into their chair (sit state {}): playing standing", st.name, static_cast<int>(sit));
+							st.standing = true;
+							st.held = false;
+							if (auto marker = st.walk.marker.get()) {
+								Npc::MoveTo(actor, marker.get());
+							}
+							break;
+						} else {
 							log::info("poker: {} isn't in their chair (sit state {}): sat down again", st.name, static_cast<int>(sit));
 							Npc::SitOn(actor, chair.get());
 						}
