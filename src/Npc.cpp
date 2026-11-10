@@ -5,6 +5,8 @@
 
 #include "RE/B/BGSRefAliasInstanceData.h"
 #include "RE/E/ExtraAliasInstanceArray.h"
+#include "RE/E/ExtraLinkedRef.h"
+#include "RE/B/BGSKeyword.h"
 #include "RE/T/TESFile.h"
 #include "RE/T/TESQuest.h"
 
@@ -246,6 +248,16 @@ namespace fr::Npc
 			return true;
 		}
 		auto* extra = a_actor->extraList.get();
+		// a settler with a job (farming, guarding, a shop, a scavenging station, a supply line): the workshop links
+		// them to their work object (WorkshopLinkWork) or their caravan route
+		if (auto* links = extra ? extra->GetByType<RE::ExtraLinkedRef>() : nullptr) {
+			for (const auto& l : links->linkedRefs) {
+				const char* id = l.keyword ? l.keyword->formEditorID.c_str() : nullptr;
+				if (l.REFR && id && (std::strstr(id, "LinkWork") || std::strstr(id, "Caravan"))) {
+					return true;
+				}
+			}
+		}
 		auto* aliases = extra ? extra->GetByType<RE::ExtraAliasInstanceArray>() : nullptr;
 		if (!aliases) {
 			return false;
