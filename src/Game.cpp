@@ -86,13 +86,36 @@ namespace fr
 						}
 					}
 				}
-				if (id >= 0) {
+				_pkDragging = id == 11;  // (the raise slider: dragged while the button's held, below)
+				if (id >= 0 && id != 11) {
 					tasks->AddTask([this, id]() {
 						if (!IsGamePaused()) {
 							PkKey(id);
 						}
 					});
 				}
+			}
+			if (down && _pkDragging && tasks) {
+				double px;
+				{
+					std::scoped_lock lock(_camMutex);
+					px = _pkPtrX;
+				}
+				float frac = -1.0f;
+				{
+					std::scoped_lock lock(_btnMutex);
+					for (const auto& b : _pkButtons) {
+						if (b.id == 11 && b.x1 > b.x0) {
+							frac = static_cast<float>((px - b.x0) / (b.x1 - b.x0));
+						}
+					}
+				}
+				if (frac >= -0.5f) {
+					tasks->AddTask([this, frac]() { PkSetRaise(frac); });
+				}
+			}
+			if (!down) {
+				_pkDragging = false;
 			}
 			_lmbWasDown = down;
 		}

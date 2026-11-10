@@ -1319,6 +1319,8 @@ namespace fr
 			a_h.pkToCall = h.ToCall(hi);
 			a_h.pkRaiseTo = std::max(_pk.raiseTo, h.MinRaiseTo(hi));
 			a_h.pkAllIn = h.players[hi].stack + h.players[hi].bet;
+			a_h.pkMinRaise = h.MinRaiseTo(hi);
+			a_h.pkMaxRaise = h.MaxRaiseTo(hi);
 		}
 		if (_pk.bannerAge < 5.0f && !_pk.bannerTitle.empty()) {
 			a_h.banner = 2;
@@ -1384,5 +1386,24 @@ namespace fr
 		_pkButtons = std::move(a_buttons);
 		_scrW = a_screenW;
 		_scrH = a_screenH;
+	}
+
+	void Game::PkSetRaise(float a_frac)
+	{
+		if (!_pkSeated || _pkYou < 0 || !_pk.inHand || _pk.phase != PkPhase::kBetting) {
+			return;
+		}
+		const int hi = _pk.seats[_pkYou].hi;
+		if (hi < 0 || _pk.hand.ToAct() != hi) {
+			return;
+		}
+		const int lo = _pk.hand.MinRaiseTo(hi), top = _pk.hand.MaxRaiseTo(hi);
+		const int step = std::max(1, Settings::Get().pkBigBlind);
+		const float f = std::clamp(a_frac, 0.0f, 1.0f);
+		int to = lo + static_cast<int>(std::round(f * static_cast<float>(top - lo) / static_cast<float>(step))) * step;
+		if (f >= 0.999f) {
+			to = top;
+		}
+		_pk.raiseTo = std::clamp(to, lo, std::max(lo, top));
 	}
 }

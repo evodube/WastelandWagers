@@ -525,13 +525,13 @@ namespace fr::Hud
 		{
 			std::vector<Game::PkButton> out;
 			const bool turn = a_st.pkYourTurn;
-			// the actions, along the bottom
+			// the actions, along the bottom: check / call, fold, the raise (a slider to set it, the button to make it), all in
 			const std::string call = !turn ? std::string("CHECK / CALL") : a_st.pkToCall == 0 ? std::string("CHECK") : std::format("CALL {}", Commas(a_st.pkToCall));
 			const std::string raise = turn ? std::format("{} {}", a_st.pkToCall == 0 ? "BET" : "RAISE TO", Commas(a_st.pkRaiseTo)) : std::string("RAISE");
 			const std::string allIn = turn ? std::format("ALL IN {}", Commas(a_st.pkAllIn)) : std::string("ALL IN");
-			constexpr float h = 40.0f, gap = 8.0f, small = 34.0f;
-			const float wFold = 110.0f, wCall = 150.0f, wRaise = 170.0f, wAll = 150.0f;
-			float       w = wFold + wCall + small + wRaise + small + wAll + gap * 5;
+			constexpr float h = 40.0f, gap = 8.0f;
+			const float wCall = 150.0f, wFold = 110.0f, wSlider = 200.0f, wRaise = 170.0f, wAll = 150.0f;
+			const float w = wCall + wFold + wSlider + wRaise + wAll + gap * 4;
 			const float k = std::min(1.0f, (a_v.w - kPkMargin * 2.0f) / w);
 			float       x = a_v.w * 0.5f - w * k * 0.5f;
 			const float y = a_v.h - 52.0f;
@@ -539,11 +539,28 @@ namespace fr::Hud
 				Button(a_v, a_st, out, a_id, a_label, x, y, a_w * k, h, turn, a_strong);
 				x += (a_w + gap) * k;
 			};
-			next(0, "FOLD", wFold);
 			next(1, call, wCall, turn);
-			next(5, "-", small);
+			next(0, "FOLD", wFold);
+			{
+				// the slider: from the smallest raise to all in
+				const bool  on = turn && a_st.pkMaxRaise > a_st.pkMinRaise;
+				const float sw = wSlider * k;
+				Chamfer(a_v, x, y, sw, h, 6.0f, on ? kPanel : Rgba(6, 20, 9, 0.5f), on ? kEdge : Rgba(80, 200, 100, 0.2f));
+				const float l = x + 14.0f, r = x + sw - 14.0f, cy = y + h * 0.5f + 4.0f;
+				const float f = on ? std::clamp(static_cast<float>(a_st.pkRaiseTo - a_st.pkMinRaise) / static_cast<float>(a_st.pkMaxRaise - a_st.pkMinRaise), 0.0f, 1.0f) : 0.0f;
+				DL::AddLine(a_v.dl, a_v.P(l, cy), a_v.P(r, cy), on ? Rgba(80, 200, 100, 0.5f) : Rgba(80, 200, 100, 0.2f), std::max(1.0f, 3.0f * a_v.s));
+				if (on) {
+					DL::AddLine(a_v.dl, a_v.P(l, cy), a_v.P(l + (r - l) * f, cy), kBright, std::max(1.0f, 3.0f * a_v.s));
+					DL::AddCircleFilled(a_v.dl, a_v.P(l + (r - l) * f, cy), 7.0f * a_v.s, kBright, 20);
+					Print(a_v, Mono(), Commas(a_st.pkMinRaise), l, y + 3.0f, 10, kDim, 0, 1.0f);
+					Print(a_v, Mono(), "MAX", r, y + 3.0f, 10, kDim, 0, 1.0f, Align::kRight);
+				}
+				// (noted as the track's ends, so where the pointer is along it is the fraction)
+				const ImVec2 p0 = a_v.P(l, y), p1 = a_v.P(r, y + h);
+				out.push_back({ 11, p0.x - a_v.origin.x, p0.y - a_v.origin.y, p1.x - a_v.origin.x, p1.y - a_v.origin.y, on });
+				x += (wSlider + gap) * k;
+			}
 			next(2, raise, wRaise, turn);
-			next(4, "+", small);
 			next(3, allIn, wAll);
 			// the table, down the right
 			const float sx = a_v.w - kPkMargin - kPkSideW;

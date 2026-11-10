@@ -59,7 +59,7 @@ namespace fr
 		float pkTopHeight{ 120.0f };       // ...that view's height over the felt
 
 		// [HUD]
-		float hudScale{ 1.4f };
+		float hudScale{ 0.9f };
 		bool  notifications{ false };      // results as the game's corner messages too
 
 		// [Sound]

@@ -122,6 +122,7 @@ namespace fr
 			int                   pkToCall{ 0 };
 			int                   pkRaiseTo{ 0 };
 			int                   pkAllIn{ 0 };
+			int                   pkMinRaise{ 0 }, pkMaxRaise{ 0 };  // the raise slider's ends
 			bool                  pkKit{ false };
 			bool                  pkPeek{ false };
 			bool                  pkTop{ false };
@@ -133,11 +134,12 @@ namespace fr
 		struct PkButton
 		{
 			int   id{ 0 };  // what PkKey does: 0 fold, 1 check/call, 2 raise, 3 all in, 4/5 raise up/down, 6 step away, 7 pack up,
-			                // 8 cash out, 9 view, 10 show your cards
+			                // 8 cash out, 9 view, 10 show your cards, 11 the raise slider
 			float x0{ 0 }, y0{ 0 }, x1{ 0 }, y1{ 0 };
 			bool  on{ true };
 		};
 		void SetPkButtons(std::vector<PkButton> a_buttons, float a_screenW, float a_screenH);
+		void PkSetRaise(float a_frac);  // the raise slider dragged: 0 the smallest raise .. 1 all in
 
 	private:
 		struct Frame  // the table in the world
@@ -380,6 +382,7 @@ namespace fr
 		std::vector<PkButton>  _pkButtons;
 		float                  _scrW{ 1920.0f }, _scrH{ 1080.0f };
 		bool                   _lmbWasDown{ false };
+		bool                   _pkDragging{ false };  // the raise slider held
 		RE::BSTSmartPointer<RE::BSInputEnableLayer> _pkMenuLayer;
 
 		bool         PkFrame(Frame& a_out) const;
