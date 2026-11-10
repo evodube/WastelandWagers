@@ -102,6 +102,8 @@ namespace fr::SettingsMenu
 						{ L"Poker", L"iMaxSettlers", "Most settlers at the table", Kind::kInt, &s.pkMaxPlayers, 0, 6, nullptr },
 						{ L"Poker", L"iSettlerBuyIn", "A settler's buy-in (most)", Kind::kInt, &s.pkNpcBuyIn, 20, 20000, nullptr },
 						{ L"Poker", L"fThinkTime", "Settlers' thinking time", Kind::kFloat, &s.pkThink, 0.2f, 5.0f, "%.1fx" },
+						{ L"Poker", L"bChairs", "Settlers sit (chairs)", Kind::kBool, &s.pkChairs, 0, 0, nullptr,
+							"chairs round the poker table and settlers sit in them (seated, they cheer and laugh but don't reach in to bet)" },
 						{ L"Poker", L"bVoices", "Settlers' voices", Kind::kBool, &s.pkVoices, 0, 0, nullptr,
 							"settlers cheer or laugh when they win a hand, and groan when they lose one at the showdown" },
 						{ L"Poker", L"bTopDown", "View from above", Kind::kBool, &s.pkTopDown, 0, 0, nullptr,

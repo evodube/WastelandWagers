@@ -7,7 +7,7 @@ wander over and bet with their own caps, cheering or shaking their heads at the 
 
 Since 0.4.0 there's a **poker table** too: no-limit Texas Hold'em against settlers who sit in with their own caps.
 
-**Status: 0.4.9.**
+**Status: 0.5.0.**
 
 ## Requirements
 
@@ -58,6 +58,8 @@ deals itself as soon as you and at least one settler are seated.
 - Controller: **A** check / call, **B** fold, **X** raise (**D-pad up / down** set it), **Y** all in, **LB / RB** turn
   the view, **Back** step away, **Start** switch the view, **right stick click** show your cards, **left stick click**
   cash out.
+- **Settlers sit (chairs)** (off by default): chairs round the table and settlers sit at it; seated they cheer and laugh,
+  but there are no seated animations for betting.
 - Blinds, buy-ins, how many settlers play and how long they think are on the Poker settings page.
 
 Winning bets are paid at the usual odds (35 to 1 down to even money). The result is drawn fairly first, and the ball

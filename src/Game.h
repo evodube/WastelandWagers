@@ -325,6 +325,7 @@ namespace fr
 			float               atSpot{ 0.0f };
 			pk::Style           style;
 			float               nextIdle{ 8.0f };
+			float               sitCheck{ 0.0f };  // (chairs) seconds before checking they're still sat down
 			std::string         last;            // what they last did
 			int                 hi{ -1 };        // their place in the hand being played, or -1
 		};
@@ -389,6 +390,7 @@ namespace fr
 			int                                                    bannerTone{ 0 };
 			pk::Action                                             pending;      // what the settler thinking will do
 			std::array<std::vector<RE::ObjectRefHandle>, kPkSeats> stackChips;   // each player's caps in front of them
+			std::array<RE::ObjectRefHandle, kPkSeats>              chairs;       // (the chairs option) one at each seat
 			std::array<int, kPkSeats>                              stackShown{};
 			std::vector<PkChipMove>                                moves;
 			float                                                  potHold{ 0.0f };

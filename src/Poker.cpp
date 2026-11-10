@@ -46,6 +46,11 @@ namespace fr
 		constexpr std::array<RE::TESFormID, 2> kWinIdles{ 0x0010BA3A, 0x0010F9C0 };              // cheering, fight winner
 		constexpr RE::TESFormID                kNoIdle = 0x00038C7A;                             // HeadShakeNo: a fold, a lost showdown
 
+		// sitting at the table (the chairs option): a dining chair of the game's, and the seated reactions
+		constexpr RE::TESFormID                kChair = 0x000E37D3;  // NpcChairIndustrialMetalDiningSit01
+		constexpr std::array<RE::TESFormID, 3> kSeatedWin{ 0x0010FF89, 0x0010FF8C, 0x00118014 };  // cheering sitting (A), laughing
+		constexpr float                        kChairOut = 14.0f;   // a chair's middle this far out from the rail
+
 		// voice: the Combat Zone crowd's lines (custom topics by keyword, every common voice has them)
 		constexpr RE::TESFormID kCheer = 0x00110396;   // Crowd_ApprovalSounds_TopicSubType
 		constexpr RE::TESFormID kLaugh = 0x00110395;   // Crowd_Laughter_TopicSubType
@@ -96,6 +101,15 @@ namespace fr
 			const RE::NiPoint3 side{ n.y, -n.x, 0.0f };
 			const RE::NiPoint3 p = e - n * 6.0f + side * ((a_k == 0 ? -1.0f : 1.0f) * (kCardW * 0.5f + 0.4f));
 			return { p.x, p.y, kFeltZ };
+		}
+
+		// (the chairs option) where a seat's chair goes, and which way it faces (table space; into the table)
+		RE::NiPoint3 ChairSpot(int a_seat, RE::NiPoint3& a_facing)
+		{
+			RE::NiPoint3 e, n;
+			Stadium(kHolders[a_seat].first, kHolders[a_seat].second, kRailR, kRailC, e, n);
+			a_facing = { -n.x, -n.y, 0.0f };
+			return e + n * kChairOut;
 		}
 
 		// a player's own caps: on the felt to the left of their cards
@@ -214,7 +228,7 @@ namespace fr
 	{
 		RE::NiPoint3 e, n;
 		Stadium(kHolders[a_seat].first, kHolders[a_seat].second, kRailR, kRailC, e, n);
-		const RE::NiPoint3 p = e + n * kStandOff;
+		const RE::NiPoint3 p = e + n * (Settings::Get().pkChairs ? kChairOut + 18.0f : kStandOff);  // (a chair: next to it, to sit from)
 		a_heading = HeadingOf(a_frame, -n.x, -n.y);
 		return ToWorld(a_frame, p.x, p.y, 0.0);
 	}
@@ -295,6 +309,9 @@ namespace fr
 				Remove(h);
 			}
 		}
+		for (auto& h : _pk.chairs) {
+			Remove(h);
+		}
 		log::info("poker table no longer in play: {}", a_why);
 		_pk = PokerState{};
 	}
@@ -357,6 +374,28 @@ namespace fr
 				log::info("poker: you're in a fight: up from the table");
 				PkStandUp(false);
 				Notify("Poker: trouble! You're up from the table (your seat and caps are kept)");
+			}
+		}
+		// (the chairs option) a chair at each seat while it's on; none when it's off
+		{
+			const bool want = Settings::Get().pkChairs;
+			for (int i = 0; i < kPkSeats; ++i) {
+				auto& h = _pk.chairs[i];
+				if (!want) {
+					if (h) {
+						Remove(h);
+					}
+					continue;
+				}
+				if (!h.get()) {
+					auto*        chairBase = RE::TESForm::GetFormByID(kChair);
+					auto*        chairForm = chairBase && chairBase->IsBoundObject() ? static_cast<RE::TESBoundObject*>(chairBase) : nullptr;
+					RE::NiPoint3 facing;
+					const auto   at = ChairSpot(i, facing);
+					if (chairForm) {
+						h = Spawn(chairForm, ToWorld(frame, at.x, at.y, 0.0), HeadingOf(frame, facing.x, facing.y));
+					}
+				}
 			}
 		}
 		_pk.bannerAge += a_dt;
@@ -585,8 +624,11 @@ namespace fr
 		auto  ref = st.actor.get();
 		auto* actor = ref ? ref->As<RE::Actor>() : nullptr;
 		if (actor) {
-			if (st.held) {
+			if (st.held && !Settings::Get().pkChairs) {
 				Npc::SetRestrained(actor, false);
+			}
+			if (auto* proc = actor->currentProcess; proc && proc->GetOccupiedFurniture()) {
+				actor->InitiateGetUpPackage();  // (up out of their chair)
 			}
 			Npc::Leave(actor);
 		}
@@ -611,19 +653,29 @@ namespace fr
 		}
 		auto pick = [&](auto& a_list) { return a_list[std::uniform_int_distribution<std::size_t>(0, a_list.size() - 1)(_rng)]; };
 		RE::TESFormID idle = 0;
+		const int     kind = a_kind;
+		if (Settings::Get().pkChairs) {
+			// sitting: only the seated reactions there are (a cheer or a laugh for a win)
+			if (a_kind != 3) {
+				return;
+			}
+			a_kind = 99;
+			idle = pick(kSeatedWin);
+		}
 		switch (a_kind) {
 		case 0: idle = pick(kLookIdles); break;
 		case 1: idle = kThinkIdle; break;
 		case 2: idle = kChipsIdle; break;
 		case 3: idle = pick(kWinIdles); break;
+		case 99: break;
 		default: idle = kNoIdle; break;
 		}
 		Npc::PlayIdle(actor, idle);
 		// and a word or two: a cheer or a laugh for a win, a groan for a lost showdown (now and then)
-		if (Settings::Get().pkVoices && (a_kind == 3 || (a_kind == 4 && _pk.phase == PkPhase::kShowdown)) &&
+		if (Settings::Get().pkVoices && (kind == 3 || (kind == 4 && _pk.phase == PkPhase::kShowdown)) &&
 			std::uniform_real_distribution<float>(0.0f, 1.0f)(_rng) < 0.7f) {
-			const bool laugh = a_kind == 3 && std::uniform_real_distribution<float>(0.0f, 1.0f)(_rng) < 0.35f;
-			Npc::Say(actor, a_kind == 3 ? (laugh ? kLaugh : kCheer) : kGroan);
+			const bool laugh = kind == 3 && std::uniform_real_distribution<float>(0.0f, 1.0f)(_rng) < 0.35f;
+			Npc::Say(actor, kind == 3 ? (laugh ? kLaugh : kCheer) : kGroan);
 		}
 		st.nextIdle = std::uniform_real_distribution<float>(10.0f, 22.0f)(_rng);  // (no idle on top of this one for a while)
 	}
@@ -660,6 +712,20 @@ namespace fr
 				}
 				break;
 			case Seat::Step::kPlaying:
+				if (s.pkChairs) {
+					// sat in their chair: the chair holds them (and turns them to the table); now and then, if they've
+					// got up, back down
+					st.sitCheck -= a_dt;
+					auto chair = _pk.chairs[i].get();
+					auto* proc = actor->currentProcess;
+					if (chair && st.sitCheck <= 0.0f && !(proc && proc->GetOccupiedFurniture())) {
+						Npc::SitOn(actor, chair.get());
+						st.sitCheck = 3.0f;
+					}
+					st.held = true;  // (for the idles: they're where they should be)
+					st.atSpot += a_dt;
+					break;
+				}
 				if (!st.held) {
 					st.held = Npc::SetRestrained(actor, true);
 				}
@@ -1649,6 +1715,9 @@ namespace fr
 			v.clear();
 		}
 		_pk.stackShown.fill(-1);
+		for (auto& h : _pk.chairs) {
+			Remove(h);  // (back on the next tick, and whoever was in one sits again)
+		}
 		for (auto& m : _pk.moves) {
 			Remove(m.ref);
 		}

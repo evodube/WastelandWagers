@@ -134,6 +134,17 @@ Bool Function PlayIdleOn(Int aiActor, Int aiIdle)
 	return akActor.PlayIdle(akIdle)
 EndFunction
 
+; sat down in a chair (a poker table's)
+Bool Function SitOn(Int aiActor, Int aiChair)
+	Actor akActor = Game.GetForm(aiActor) as Actor
+	ObjectReference akChair = Game.GetForm(aiChair) as ObjectReference
+	if akActor == None || akChair == None
+		return false
+	endif
+	akActor.SnapIntoInteraction(akChair)
+	return true
+EndFunction
+
 ; a line of the game's own (a custom-subtype topic, by its keyword: the Combat Zone crowd's cheers and groans, which
 ; every common voice has)
 Bool Function SayOn(Int aiActor, Int aiKeyword)

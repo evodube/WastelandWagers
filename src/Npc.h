@@ -36,6 +36,9 @@ namespace fr::Npc
 	// a line of the game's: the custom-subtype topic with that keyword (Fallout4.esm form ID)
 	void Say(RE::Actor* a_actor, RE::TESFormID a_keyword);
 
+	// Papyrus Actor.SnapIntoInteraction: sat down in a chair
+	void SitOn(RE::Actor* a_actor, RE::TESObjectREFR* a_chair);
+
 	// Busy with something else, so not to be called over to a table: a settler with a job, in furniture (a chair, a
 	// workstation, a guard post), at the pool table (Playable Pool), or a companion.
 	const char* Busy(RE::Actor* a_actor);  // why they're busy, or nullptr: free to come over
