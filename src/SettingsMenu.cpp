@@ -106,6 +106,8 @@ namespace fr::SettingsMenu
 							"chairs round the poker table and settlers sit in them (seated, they cheer and laugh but don't reach in to bet)" },
 						{ L"Poker", L"bVoices", "Settlers' voices", Kind::kBool, &s.pkVoices, 0, 0, nullptr,
 							"settlers cheer or laugh when they win a hand, and groan when they lose one at the showdown" },
+						{ L"Poker", L"bBanter", "Table talk", Kind::kBool, &s.pkBanter, 0, 0, nullptr,
+							"the dealer's lines through a hand, and settlers who remember you when they sit back in" },
 						{ L"Poker", L"bTopDown", "View from above", Kind::kBool, &s.pkTopDown, 0, 0, nullptr,
 							"start at the poker table looking down on it rather than from your seat (V switches either way at the table)" },
 						{ L"Poker", L"fSeatBack", "Seat view: distance behind your cards", Kind::kFloat, &s.pkSeatBack, 0.0f, 150.0f, "%.0f" },

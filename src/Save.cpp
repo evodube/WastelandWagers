@@ -6,6 +6,7 @@ namespace fr
 {
 	extern std::mutex                                       g_npcMutex;
 	extern std::unordered_map<RE::TESFormID, int>           g_purses;
+	extern std::unordered_map<RE::TESFormID, Game::PkMemory> g_pkMemory;
 
 	namespace
 	{
@@ -26,17 +27,23 @@ namespace fr
 		}
 		log::info("co-save: {} purses written", g_purses.size());
 		SaveKit(a_intfc);
+		SavePokerMemory(a_intfc);
 	}
 
 	void Game::Load(const F4SE::SerializationInterface* a_intfc)
 	{
 		std::scoped_lock lock(g_npcMutex);
 		g_purses.clear();
+		g_pkMemory.clear();
 		RevertKit();
 		std::uint32_t type = 0, version = 0, length = 0;
 		while (a_intfc->GetNextRecordInfo(type, version, length)) {
 			if (type == kKitRecordType) {
 				LoadKit(a_intfc, version);
+				continue;
+			}
+			if (type == kPkMemoryType) {
+				LoadPokerMemory(a_intfc, version);
 				continue;
 			}
 			if (version != kVersion || type != kPursesType) {
@@ -71,6 +78,7 @@ namespace fr
 		{
 			std::scoped_lock lock(g_npcMutex);
 			g_purses.clear();
+			g_pkMemory.clear();
 		}
 		RevertKit();
 	}

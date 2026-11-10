@@ -313,7 +313,7 @@ namespace fr::Hud
 			Chamfer(a_v, x, y0, w, h, 10.0f, kPanel, kEdge);
 			float y = y0 + 10.0f;
 			for (const auto& line : a_st.log) {
-				const ImU32 col = line.tone == 1 ? kBright : line.tone == 2 ? kRedText : kText;
+				const ImU32 col = line.tone == 1 ? kBright : line.tone == 2 ? kRedText : line.tone == 3 ? Rgba(255, 196, 92) : kText;
 				Print(a_v, Mono(), "> " + line.text, x + 16, y, kSize, col, 0, 1.0f);
 				y += kLine;
 			}

@@ -59,6 +59,7 @@ namespace fr
 		float pkThink{ 1.0f };             // how long settlers think (x)
 		bool  pkChairs{ false };           // settlers sit at the poker table (chairs put round it)
 		bool  pkVoices{ true };            // settlers cheer, laugh and groan at the end of a hand
+		bool  pkBanter{ true };            // the dealer's lines through a hand, and settlers' greetings
 		bool  pkTopDown{ false };          // the view from above the table rather than from your seat (V switches at the table)
 		float pkTopHeight{ 108.0f };       // ...that view's height over the felt
 		float pkTopShift{ 0.0f };          // ...and how far it's moved towards your side from the middle of the table

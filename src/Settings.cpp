@@ -98,6 +98,7 @@ namespace fr
 		pkThink = std::clamp(ReadFloat(L"Poker", L"fThinkTime", pkThink), 0.2f, 5.0f);
 		pkTopDown = ReadBool(L"Poker", L"bTopDown", pkTopDown);
 		pkVoices = ReadBool(L"Poker", L"bVoices", pkVoices);
+		pkBanter = ReadBool(L"Poker", L"bBanter", pkBanter);
 		pkChairs = ReadBool(L"Poker", L"bChairs", pkChairs);
 		pkTopHeight = std::clamp(ReadFloat(L"Poker", L"fTopHeight", pkTopHeight), 40.0f, 400.0f);
 		pkTopShift = std::clamp(ReadFloat(L"Poker", L"fTopShift", pkTopShift), -40.0f, 60.0f);

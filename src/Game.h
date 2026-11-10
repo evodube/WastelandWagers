@@ -49,6 +49,18 @@ namespace fr
 		static constexpr std::uint32_t kKitRecordType = 0x5354494B;  // 'KITS'
 		static constexpr std::uint32_t kKitRecordVersion = 1;
 
+		// what each settler remembers of your poker table (PokerTalk.cpp; the co-save's 'PKMM')
+		struct PkMemory
+		{
+			int hands{ 0 };    // hands played there
+			int net{ 0 };      // caps won (or lost, below 0) there, all told
+			int biggest{ 0 };  // the most they've won in a hand
+		};
+		static void SavePokerMemory(const F4SE::SerializationInterface* a_intfc);
+		static void LoadPokerMemory(const F4SE::SerializationInterface* a_intfc, std::uint32_t a_version);
+		static constexpr std::uint32_t kPkMemoryType = 0x4D4D4B50;  // 'PKMM'
+		static constexpr std::uint32_t kPkMemoryVersion = 1;
+
 		// the F4SE co-save: who deals where, the settlers' purses
 		static void Save(const F4SE::SerializationInterface* a_intfc);
 		static void Load(const F4SE::SerializationInterface* a_intfc);
@@ -66,7 +78,7 @@ namespace fr
 		struct HudLine
 		{
 			std::string text;
-			int         tone{ 0 };  // 0 normal, 1 good (green), 2 bad (red)
+			int         tone{ 0 };  // 0 normal, 1 good (green), 2 bad (red), 3 the dealer (amber)
 		};
 
 		// what the HUD shows; safe from any thread
@@ -360,6 +372,26 @@ namespace fr
 			float               yaw{ 0.0f };
 			bool                remove{ true };
 		};
+		// your sitting at the poker table, from buying in to cashing out
+		struct PkSession
+		{
+			int hands{ 0 };
+			int won{ 0 };
+			int biggest{ 0 };  // the biggest pot you took
+			int buyIn{ 0 };
+		};
+		enum class PkTalk
+		{
+			kNewHand,
+			kFlop,
+			kTurn,
+			kRiver,
+			kAllIn,
+			kBigPot,
+			kUncontested,
+			kBadBeat,
+			kBust,
+		};
 		enum class PkPhase
 		{
 			kWaiting,
@@ -404,6 +436,8 @@ namespace fr
 			int                                                    winnerSeat{ -1 };  // chips on their way in: the pot's stack after  // 1 you won, 2 you lost, 0 neither
 			int                                                    lifted{ 0 };  // your stack, back in your pocket over a save
 			bool                                                   peeking{ false };  // you're looking at your cards: they're turned up
+			PkSession                                              session;
+			bool                                                   allInSaid{ false };  // (the dealer's all in line: once a hand)
 		};
 		PokerState        _pk;
 		std::atomic<bool> _pkSeated{ false };
@@ -446,6 +480,10 @@ namespace fr
 		void         PkTickCards(const Frame& a_frame, float a_dt);
 		void         PkMakeChips(const Frame& a_frame);
 		void         PkSay(const std::string& a_text, int a_tone = 0);
+		bool         PkDealer(PkTalk a_what, const std::string& a_name = {});  // the dealer's line (some of the time): true if said
+		void         PkGreet(PkSeat& a_st);                     // a settler sitting back in: what they remember of you
+		void         PkRemember(const PkSeat& a_st, int a_change);  // a hand played at your table, for their memory
+		void         PkSessionEnd(int a_cashOut);              // your session's summary
 		void         PkSitDown(RE::TESObjectREFR* a_table);
 		void         PkIdle(int a_seat, int a_kind);  // a settler's idle: 0 looking on, 1 thinking, 2 chips in, 3 won, 4 folded or lost
 		void         PkHoldMenuKeys(bool a_hold);
