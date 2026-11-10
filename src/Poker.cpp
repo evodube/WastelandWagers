@@ -307,8 +307,11 @@ namespace fr
 			const auto  eye = ToWorld(frame, mid.x + n.x * 42.0f, mid.y + n.y * 42.0f, kFeltZ + 46.0f);
 			const float basePitch = std::atan2(46.0f, 42.0f + 30.0f);  // (down onto the felt 30 in front of your cards)
 			const bool  focus = util::GameHasFocus();
-			const int   turn = (focus && (::GetAsyncKeyState('E') & 0x8000) ? 1 : 0) - (focus && (::GetAsyncKeyState('Q') & 0x8000) ? 1 : 0);
-			PkHoldMenuKeys(focus && ((::GetAsyncKeyState('Q') | ::GetAsyncKeyState('E')) & 0x8000));
+			const auto& ks = Settings::Get();
+			const bool  left = focus && ks.keyTurnLeft > 0 && (::GetAsyncKeyState(ks.keyTurnLeft) & 0x8000);
+			const bool  right = focus && ks.keyTurnRight > 0 && (::GetAsyncKeyState(ks.keyTurnRight) & 0x8000);
+			const int   turn = (right ? 1 : 0) - (left ? 1 : 0);
+			PkHoldMenuKeys(left || right);
 			float yaw, pitch;
 			{
 				std::scoped_lock lock(_camMutex);
@@ -1416,7 +1419,9 @@ namespace fr
 		const auto& id = a_event->QUserEvent();
 		const char* name = id.c_str() ? id.c_str() : "";
 		const auto  code = a_event->QIDCode();
-		const bool  key = a_event->device.get() == RE::INPUT_DEVICE::kKeyboard && (code == 'Q' || code == 'E');
+		const auto& s = Settings::Get();
+		const bool  key = a_event->device.get() == RE::INPUT_DEVICE::kKeyboard && code != 0 &&
+		                 (static_cast<int>(code) == s.keyTurnLeft || static_cast<int>(code) == s.keyTurnRight);
 		if (key || std::string_view(name) == "Workshop") {
 			static std::set<std::string> logged;
 			if (logged.insert(name).second) {
