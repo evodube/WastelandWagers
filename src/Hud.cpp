@@ -427,6 +427,12 @@ namespace fr::Hud
 				}
 				Print(a_v, Mono(), r.name, x + 40, row, 13, col, 0, 1.0f);
 				Print(a_v, Mono(), r.status, x + 40, row + 15, 10, r.toAct ? kBright : kDim, 0, 1.0f);
+				if (r.think >= 0.0f) {
+					// how long they've got left to think, running down
+					const float bx = x + 40, bw = 120.0f, by = row + kPkRow - 9.0f;
+					DL::AddRectFilled(a_v.dl, a_v.P(bx, by), a_v.P(bx + bw, by + 3.0f), Rgba(80, 200, 100, 0.25f), 0.0f, 0);
+					DL::AddRectFilled(a_v.dl, a_v.P(bx, by), a_v.P(bx + bw * r.think, by + 3.0f), kBright, 0.0f, 0);
+				}
 				Print(a_v, Mono(), Commas(r.stack), stackX, row, 13, col, 0, 1.0f, Align::kRight);
 				if (r.bet > 0) {
 					Print(a_v, Mono(), std::format("BET {}", Commas(r.bet)), stackX, row + 15, 10, kText, 0, 1.0f, Align::kRight);
@@ -606,10 +612,18 @@ namespace fr::Hud
 				a_v.w /= f;
 				a_v.h /= f;
 			}
-			PokerStatus(a_v, a_st);
-			PokerBoard(a_v, a_st);
-			PokerLog(a_v, a_st);
-			PokerHole(a_v, a_st);
+			// sliding in when you sit down: the left panels from the left, the right ones from the right
+			auto slid = [&](float a_delay, float a_dir) {
+				const float t = std::clamp((a_st.pkAge - a_delay) / 0.45f, 0.0f, 1.0f);
+				const float e = 1.0f - (1.0f - t) * (1.0f - t) * (1.0f - t);
+				View v = a_v;
+				v.origin.x += a_dir * (1.0f - e) * 420.0f * a_v.s;
+				return v;
+			};
+			PokerStatus(slid(0.0f, -1.0f), a_st);
+			PokerBoard(slid(0.08f, 1.0f), a_st);
+			PokerLog(slid(0.16f, -1.0f), a_st);
+			PokerHole(slid(0.2f, 1.0f), a_st);
 			PokerBanner(a_v, a_st);
 			PokerButtons(a_v, a_st, a_viewport);
 		}

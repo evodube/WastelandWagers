@@ -110,6 +110,7 @@ namespace fr
 				bool               you{ false };
 				bool               folded{ false };
 				std::array<int, 2> shown{ -1, -1 };  // their cards, at a showdown
+				float              think{ -1.0f };   // thinking: the time left of it (1 .. 0), or -1
 			};
 			bool                  poker{ false };
 			std::vector<PokerRow> pkRows;
@@ -128,6 +129,7 @@ namespace fr
 			bool                  pkKit{ false };
 			bool                  pkPeek{ false };
 			bool                  pkTop{ false };
+			float                 pkAge{ 99.0f };     // seconds since you sat down (the panels slide in)
 			std::string           pkHelp;             // what's happening / what to do, under the board
 		};
 		HudState Hud() const;
@@ -391,6 +393,8 @@ namespace fr
 			float                                                  potHold{ 0.0f };
 			float                                                  pushAge{ 99.0f };  // the camera's push in: seconds since
 			float                                                  driftYaw{ 0.0f };  // the view turned towards the winner
+			float                                                  thinkTotal{ 1.0f };
+			float                                                  seatedAge{ 99.0f };
 			int                                                    winnerSeat{ -1 };  // chips on their way in: the pot's stack after  // 1 you won, 2 you lost, 0 neither
 			int                                                    lifted{ 0 };  // your stack, back in your pocket over a save
 			bool                                                   peeking{ false };  // you're looking at your cards: they're turned up

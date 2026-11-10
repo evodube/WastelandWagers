@@ -354,6 +354,7 @@ namespace fr
 		_pk.bannerAge += a_dt;
 		_pk.potHold = std::max(0.0f, _pk.potHold - a_dt);
 		_pk.pushAge += a_dt;
+		_pk.seatedAge += a_dt;
 		PkTickSeats(frame, a_dt);
 		PkTickHand(frame, a_dt);
 		PkTickCards(frame, a_dt);
@@ -875,6 +876,7 @@ namespace fr
 					_pk.pending = pk::Decide(_pk.hand, hi, _rng, &eq);
 					const double sure = pk::Confidence(_pk.hand, hi, _pk.pending, eq);
 					_pk.think = s.pkThink * static_cast<float>(0.5 + (1.0 - sure) * 2.2) * std::uniform_real_distribution<float>(0.8f, 1.25f)(_rng);
+					_pk.thinkTotal = std::max(0.1f, _pk.think);
 					if (_pk.think > 1.8f) {
 						PkIdle(seat, 1);  // a long think: they look it over
 					}
@@ -1363,6 +1365,7 @@ namespace fr
 			_mouseDX = _mouseDY = 0.0;
 		}
 		_pkTopView = Settings::Get().pkTopDown;
+		_pk.seatedAge = 0.0f;
 		_pkShowCards = false;
 		_pkPtrX = _pkPtrY = -1.0;
 		_pkSeated = true;
@@ -1513,6 +1516,9 @@ namespace fr
 				r.bet = p.bet;
 				r.folded = p.folded;
 				r.toAct = h.ToAct() == st.hi && _pk.phase == PkPhase::kBetting;
+				if (r.toAct && !st.you && _pk.think > 0.0f) {
+					r.think = std::clamp(_pk.think / _pk.thinkTotal, 0.0f, 1.0f);
+				}
 				r.status = p.folded ? std::string("FOLDED") : p.allIn ? std::string("ALL IN") : st.last;
 				if (_pk.phase == PkPhase::kShowdown && h.showdown && !p.folded) {
 					r.shown = { p.hole[0], p.hole[1] };
@@ -1576,6 +1582,7 @@ namespace fr
 		}
 		a_h.pkPeek = _pk.peeking || _pkShowCards;
 		a_h.pkTop = _pkTopView;
+		a_h.pkAge = _pk.seatedAge;
 		if (auto table = _pk.table.get()) {
 			a_h.pkKit = IsKitTable(table.get());
 		}
