@@ -1150,6 +1150,11 @@ namespace fr
 				return _pk.table.get().get();
 			}
 		}
+		for (const auto& h : _bj.chairs) {
+			if (auto c = h.get(); c && c.get() == a_ref) {
+				return _bj.table.get().get();  // (the blackjack table's: the same)
+			}
+		}
 		return nullptr;
 	}
 

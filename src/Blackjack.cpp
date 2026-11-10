@@ -52,6 +52,10 @@ namespace fr
 		constexpr float    kDealGap = 0.32f;                 // seconds between the cards going out
 		constexpr float    kBetWindow = 12.0f;               // seconds for bets once the first one's down
 		constexpr std::array<RE::TESFormID, 2> kWinIdles{ 0x0010BA3A, 0x0010F9C0 };  // cheering, fight winner
+		// sitting (the chairs option): the poker table's chair, out from the edge as there; their seated cheers
+		constexpr RE::TESFormID                kChair = 0x000E37D3;  // NpcChairIndustrialMetalDiningSit01
+		constexpr float                        kChairOut = 20.0f;
+		constexpr std::array<RE::TESFormID, 3> kSeatedWin{ 0x0010FF89, 0x0010FF8C, 0x00118014 };
 
 		float Distance2D(const RE::NiPoint3& a, const RE::NiPoint3& b) { return std::hypot(a.x - b.x, a.y - b.y); }
 
@@ -198,7 +202,8 @@ namespace fr
 
 	RE::NiPoint3 Game::BjStand(const Frame& a_frame, int a_seat, float& a_heading) const
 	{
-		const auto p = AtR(a_seat, kStandR);
+		// (a chair: beside it, to sit from)
+		const auto p = AtR(a_seat, Settings::Get().bjChairs ? kEdgeR + kChairOut + 18.0f : kStandR);
 		const auto o = Out(a_seat);
 		a_heading = HeadingOf(a_frame, -o.x, -o.y);
 		return ToWorld(a_frame, p.x, p.y, 0.0);
@@ -294,6 +299,9 @@ namespace fr
 			Npc::Leave(actor);
 		}
 		Remove(_bj.dealerWalk.marker);
+		for (auto& h : _bj.chairs) {
+			Remove(h);
+		}
 		log::info("blackjack table no longer in play: {}", a_why);
 		_bj = BlackjackState{};
 		_bjYou = -1;
@@ -332,6 +340,31 @@ namespace fr
 				log::info("blackjack: you're in a fight: up from the table");
 				BjStandUp();
 				Notify("Blackjack: trouble! You're up from the table");
+			}
+		}
+		// (the chairs option) a chair at each place while it's on; none when it's off
+		{
+			const bool want = Settings::Get().bjChairs;
+			for (int i = 0; i < kBjSeats; ++i) {
+				auto& h = _bj.chairs[i];
+				if (!want) {
+					if (h) {
+						Remove(h);
+					}
+					continue;
+				}
+				if (!h.get()) {
+					auto* base = RE::TESForm::GetFormByID(kChair);
+					auto* form = base && base->IsBoundObject() ? static_cast<RE::TESBoundObject*>(base) : nullptr;
+					const auto at = AtR(i, kEdgeR + kChairOut);
+					const auto o = Out(i);
+					if (form) {
+						h = Spawn(form, ToWorld(frame, at.x, at.y, 0.0), HeadingOf(frame, -o.x, -o.y));
+						if (auto c = h.get()) {
+							Npc::ClaimChair(c.get());  // (yours till someone plays in it: nobody passing by sits in it)
+						}
+					}
+				}
 			}
 		}
 		_bj.bannerAge += a_dt;
@@ -522,8 +555,14 @@ namespace fr
 		auto  ref = st.actor.get();
 		auto* actor = ref ? ref->As<RE::Actor>() : nullptr;
 		if (actor) {
-			if (st.held) {
+			if (st.held && !Settings::Get().bjChairs) {
 				Npc::SetRestrained(actor, false);
+			}
+			if (auto* proc = actor->currentProcess; proc && proc->GetOccupiedFurniture()) {
+				actor->InitiateGetUpPackage();  // (up out of their chair)
+			}
+			if (auto c = _bj.chairs[a_seat].get()) {
+				Npc::ClaimChair(c.get());  // (yours again: nobody else sits in it)
 			}
 			Npc::Leave(actor);
 		}
@@ -582,7 +621,15 @@ namespace fr
 			}
 			float      heading = 0.0f;
 			const auto spot = BjStand(a_frame, i, heading);
+			const bool chairs = s.bjChairs && _bj.chairs[i].get();
 			if (st.step == Seat::Step::kWalking) {
+				if (chairs && Distance2D(actor->data.location, spot) < 110.0f) {
+					// (chairs: near enough, put straight in it)
+					st.step = Seat::Step::kPlaying;
+					st.sitCheck = 0.0f;
+					st.sitTries = 0;
+					continue;
+				}
 				if (WalkTo(actor, st.walk, a_frame, spot, heading, a_dt, false, 15.0f)) {
 					st.step = Seat::Step::kPlaying;
 					if (auto marker = st.walk.marker.get(); marker && Distance2D(actor->data.location, spot) > 0.5f) {
@@ -591,10 +638,35 @@ namespace fr
 				}
 				continue;
 			}
-			if (!st.held) {
-				st.held = Npc::SetRestrained(actor, true);
+			if (chairs) {
+				// sat in their chair (the quest's Sit package keeps them there; checked now and then, sat again if
+				// they're up, moved onto it after a couple of goes)
+				auto chair = _bj.chairs[i].get();
+				st.sitCheck -= a_dt;
+				if (chair && st.sitCheck <= 0.0f) {
+					st.sitCheck = 3.0f;
+					const auto sit = actor->DoGetSitSleepState();
+					const bool down = sit == RE::SIT_SLEEP_STATE::kWantToSit || sit == RE::SIT_SLEEP_STATE::kWaitingForSitAnim ||
+					                  sit == RE::SIT_SLEEP_STATE::kIsSitting;
+					if (down) {
+						st.sitTries = 0;
+					} else {
+						if (++st.sitTries > 2) {
+							log::info("blackjack: {} still isn't in their chair (sit state {}): moved onto it and sat", st.name, static_cast<int>(sit));
+							Npc::MoveTo(actor, chair.get());
+							st.sitTries = 0;
+						}
+						Npc::SitOn(actor, chair.get());
+					}
+				}
+				st.held = true;
+				st.atSpot += a_dt;
+			} else {
+				if (!st.held) {
+					st.held = Npc::SetRestrained(actor, true);
+				}
+				st.atSpot = Distance2D(actor->data.location, spot) < kArrived + 10.0f ? st.atSpot + a_dt : 0.0f;
 			}
-			st.atSpot = Distance2D(actor->data.location, spot) < kArrived + 10.0f ? st.atSpot + a_dt : 0.0f;
 			// between hands: out of caps, or had enough
 			if (_bj.phase == BjPhase::kBetting && st.bet == 0 && (st.rounds <= 0 || Purse(st.id) < 5)) {
 				BjSay(std::format("{} {}", Upper(st.name), Purse(st.id) < 5 ? "IS OUT OF CAPS" : "LEAVES THE TABLE"));
@@ -614,9 +686,13 @@ namespace fr
 		if (!st.used || st.you || !st.held || !actor) {
 			return;
 		}
-		// (standing: only the cheers, as at the poker table: the game's other idles step and turn them)
+		// (only the cheers, as at the poker table: the game's other idles step and turn them; seated, the seated ones)
 		if (a_kind == 3) {
-			Npc::PlayIdle(actor, kWinIdles[std::uniform_int_distribution<std::size_t>(0, kWinIdles.size() - 1)(_rng)]);
+			if (Settings::Get().bjChairs && _bj.chairs[a_seat].get()) {
+				Npc::PlayIdle(actor, kSeatedWin[std::uniform_int_distribution<std::size_t>(0, kSeatedWin.size() - 1)(_rng)]);
+			} else {
+				Npc::PlayIdle(actor, kWinIdles[std::uniform_int_distribution<std::size_t>(0, kWinIdles.size() - 1)(_rng)]);
+			}
 		}
 	}
 
@@ -1733,11 +1809,15 @@ namespace fr
 					Npc::SetRestrained(ref->As<RE::Actor>(), false);
 				}
 				st.held = false;
+				st.sitCheck = 0.0f;
 			}
 			if (!st.you && st.bet > 0) {
 				AddToPurse(st.id, st.bet);
 				st.bet = 0;
 			}
+		}
+		for (auto& h : _bj.chairs) {
+			Remove(h);  // (back on the next tick, and whoever was in one sits again)
 		}
 		for (auto& c : _bj.cards) {
 			Remove(c.ref);

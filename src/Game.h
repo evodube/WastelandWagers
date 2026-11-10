@@ -591,6 +591,8 @@ namespace fr
 			std::string         last;              // what they last did
 			float               atSpot{ 0.0f };
 			float               nextIdle{ 8.0f };
+			float               sitCheck{ 0.0f };  // (chairs) seconds before checking they're still sat down
+			int                 sitTries{ 0 };
 		};
 		enum class BjPhase
 		{
@@ -631,6 +633,7 @@ namespace fr
 			bool                            dealerHeld{ false };
 			float                           dealerLook{ 0.0f };
 			int                             lifted{ 0 };       // your bets back in your pocket over a save
+			std::array<RE::ObjectRefHandle, kBjSeats> chairs;  // (the chairs option) one at each place
 			bool                            shuffleSaid{ false };
 		};
 		BlackjackState    _bj;
