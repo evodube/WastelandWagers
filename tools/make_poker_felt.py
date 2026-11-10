@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Writes the poker table's felt (Data/Textures/fo4roulette/pokerfelt_d.dds, pokerfelt_n.dds): green baize with a
-line round it and TEXAS HOLD'EM on it, once facing the players' side and once the dealer's, a card suit where the
-line turns round each end.
+line round it, a card suit where the line turns round each end; and pokerprint_d.dds, the TEXAS HOLD'EM plaques
+(laid on the line as shapes of their own, once facing the players' side and once the dealer's, so the lettering's
+sharp).
 
     python tools/make_poker_felt.py <out Data folder> [--preview]
 
@@ -85,24 +86,34 @@ def felt() -> Image.Image:
             tile = tile.rotate(180)
         img.alpha_composite(tile, (int(cx - tile.width / 2), int(cy - tile.height / 2)))
 
-    # TEXAS HOLD'EM on the line on each long side: a cream plaque, the letters in the felt's green; upright for whoever
-    # sits on that side
-    tf = ImageFont.truetype(TITLE_FONT, int(2.3 * S))
+    # (TEXAS HOLD'EM: the plaques are shapes of their own on top, with their own sharp texture: print())
+    return img.convert("RGB")
+
+
+PLAQUE_W, PLAQUE_H = 21.0, 3.4    # the plaques (units): build_poker_felt.py lays them on the felt
+PRINT_W, PRINT_H = 1024, 256      # their texture: the plaque in the top PLAQUE_ROWS rows
+PLAQUE_ROWS = round(PRINT_W * PLAQUE_H / PLAQUE_W)
+
+
+def print_tex() -> Image.Image:
+    """TEXAS HOLD'EM: a cream plaque, the letters in the felt's green, drawn big and shrunk (sharp at 1024 across 21
+    units, where the felt has 8 texels a unit)"""
+    ss = 4
+    w, h = PRINT_W * ss, PLAQUE_ROWS * ss
+    plaque = Image.new("RGB", (w, h), INK[:3])
+    pd = ImageDraw.Draw(plaque)
+    k = w / PLAQUE_W                       # px a unit
+    tf = ImageFont.truetype(TITLE_FONT, int(2.3 * k))
     text = "TEXAS HOLD'EM"
     l, t, rr, b = tf.getbbox(text)
-    tw, th = rr - l, b - t
-    pw, ph = tw + int(1.6 * S), th + int(1.0 * S)
-    plaque = Image.new("RGBA", (pw, ph), (0, 0, 0, 0))
-    pd = ImageDraw.Draw(plaque)
-    pd.rectangle([0, 0, pw - 1, ph - 1], fill=INK)
-    pd.text((pw / 2, ph / 2), text, font=tf, fill=tuple(int(c) for c in FELT * 0.9) + (255,), anchor="mm")
-    # (the dealer's side: in the middle, between the deck and the muck. The players' side: off to one side, clear of
-    # the middle seat's cards and chips)
-    for sx, y in ((-1, PLAYERS_TITLE_Y), (1, 0.0)):
-        cx, cy = canvas_xy(sx * r, y)
-        tile = plaque if sx < 0 else plaque.rotate(180)
-        img.alpha_composite(tile, (int(cx - tile.width / 2), int(cy - tile.height / 2)))
-    return img.convert("RGB")
+    if rr - l > w - 3.0 * k:               # (fitted to the plaque, with room round it)
+        tf = ImageFont.truetype(TITLE_FONT, int(2.3 * k * (w - 3.0 * k) / (rr - l)))
+    pd.text((w / 2, h / 2), text, font=tf, fill=tuple(int(c) for c in FELT * 0.9), anchor="mm")
+    lw = max(2, int(0.08 * k))
+    pd.rectangle([int(0.25 * k), int(0.25 * k), w - 1 - int(0.25 * k), h - 1 - int(0.25 * k)], outline=tuple(int(c) for c in FELT * 0.9), width=lw)
+    out = Image.new("RGB", (PRINT_W, PRINT_H), tuple(int(c) for c in FELT))
+    out.paste(plaque.resize((PRINT_W, PLAQUE_ROWS), Image.LANCZOS), (0, 0))
+    return out
 
 
 def main() -> int:
@@ -113,8 +124,11 @@ def main() -> int:
     save_dds(d, os.path.join(out, "pokerfelt_d.dds"), "BC7")
     nm = felt_normal(1024).resize((W, H), Image.LANCZOS)
     save_dds(nm, os.path.join(out, "pokerfelt_n.dds"), "BC7")
+    pr = print_tex()
+    save_dds(pr, os.path.join(out, "pokerprint_d.dds"), "BC7")
     if "--preview" in sys.argv:
         big.resize((2032, 648), Image.LANCZOS).save(os.path.join(out, "pokerfelt_preview.png"))
+        pr.save(os.path.join(out, "pokerprint_preview.png"))
     print(f"pokerfelt_d {d.size}, pokerfelt_n {nm.size} ({tw_info()})")
     return 0
 

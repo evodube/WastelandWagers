@@ -114,7 +114,8 @@ def main():
     if not any(c.type == 'COPY_TRANSFORMS' for c in root.constraints):
         c = root.constraints.new('COPY_TRANSFORMS')
         c.target = system
-    export([root, bsx, body, felt, wood, rail, system], NIF)
+    extra = [o for o in bpy.data.objects if o.type == 'MESH' and o.parent == root and o.name == "PokerPrint"]
+    export([root, bsx, body, felt, wood, rail] + extra + [system], NIF)
     return {"wood_faces": nw, "rail_faces": nr, "left": len(body.data.polygons)}
 
 

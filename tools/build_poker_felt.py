@@ -13,11 +13,78 @@ import bpy
 HERE = r"C:\Users\Dan\Desktop\table\work"
 NIF = os.path.join(HERE, "Data", "Meshes", "fo4roulette", "PokerTable.nif")
 FELT_Z = 63.0
-HALF_W, HALF_L = 20.25, 63.5   # make_poker_felt.py's
+HALF_W, HALF_L = 20.25, 63.5   # make_poker_felt.py's...
+INSET = 3.4
+PLAQUE_W, PLAQUE_H = 21.0, 3.4
+PLAQUE_V = 1.0 - 166 / 256       # (the plaque's rows in pokerprint_d: the top 166 of 256)
+PLAYERS_TITLE_Y = 21.0
 
 _src = open(os.path.join(HERE, "build_meshes.py"), encoding="utf-8").read()
 _src = _src[:_src.index("\ndef main():")]
 exec(compile(_src, "build_meshes.py", "exec"))
+
+
+def plaques(root, mat):
+    """TEXAS HOLD'EM: a plaque on the felt's line on each long side (its own shape, its own sharp texture), upright for
+    whoever's on that side: the players' (-X, along from the middle seat) and the dealer's (+X, in the middle)"""
+    bm = bmesh.new()
+    uv = bm.loops.layers.uv.new("UVMap")
+    r = HALF_W - INSET
+    z = FELT_Z + 0.0625  # (clear of the felt: closer and they fight over which is drawn. A NIF keeps positions to
+    # 1/32 at this height (half floats): two steps up)
+    for sx, cy in ((-1, PLAYERS_TITLE_Y), (1, 0.0)):
+        cx = sx * r
+        up = -sx          # (which way the letters' tops point, in X: away from the reader)
+        # reading left to right along -Y on the players' side, +Y on the dealer's
+        right = -1 if sx < 0 else 1
+        hw, hh = PLAQUE_W / 2, PLAQUE_H / 2
+        corners = [  # (x, y, u, v): top-left, bottom-left, bottom-right, top-right
+            (cx + up * hh, cy - right * hw, 0.0, 1.0),
+            (cx - up * hh, cy - right * hw, 0.0, PLAQUE_V),
+            (cx - up * hh, cy + right * hw, 1.0, PLAQUE_V),
+            (cx + up * hh, cy + right * hw, 1.0, 1.0),
+        ]
+        vs = [bm.verts.new((x, y, z)) for x, y, _, _ in corners]
+        f = bm.faces.new(vs)
+        f.normal_update()
+        if f.normal.z < 0:
+            f.normal_flip()
+        for lp in f.loops:
+            k = vs.index(lp.vert)
+            lp[uv].uv = (corners[k][2], corners[k][3])
+    me = bpy.data.meshes.new("PokerPrint")
+    bm.to_mesh(me)
+    bm.free()
+    o = bpy.data.objects.new("PokerPrint", me)
+    bpy.context.scene.collection.objects.link(o)
+    o['pynNodeName'] = "PokerPrint"
+    o['pynBlockName'] = 'BSTriShape'
+    me.materials.append(mat)
+    o.parent = root
+    return o
+
+
+def add_plaques_only():
+    """(to a table already split: the plaques added)"""
+    clear()
+    tmpl = template_material()
+    m_print = make_material(tmpl, "PokerPrint", "pokerprint_d", "flat_n", "felt_s", 0.2)
+    with ctx():
+        bpy.ops.import_scene.pynifly(filepath=NIF)
+    body = bpy.data.objects["PokerTableBody"]
+    root = body.parent
+    system = bpy.data.objects["bhkPhysicsSystem"]
+    bsx = next(o for o in bpy.data.objects if o.name.startswith("BSXFlags"))
+    old = bpy.data.objects.get("PokerPrint")
+    if old:
+        bpy.data.objects.remove(old, do_unlink=True)
+    pr = plaques(root, m_print)
+    if not any(c.type == 'COPY_TRANSFORMS' for c in root.constraints):
+        c = root.constraints.new('COPY_TRANSFORMS')
+        c.target = system
+    shapes = [o for o in bpy.data.objects if o.type == 'MESH' and o.parent == root and o is not pr]
+    export([root, bsx] + shapes + [pr, system], NIF)
+    return {"shapes": [o.name for o in shapes + [pr]]}
 
 
 def main():
@@ -72,8 +139,13 @@ def main():
     if not any(c.type == 'COPY_TRANSFORMS' for c in root.constraints):
         c = root.constraints.new('COPY_TRANSFORMS')
         c.target = system
-    export([root, bsx, body, felt, system], NIF)
+    m_print = make_material(tmpl, "PokerPrint", "pokerprint_d", "flat_n", "felt_s", 0.2)
+    pr = plaques(root, m_print)
+    export([root, bsx, body, felt, pr, system], NIF)
     return {"felt_faces": n}
 
 
-result = main()
+if __name__ == "felt_plaques":
+    result = add_plaques_only()
+else:
+    result = main()
