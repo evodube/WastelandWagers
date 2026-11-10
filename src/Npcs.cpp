@@ -100,6 +100,14 @@ namespace fr
 			int                                   quiet{ 0 };
 		};
 		std::unordered_map<RE::TESFormID, TurnWatch> g_turns;
+		// (the idle log: what each held settler's playing, every change; and which idles were ours, sent when)
+		struct IdleWatch
+		{
+			RE::TESFormID                         current{ 0 }, last{ 0 };
+			float                                 yaw{ 0.0f };
+			std::chrono::steady_clock::time_point since{};
+		};
+		std::unordered_map<RE::TESFormID, IdleWatch> g_idles;
 
 		std::string FormName(const RE::TESForm* a_form)
 		{
@@ -113,6 +121,31 @@ namespace fr
 
 	void Game::WatchTurn(RE::Actor* a_actor, float a_heading)
 	{
+		// every idle a held settler starts, ours or the game's own, and what it did to their facing ([idle]): the
+		// twist between our idles is whatever plays there
+		if (a_actor && Settings::Get().logTurning) {
+			auto*       proc = a_actor->currentProcess;
+			auto*       mh = proc ? proc->middleHigh : nullptr;
+			const auto  cur = mh && mh->currentIdle ? mh->currentIdle->GetFormID() : 0;
+			const auto  lastPlayed = mh && mh->lastIdlePlayed ? mh->lastIdlePlayed->GetFormID() : 0;
+			auto&       w = g_idles[a_actor->GetFormID()];
+			const auto  now = std::chrono::steady_clock::now();
+			if (cur != w.current || lastPlayed != w.last) {
+				const float held = w.since.time_since_epoch().count() ? std::chrono::duration<float>(now - w.since).count() : 0.0f;
+				const auto  ours = Npc::LastIdleSent(a_actor);
+				const bool  isOurs = ours.first != 0 && (ours.first == cur || ours.first == lastPlayed) &&
+				                    std::chrono::duration<float>(now - ours.second).count() < 3.0f;
+				log::info("[idle] {} ({:08X}): now {} (last played {}), {}; the one before for {:.1f} s; facing {:.0f} (the table's {:.0f}, it turned {:+.0f} since)",
+					a_actor->GetDisplayFullName() ? a_actor->GetDisplayFullName() : "?", a_actor->GetFormID(),
+					cur ? FormName(mh->currentIdle) : std::string("none"), lastPlayed ? FormName(mh->lastIdlePlayed) : std::string("none"),
+					isOurs ? "ours" : "NOT OURS (the game's own)", held, a_actor->data.angle.z * 57.2958f, a_heading * 57.2958f,
+					util::AngleDiff(w.yaw, a_actor->data.angle.z) * 57.2958f);
+				w.current = cur;
+				w.last = lastPlayed;
+				w.since = now;
+				w.yaw = a_actor->data.angle.z;
+			}
+		}
 		// What a settler held at a table is doing while they turn (Settings: bLogTurning): their facing against the
 		// table's, how fast it's changing, the package they're running and its target, what their animation graph says
 		// about turning and moving, what they're looking at. Logged every half second while they're turning or off the

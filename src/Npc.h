@@ -29,6 +29,9 @@ namespace fr::Npc
 
 	// at another game: Playable Pool's (playing or watching pool)
 	bool AtPool(RE::Actor* a_actor);
+
+	// (the idle log) the idle we last sent them, and when
+	std::pair<RE::TESFormID, std::chrono::steady_clock::time_point> LastIdleSent(RE::Actor* a_actor);
 	// Papyrus Actor.SetLookAt / ClearLookAt
 	bool LookAt(RE::Actor* a_actor, RE::TESObjectREFR* a_target);
 	bool ClearLookAt(RE::Actor* a_actor);

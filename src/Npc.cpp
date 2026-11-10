@@ -292,10 +292,29 @@ namespace fr::Npc
 		return nullptr;
 	}
 
+	namespace
+	{
+		std::mutex                                                                                         g_sentLock;
+		std::unordered_map<RE::TESFormID, std::pair<RE::TESFormID, std::chrono::steady_clock::time_point>> g_sent;
+	}
+
+	std::pair<RE::TESFormID, std::chrono::steady_clock::time_point> LastIdleSent(RE::Actor* a_actor)
+	{
+		std::scoped_lock lock(g_sentLock);
+		if (auto it = a_actor ? g_sent.find(a_actor->GetFormID()) : g_sent.end(); it != g_sent.end()) {
+			return it->second;
+		}
+		return {};
+	}
+
 	void PlayIdle(RE::Actor* a_actor, RE::TESFormID a_idle)
 	{
 		if (!a_actor || !Ready()) {
 			return;
+		}
+		{
+			std::scoped_lock lock(g_sentLock);
+			g_sent[a_actor->GetFormID()] = { a_idle, std::chrono::steady_clock::now() };
 		}
 		const std::string what = std::format("{} {:08X}", What(a_actor, "PlayIdle"), a_idle);
 		const RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> logged{ new LogResult(what) };
