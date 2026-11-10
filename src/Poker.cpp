@@ -227,7 +227,20 @@ namespace fr
 		{
 			RE::NiPoint3 e, n;
 			Stadium(kHolders[a_seat].first, kHolders[a_seat].second, kFeltR, kFeltC, e, n);
-			const RE::NiPoint3 p = e - n * 13.0f;
+			// in front of them, and further in if that's where their stacks are (round the table's ends they're moved in)
+			RE::NiPoint3 p = e - n * 13.0f;
+			const float  clear = kChipR * 2.0f + 1.5f;
+			for (int tries = 0; tries < 20; ++tries) {
+				float least = 1e9f;
+				for (int d = 0; d < 4; ++d) {
+					const auto c = ColumnSpot(a_seat, d);
+					least = std::min(least, std::hypot(p.x - c.x, p.y - c.y));
+				}
+				if (least >= clear) {
+					break;
+				}
+				p = p - n * 1.0f;
+			}
 			return { p.x, p.y, kFeltZ };
 		}
 
@@ -1671,7 +1684,10 @@ namespace fr
 			const auto  b = BetSpot(i);
 			auto        place = [&](std::size_t a_k) {
                 const int col = static_cast<int>(a_k) / kMaxStack, row = static_cast<int>(a_k) % kMaxStack;
-                return RE::NiPoint3{ b.x + slop(_rng) * 2.0f, b.y + static_cast<float>(col) * kChipR * 2.3f + slop(_rng) * 2.0f,
+                // (a pile past eight chips starts another, further in towards the middle: away from their stacks)
+                const float l = std::max(1.0f, std::hypot(b.x, b.y));
+                const float in = static_cast<float>(col) * kChipR * 2.3f;
+                return RE::NiPoint3{ b.x - b.x / l * in + slop(_rng) * 2.0f, b.y - b.y / l * in + slop(_rng) * 2.0f,
                     0.02f + static_cast<float>(row) * kChipH };
 			};
 			if (bet == _pk.betShown[i]) {
