@@ -139,21 +139,24 @@ Bool Function PlayIdleOn(Int aiActor, Int aiIdle)
 EndFunction
 
 ; sat down in a chair (a poker table's)
-Bool Function SitOn(Int aiActor, Int aiChair, Int aiLink)
+Bool Function SitOn(Int aiActor, Int aiChair, Int aiLink, Int aiEnd, Bool abSnap)
 	Actor akActor = Game.GetForm(aiActor) as Actor
 	ObjectReference akChair = Game.GetForm(aiChair) as ObjectReference
 	Keyword akLink = Game.GetForm(aiLink) as Keyword
+	ObjectReference akEnd = Game.GetForm(aiEnd) as ObjectReference
 	if akActor == None || akChair == None
 		return false
 	endif
 	akChair.SetActorOwner(akActor.GetActorBase())  ; (theirs while they're in it)
-	; their walk now ends at the chair itself: still headed for the spot by it they'd walked to, the package got them
-	; straight up out of the chair to walk there (sit state 4, want to stand, the log showed), and they were sat again
-	if akLink && akActor.GetLinkedRef(akLink) != akChair
-		akActor.SetLinkedRef(akChair, akLink)
+	; their walk now ends where they sit (akEnd): headed anywhere else, the package got them straight up out of the
+	; chair to walk there (sit state 4, want to stand, the log showed), and they were sat again
+	if akLink && akEnd
+		akActor.SetLinkedRef(akEnd, akLink)
 		akActor.EvaluatePackage()
 	endif
-	akActor.SnapIntoInteraction(akChair)
+	if abSnap
+		akActor.SnapIntoInteraction(akChair)
+	endif
 	return true
 EndFunction
 

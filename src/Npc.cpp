@@ -331,14 +331,15 @@ namespace fr::Npc
 		CallQuest("SayOn", what, logged, FormArg(a_actor), static_cast<std::int32_t>(a_keyword));
 	}
 
-	void SitOn(RE::Actor* a_actor, RE::TESObjectREFR* a_chair)
+	void SitOn(RE::Actor* a_actor, RE::TESObjectREFR* a_chair, RE::TESObjectREFR* a_end, bool a_snap)
 	{
 		if (!a_actor || !a_chair || !Ready()) {
 			return;
 		}
-		const std::string what = std::format("{} {:08X}", What(a_actor, "SitOn"), a_chair->GetFormID());
+		const std::string what = std::format("{} {:08X}{}", What(a_actor, "SitOn"), a_chair->GetFormID(), a_snap ? "" : " (walk's end where they sit)");
 		const RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> logged{ new LogResult(what) };
-		CallQuest("SitOn", what, logged, FormArg(a_actor), static_cast<std::int32_t>(a_chair->GetFormID()), FormArg(Forms::LinkKeyword()));
+		CallQuest("SitOn", what, logged, FormArg(a_actor), static_cast<std::int32_t>(a_chair->GetFormID()), FormArg(Forms::LinkKeyword()),
+			FormArg(a_end ? a_end : a_chair), a_snap);
 	}
 
 	void ClaimChair(RE::TESObjectREFR* a_chair)

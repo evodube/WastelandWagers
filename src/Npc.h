@@ -43,7 +43,8 @@ namespace fr::Npc
 	void Say(RE::Actor* a_actor, RE::TESFormID a_keyword);
 
 	// Papyrus Actor.SnapIntoInteraction: sat down in a chair
-	void SitOn(RE::Actor* a_actor, RE::TESObjectREFR* a_chair);  // (the chair theirs while they're in it)
+	// (the chair theirs while they're in it; their walk ends at a_end; a_snap false: only the walk relinked)
+	void SitOn(RE::Actor* a_actor, RE::TESObjectREFR* a_chair, RE::TESObjectREFR* a_end, bool a_snap = true);
 	void ClaimChair(RE::TESObjectREFR* a_chair);  // a chair kept for the game: yours, so nobody else sits in it
 
 	// Busy with something else, so not to be called over to a table: a settler with a job, in furniture (a chair, a

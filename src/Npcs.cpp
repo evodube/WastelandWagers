@@ -203,11 +203,9 @@ namespace fr
 	void Game::FaceTowards(RE::Actor* a_actor, float a_heading)
 	{
 		WatchTurn(a_actor, a_heading);
-		// (only when they've turned well away: their body's left free, as they move with their idles; it's their head
-		// that's held, its tracking off while they're at the table)
-		if (a_actor && std::abs(util::AngleDiff(a_actor->data.angle.z, a_heading)) > 0.35f) {
-			a_actor->SetHeading(a_heading);
-		}
+		// (no longer turned back: snapped back to the table whenever they'd turned away with an idle, they stuttered
+		// round. They're put on their spot facing the table when they get there, and left to it after that)
+		(void)a_heading;
 	}
 
 	bool Game::WalkTo(RE::Actor* a_actor, Walker& a_walk, const Frame& a_frame, const RE::NiPoint3& a_spot, float a_heading, float a_dt,
