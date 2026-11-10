@@ -981,13 +981,14 @@ namespace fr
 				const auto   cards = ToWorld(frame, mid.x, mid.y, kFeltZ);
 				over = std::hypot(at.x - cards.x, at.y - cards.y) < kCardW * 1.6f;
 			}
-			const bool peek = over && _pk.inHand && _pk.phase != PkPhase::kShowdown;
-			if (peek != _pk.peeking) {
-				_pk.peeking = peek;
-				for (auto& c : _pk.cards) {
-					if (c.seat == _pkYou && !c.mucked && _pk.phase != PkPhase::kShowdown) {
-						c.faceUp = peek;
-					}
+			// (face up on the table all along, unless the setting has them face down: then up while you look at them,
+			// hold the right button, or SHOW MY CARDS)
+			const bool down = Settings::Get().pkCardsDown;
+			const bool peek = (!down || over || _pkShowCards) && _pk.inHand && _pk.phase != PkPhase::kShowdown;
+			_pk.peeking = peek;
+			for (auto& c : _pk.cards) {
+				if (c.seat == _pkYou && !c.mucked && _pk.phase != PkPhase::kShowdown && c.faceUp != peek) {
+					c.faceUp = peek;  // (every tick: cards dealt to you since turn up too)
 				}
 			}
 		} else {
@@ -2333,7 +2334,7 @@ namespace fr
 		}
 		_pkTopView = Settings::Get().pkTopDown;
 		_pk.seatedAge = 0.0f;
-		_pkShowCards = !Settings::Get().pkCardsDown;  // (your cards on the HUD face up, unless they're to start face down)
+		_pkShowCards = false;  // (with the setting on, your cards start face down: SHOW MY CARDS turns them up)
 		_padUsed = false;
 		_pkPtrX = _pkPtrY = -1.0;
 		_pkSeated = true;
@@ -2581,7 +2582,8 @@ namespace fr
 			a_h.pkPtrX = static_cast<float>(_pkPtrX);
 			a_h.pkPtrY = static_cast<float>(_pkPtrY);
 		}
-		a_h.pkPeek = _pkShowCards;  // (your cards on the HUD, bottom middle: the SHOW / HIDE MY CARDS button)
+		a_h.pkCardsDown = Settings::Get().pkCardsDown;
+		a_h.pkPeek = _pkShowCards || !Settings::Get().pkCardsDown;  // (your cards on the HUD face up, unless the setting has them down)
 		a_h.pkTop = _pkTopView;
 		a_h.pkZoom = _pkZoom;
 		a_h.pkDealer = _pkShowDealer;

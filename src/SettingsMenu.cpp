@@ -106,7 +106,7 @@ namespace fr::SettingsMenu
 						{ L"Poker", L"bChairs", "Settlers sit (chairs)", Kind::kBool, &s.pkChairs, 0, 0, nullptr,
 							"chairs round the poker table and settlers sit in them (seated, they cheer and laugh but don't reach in to bet)" },
 						{ L"Poker", L"bCardsFaceDown", "My cards face down", Kind::kBool, &s.pkCardsDown, 0, 0, nullptr,
-							"your two cards on the HUD start face down: SHOW MY CARDS turns them up (for the feel of a real table)" },
+							"your two cards lie face down, on the table and on the HUD, till you show them: SHOW MY CARDS, looking down at them, or the right mouse button (for the feel of a real table)" },
 						{ L"Poker", L"bVoices", "Settlers' voices", Kind::kBool, &s.pkVoices, 0, 0, nullptr,
 							"settlers cheer or laugh when they win a hand, and groan when they lose one at the showdown" },
 						{ L"Poker", L"bBanter", "Table talk", Kind::kBool, &s.pkBanter, 0, 0, nullptr,

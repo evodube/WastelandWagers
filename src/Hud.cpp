@@ -825,7 +825,7 @@ namespace fr::Hud
 				Button(a_v, a_st, out, a_id, a_label, sx, sy, kPkSideW, 28.0f, a_on, false, 12.0f);
 				sy += 34.0f;
 			};
-			side(10, tag("(RS)", a_st.pkPeek ? "HIDE MY CARDS" : "SHOW MY CARDS"), a_st.pkHole[0] >= 0);
+			side(10, tag("(RS)", a_st.pkPeek ? "HIDE MY CARDS" : "SHOW MY CARDS"), a_st.pkHole[0] >= 0 && a_st.pkCardsDown);  // (with the setting off they're always up)
 			side(15, a_st.pkDealer ? "HIDE DEALER" : "SHOW DEALER", true);
 			side(9, tag("(START)", a_st.pkTop ? "VIEW: MY SEAT" : "VIEW: FROM ABOVE"), true);
 			side(12, a_st.pkZoom ? "ZOOM OUT" : "ZOOM IN", true);

@@ -61,7 +61,7 @@ namespace fr
 		int   pkNpcBuyIn{ 300 };           // the most a settler sits down with
 		float pkThink{ 1.0f };             // how long settlers think (x)
 		bool  pkChairs{ true };            // settlers sit at the poker table (chairs put round it)
-		bool  pkCardsDown{ false };        // your cards on the HUD face down till you show them (SHOW MY CARDS)
+		bool  pkCardsDown{ false };        // your cards face down (on the table and the HUD) till you show them (SHOW MY CARDS)
 		bool  pkVoices{ true };            // settlers cheer, laugh and groan at the end of a hand
 		bool  pkBanter{ true };            // settlers who remember you greet you when they sit back in
 		bool  pkTopDown{ false };          // the view from above the table rather than from your seat (V switches at the table)

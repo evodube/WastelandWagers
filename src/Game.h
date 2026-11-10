@@ -154,6 +154,7 @@ namespace fr
 			bool                  pkPeek{ false };
 			bool                  pkTop{ false };
 			bool                  pkZoom{ false };
+			bool                  pkCardsDown{ false };  // (the setting: your cards face down till you show them)
 			bool                  pkDealer{ true };   // the board's cards shown on the HUD, under your hand
 			int                   pkPre{ 0 };         // your action picked ahead: 0 none, 1 check / fold, 2 check, 3 call any
 			bool                  pkCanPre{ false };  // in the hand, not your turn: an action can be picked ahead
