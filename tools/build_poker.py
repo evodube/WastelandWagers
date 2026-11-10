@@ -4,7 +4,7 @@
                on its felt taken off (the plugin deals its own). Scaled so the felt is 53 units (76 cm) up; origin on
                the floor under the middle of the felt; X across the table (the chip tray, the dealer's place, at +X),
                Y along it, Z up. One convex collision body round it. -> Meshes\\fo4roulette\\PokerTable.nif
-    the cards: a playing card each (63 x 88 mm), face up with its top towards +Y, origin in the middle of its
+    the cards: a playing card each (56 x 89 mm, the art's 5:8, rounded corners), face up with its top towards +Y, origin in the middle of its
                underside; the face from make_cards.py's atlas (cell k for card k), the back underneath.
                -> Meshes\\fo4roulette\\Cards\\Card_<rank><suit>.nif
 
@@ -23,8 +23,9 @@ POKER_OBJ = r"C:\Users\Dan\Desktop\poker table\latest poker table.obj"
 DATA = os.path.join(HERE, "Data")
 FELT_HEIGHT = 53.0                    # units from the floor to the felt
 FELT_MODEL = 2.862                    # the felt's height in the model (Y up)
-CARD_W, CARD_H, CARD_T = 4.41, 6.16, 0.06
-COLS, ROWS = 8, 7                     # make_cards.py's atlas
+CARD_W, CARD_H, CARD_T = 3.9, 6.24, 0.06  # the art's 5:8, 89 mm tall (a unit is 1.43 cm)
+CARD_R = 0.24                         # the corners' radius (3.4 mm)
+COLS, ROWS = 10, 6                    # make_cards.py's atlas
 RANKS = "23456789TJQKA"
 SUITS = "cdhs"
 
@@ -82,35 +83,46 @@ def import_table():
 
 
 def card_mesh(name, k, mat):
-    """card k of the atlas, face up; the back (cell 52) underneath; the edges white"""
+    """card k of the atlas, face up; the back (cell 52) underneath; rounded corners; the edges white"""
     col, row = k % COLS, k // COLS
     bcol, brow = 52 % COLS, 52 // COLS
-    eps = 0.5 / 2048
+    eps = 1.5 / 2048
 
     def cell(c, r):
         return (c / COLS + eps, (c + 1) / COLS - eps, 1 - (r + 1) / ROWS + eps, 1 - r / ROWS - eps)
     u0, u1, v0, v1 = cell(col, row)
     b0, b1, c0, c1 = cell(bcol, brow)
-    w, h, t = CARD_W / 2, CARD_H / 2, CARD_T
+    w, h, t, r = CARD_W / 2, CARD_H / 2, CARD_T, CARD_R
+    # the outline, anticlockwise from above: a quarter circle at each corner
+    outline = []
+    for cx, cy, a0 in ((w - r, -h + r, -90), (w - r, h - r, 0), (-w + r, h - r, 90), (-w + r, -h + r, 180)):
+        for i in range(7):
+            a = math.radians(a0 + i * 15.0)
+            outline.append((cx + r * math.cos(a), cy + r * math.sin(a)))
     bm = bmesh.new()
     uv = bm.loops.layers.uv.new("UVMap")
 
-    def quad(pts, uvs):
+    def face(pts, uvs):
         f = bm.faces.new([bm.verts.new(p) for p in pts])
         for lp, c in zip(f.loops, uvs):
             lp[uv].uv = c
         f.smooth = False
         return f
+
+    def at(x, y, a0, a1, b0_, b1_):
+        return (a0 + (x + w) / (2 * w) * (a1 - a0), b0_ + (y + h) / (2 * h) * (b1_ - b0_))
     # face (seen from above: top of the card to +Y)
-    quad([(-w, -h, t), (w, -h, t), (w, h, t), (-w, h, t)], [(u0, v0), (u1, v0), (u1, v1), (u0, v1)])
-    # back (seen from below)
-    quad([(-w, -h, 0), (-w, h, 0), (w, h, 0), (w, -h, 0)], [(b1, c0), (b1, c1), (b0, c1), (b0, c0)])
-    # the edges: a white corner of the face's cell
-    white = [(u0 + 0.002, v1 - 0.002)] * 4
-    quad([(-w, -h, 0), (w, -h, 0), (w, -h, t), (-w, -h, t)], white)
-    quad([(w, -h, 0), (w, h, 0), (w, h, t), (w, -h, t)], white)
-    quad([(w, h, 0), (-w, h, 0), (-w, h, t), (w, h, t)], white)
-    quad([(-w, h, 0), (-w, -h, 0), (-w, -h, t), (-w, h, t)], white)
+    face([(x, y, t) for x, y in outline], [at(x, y, u0, u1, v0, v1) for x, y in outline])
+    # back (seen from below: mirrored across)
+    rev = outline[::-1]
+    face([(x, y, 0) for x, y in rev], [at(-x, y, b0, b1, c0, c1) for x, y in rev])
+    # the edges: the white margin of the face's cell
+    white = [(u0 + 0.004, (v0 + v1) / 2)] * 4
+    n = len(outline)
+    for i in range(n):
+        (x0, y0), (x1, y1) = outline[i], outline[(i + 1) % n]
+        face([(x0, y0, 0), (x1, y1, 0), (x1, y1, t), (x0, y0, t)], white)
+    bmesh.ops.triangulate(bm, faces=bm.faces[:])
     me = bpy.data.meshes.new(name)
     bm.to_mesh(me)
     bm.free()
@@ -120,6 +132,7 @@ def card_mesh(name, k, mat):
     o['pynBlockName'] = 'BSTriShape'
     me.materials.append(mat)
     return o
+
 
 
 def main():
