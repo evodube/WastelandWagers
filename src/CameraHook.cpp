@@ -74,6 +74,36 @@ namespace fr::CameraHook
 			}
 			g_menuButton(a_this, a_event);
 		}
+
+		// Every frame's input, as the menus and the player's controls get it: at the poker table, the turn keys' events
+		// are marked disabled first, so no handler of the game's acts on them (the workshop, VATS, anything bound to them)
+		using Process_t = void (*)(RE::BSInputEventReceiver*, const RE::InputEvent*);
+		Process_t g_menuProcess{ nullptr };
+		Process_t g_playerProcess{ nullptr };
+
+		void DisableOurKeys(const RE::InputEvent* a_head)
+		{
+			for (auto* e = a_head; e; e = e->next) {
+				if (e->eventType.get() == RE::INPUT_EVENT_TYPE::kButton) {
+					auto* b = static_cast<const RE::ButtonEvent*>(e);
+					if (Game::Get().SwallowButton(b)) {
+						const_cast<RE::ButtonEvent*>(b)->disabled = true;
+					}
+				}
+			}
+		}
+
+		void HookedMenuProcess(RE::BSInputEventReceiver* a_this, const RE::InputEvent* a_head)
+		{
+			DisableOurKeys(a_head);
+			g_menuProcess(a_this, a_head);
+		}
+
+		void HookedPlayerProcess(RE::BSInputEventReceiver* a_this, const RE::InputEvent* a_head)
+		{
+			DisableOurKeys(a_head);
+			g_playerProcess(a_this, a_head);
+		}
 	}
 
 	namespace
@@ -129,6 +159,15 @@ namespace fr::CameraHook
 				return;
 			}
 		}
+		// (off the live objects: the same on every runtime)
+		if (auto* menus = RE::MenuControls::GetSingleton()) {
+			g_menuProcess = reinterpret_cast<Process_t>(SwapSlot(*reinterpret_cast<void***>(menus), 0, reinterpret_cast<const void*>(&HookedMenuProcess)));
+		}
+		if (auto* player = RE::PlayerControls::GetSingleton()) {
+			g_playerProcess = reinterpret_cast<Process_t>(SwapSlot(*reinterpret_cast<void***>(static_cast<RE::BSInputEventReceiver*>(player)), 0,
+				reinterpret_cast<const void*>(&HookedPlayerProcess)));
+		}
+		log::info("input hooks: menus {}, player controls {}", g_menuProcess ? "on" : "not found", g_playerProcess ? "on" : "not found");
 		g_installed = true;
 		log::info("free camera hooks installed");
 	}
