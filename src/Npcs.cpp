@@ -244,6 +244,11 @@ namespace fr
 		} else {
 			a_walk.stall += a_dt;
 		}
+		// (close, and no closer for a moment: there. The walk sent again with its AI reset, as it was, made them skip in
+		// place every few seconds, 12 from their spot: the caller puts them on it)
+		if (d < kAtSpot && a_walk.stall > 1.5f) {
+			return true;
+		}
 		// sat down somewhere on the way (their sandbox's doing): up
 		a_walk.getUp -= a_dt;
 		if (auto* proc = a_actor->currentProcess; proc && proc->GetOccupiedFurniture() && a_walk.getUp <= 0.0f) {

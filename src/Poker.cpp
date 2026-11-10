@@ -1192,34 +1192,12 @@ namespace fr
 					// sat in their chair: the chair holds them (and turns them to the table); now and then, if they've
 					// got up, back down
 					st.sitCheck -= a_dt;
-					// (sitting, or on the way down into it: left alone. The furniture the process says they're in
-					// came back empty while they sat, the log showed: told to sit again every three seconds, they got
-					// up out of the chair and were put back in it, over and over)
+					// (in their chair, they're moved from the walk package to a Sit package with the chair as its
+					// furniture (the quest's Sitters): the Travel package, whatever its end, got them straight up out of
+					// the chair to walk there (sit state 4, want to stand, in the log), and they were sat again, over
+					// and over. Checked now and then: if they're up after all, sat again, and after a couple of goes,
+					// moved onto the chair first)
 					auto chair = _pk.chairs[i].get();
-					// (their walk ends where they sit: a Travel package with its end anywhere else, the chair's own
-					// origin or the spot beside it, got them straight up out of the chair to walk there (sit state 4,
-					// want to stand, in the log), and they were sat again, over and over. Once they're sitting, the
-					// walk's marker is put where they are, and their walk linked to it)
-					auto marker = st.walk.marker.get();
-					auto seatAt = [&](const RE::NiPoint3& a_local) {
-						const float y = chair->data.angle.z;
-						const RE::NiPoint3 right{ std::cos(y), -std::sin(y), 0.0f }, fwd{ std::sin(y), std::cos(y), 0.0f };
-						return chair->data.location + right * a_local.x + fwd * a_local.y + RE::NiPoint3{ 0.0f, 0.0f, a_local.z };
-					};
-					if (chair && marker && !st.anchored && actor->DoGetSitSleepState() == RE::SIT_SLEEP_STATE::kIsSitting) {
-						const auto  d = actor->data.location - chair->data.location;
-						const float y = chair->data.angle.z;
-						if (!g_sitKnown) {
-							g_sitOffset = { d.x * std::cos(y) - d.y * std::sin(y), d.x * std::sin(y) + d.y * std::cos(y), d.z };
-							g_sitKnown = true;
-							log::info("poker: someone sitting is ({:.1f}, {:.1f}, {:.1f}) from their chair", g_sitOffset.x, g_sitOffset.y, g_sitOffset.z);
-						}
-						marker->data.location.x = actor->data.location.x;
-						marker->data.location.y = actor->data.location.y;
-						marker->data.location.z = actor->data.location.z;
-						Npc::SitOn(actor, chair.get(), marker.get(), false);  // (linked to where they are; not sat again)
-						st.anchored = true;
-					}
 					if (chair && st.sitCheck <= 0.0f) {
 						st.sitCheck = 3.0f;
 						const auto sit = actor->DoGetSitSleepState();
@@ -1228,9 +1206,6 @@ namespace fr
 						if (down) {
 							st.sitTries = 0;
 						} else {
-							st.anchored = false;
-							// put in their chair (and, after a couple of goes that didn't take, moved onto it first: something
-							// was in the way)
 							if (++st.sitTries > 2) {
 								log::info("poker: {} still isn't in their chair (sit state {}): moved onto it and sat", st.name, static_cast<int>(sit));
 								Npc::MoveTo(actor, chair.get());
@@ -1238,14 +1213,7 @@ namespace fr
 							} else if (st.sitTries > 1) {
 								log::info("poker: {} isn't in their chair (sit state {}): sat down again", st.name, static_cast<int>(sit));
 							}
-							// (their walk's end where they'll sit, once that's known: else the chair)
-							if (marker && g_sitKnown) {
-								const auto at = seatAt(g_sitOffset);
-								marker->data.location.x = at.x;
-								marker->data.location.y = at.y;
-								marker->data.location.z = at.z;
-							}
-							Npc::SitOn(actor, chair.get(), marker && g_sitKnown ? marker.get() : chair.get(), true);
+							Npc::SitOn(actor, chair.get());
 						}
 					}
 					st.held = true;  // (for the idles: they're where they should be)

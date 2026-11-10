@@ -7,6 +7,7 @@ the plugin as an object Papyrus won't take as an Actor.}
 
 RefCollectionAlias Property Dealers Auto Const Mandatory
 RefCollectionAlias Property Bettors Auto Const Mandatory
+RefCollectionAlias Property Sitters Auto Const Mandatory  ; (poker players in their chairs: fo4rouletteSitInSeat)
 
 RefCollectionAlias Function Collection(Bool abDealer)
 	if abDealer
@@ -38,6 +39,7 @@ String Function Join(Int aiActor, Int aiTarget, Int aiLink, Bool abDealer)
 	endif
 	RefCollectionAlias mine = Collection(abDealer)
 	Collection(!abDealer).RemoveRef(akActor)
+	Sitters.RemoveRef(akActor)
 	mine.AddRef(akActor)
 	if mine.Find(akActor) < 0 && Dealers.GetCount() == 0 && Bettors.GetCount() == 0
 		; a save from before the collections existed: a fresh start of the quest, then again
@@ -94,6 +96,7 @@ Function Leave(Int aiActor, Int aiLink)
 	endif
 	Dealers.RemoveRef(akActor)
 	Bettors.RemoveRef(akActor)
+	Sitters.RemoveRef(akActor)
 	akActor.EnableAI(true)  ; (0.5.2 turned it off at the tables: on again for anyone it was left off for)
 	akActor.SetHeadTracking(true)
 	if akLink
@@ -107,6 +110,17 @@ Function ClearAll(Int aiLink)
 	Keyword akLink = Game.GetForm(aiLink) as Keyword
 	ClearCollection(Dealers, akLink)
 	ClearCollection(Bettors, akLink)
+	ClearCollection(Sitters, akLink)
+	; (a fresh start of the quest, empty: a save from before the Sitters collection gets it this way)
+	if IsRunning()
+		Stop()
+		Int tries = 0
+		while IsStopping() && tries < 50
+			Utility.Wait(0.1)
+			tries += 1
+		endwhile
+	endif
+	StartAndWait()
 EndFunction
 
 Function ClearCollection(RefCollectionAlias akCollection, Keyword akLink)
@@ -139,24 +153,30 @@ Bool Function PlayIdleOn(Int aiActor, Int aiIdle)
 EndFunction
 
 ; sat down in a chair (a poker table's)
-Bool Function SitOn(Int aiActor, Int aiChair, Int aiLink, Int aiEnd, Bool abSnap)
+Bool Function SitOn(Int aiActor, Int aiChair, Int aiLink, Int aiSeatLink)
 	Actor akActor = Game.GetForm(aiActor) as Actor
 	ObjectReference akChair = Game.GetForm(aiChair) as ObjectReference
 	Keyword akLink = Game.GetForm(aiLink) as Keyword
-	ObjectReference akEnd = Game.GetForm(aiEnd) as ObjectReference
+	Keyword akSeatLink = Game.GetForm(aiSeatLink) as Keyword
 	if akActor == None || akChair == None
 		return false
 	endif
 	akChair.SetActorOwner(akActor.GetActorBase())  ; (theirs while they're in it)
-	; their walk now ends where they sit (akEnd): headed anywhere else, the package got them straight up out of the
-	; chair to walk there (sit state 4, want to stand, the log showed), and they were sat again
-	if akLink && akEnd
-		akActor.SetLinkedRef(akEnd, akLink)
-		akActor.EvaluatePackage()
+	; off the walk (its Travel package got them straight up out of the chair to walk to its end), onto the Sit package
+	; with the chair as its furniture: it keeps them in it
+	if akSeatLink
+		akActor.SetLinkedRef(akChair, akSeatLink)
 	endif
-	if abSnap
-		akActor.SnapIntoInteraction(akChair)
+	Dealers.RemoveRef(akActor)
+	Bettors.RemoveRef(akActor)
+	if Sitters.Find(akActor) < 0
+		Sitters.AddRef(akActor)
 	endif
+	if akLink
+		akActor.SetLinkedRef(None, akLink)
+	endif
+	akActor.EvaluatePackage()
+	akActor.SnapIntoInteraction(akChair)
 	return true
 EndFunction
 

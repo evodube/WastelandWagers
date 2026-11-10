@@ -10,6 +10,7 @@ namespace fr::Forms
 	inline constexpr std::uint32_t kBallID = 0x801;      // STAT fo4rouletteBall
 	inline constexpr std::uint32_t kChipID = 0x802;      // STAT fo4rouletteChip1, 5, 25, 100 at 0x802-0x805
 	inline constexpr std::uint32_t kLinkID = 0x806;      // KYWD fo4rouletteLinkSpot
+	inline constexpr std::uint32_t kSeatLinkID = 0x848;  // KYWD fo4rouletteLinkSeat (a poker player's chair: their Sit package's)
 	inline constexpr std::uint32_t kPackageID = 0x807;   // PACK fo4rouletteWalkToSpot
 	inline constexpr std::uint32_t kQuestID = 0x808;     // QUST fo4rouletteQuest
 	inline constexpr std::uint32_t kKitID = 0x80A;       // ALCH fo4rouletteTableKit
@@ -33,6 +34,11 @@ namespace fr::Forms
 	inline RE::BGSKeyword*     LinkKeyword()
 	{
 		auto* f = Own(kLinkID);
+		return f ? f->As<RE::BGSKeyword>() : nullptr;
+	}
+	inline RE::BGSKeyword* SeatKeyword()
+	{
+		auto* f = Own(kSeatLinkID);
 		return f ? f->As<RE::BGSKeyword>() : nullptr;
 	}
 	inline RE::TESQuest* Quest()

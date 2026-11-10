@@ -24,6 +24,9 @@ Form IDs (src/Forms.h expects these):
     xx000845  COBJ workshop_co_fo4roulettePokerTable  in the workshop menu, Furniture > Tables
     xx000846  ALCH fo4roulettePokerKit     Poker Table Kit (sold by Vadim too)
     xx000847  COBJ fo4rouletteco_PokerKit  the poker kit at a chem station (Utility)
+    xx000848  KYWD fo4rouletteLinkSeat     a poker player's linked ref: their chair
+    xx000849  PACK fo4rouletteSitInSeat    Sit in that linked ref (as vanilla DefaultSitLinkCustom01NoEating), carried by
+                                           the quest's third collection, 2 Sitters
 
 Record layouts follow Playable Pool's tools/make_esl.py (laid out as Fallout4.esm's own records).
 """
@@ -142,6 +145,33 @@ def travel_package(form_id: int, editor_id: str, link_keyword: int, radius: int 
     return record(b"PACK", 0, form_id, body)
 
 
+SIT_TEMPLATE = 0x00003896  # Fallout4.esm "Sit"
+
+
+def sit_package(form_id: int, editor_id: str, link_keyword: int) -> bytes:
+    """Sit in the actor's linked ref (with link_keyword): laid out as vanilla DefaultSitLinkCustom01NoEating (the Sit
+    template: the furniture, a search radius, two bools, the target selector, and no eating)."""
+    no_event = subrecord(b"INAM", struct.pack("<I", 0)) + subrecord(b"PDTO", bytes(8))
+    body = (
+        subrecord(b"EDID", zstring(editor_id))
+        + subrecord(b"PKDT", bytes.fromhex("0000000012000200ffff0000"))
+        + subrecord(b"PSDT", bytes.fromhex("00ff00ffff00000000000000"))
+        + subrecord(b"PKCU", struct.pack("<III", 6, SIT_TEMPLATE, 3))
+        + subrecord(b"ANAM", zstring("SingleRef")) + subrecord(b"PTDA", struct.pack("<IiI", 3, link_keyword, 0))
+        + subrecord(b"ANAM", zstring("Float")) + subrecord(b"CNAM", struct.pack("<f", 0.0))
+        + subrecord(b"ANAM", zstring("Bool")) + subrecord(b"CNAM", b"\x00")
+        + subrecord(b"ANAM", zstring("Bool")) + subrecord(b"CNAM", b"\x00")
+        + subrecord(b"ANAM", zstring("TargetSelector")) + subrecord(b"PTDA", struct.pack("<IiI", 2, 0x0F, 0))
+        + subrecord(b"ANAM", zstring("Bool")) + subrecord(b"CNAM", b"\x01")
+        + b"".join(subrecord(b"UNAM", bytes([u])) for u in (0, 1, 2, 4, 6, 8))
+        + subrecord(b"XNAM", b"\x09")
+        + subrecord(b"POBA", b"") + no_event
+        + subrecord(b"POEA", b"") + no_event
+        + subrecord(b"POCA", b"") + no_event
+    )
+    return record(b"PACK", 0, form_id, body)
+
+
 def wstring(text: str) -> bytes:
     data = text.encode("cp1252")
     return struct.pack("<H", len(data)) + data
@@ -212,11 +242,11 @@ def workshop_recipe(form_id: int, editor_id: str, created: int, components: list
     )
 
 
-def quest(form_id: int, editor_id: str, package: int, priority: int = 100) -> bytes:
+def quest(form_id: int, editor_id: str, package: int, sit: int, priority: int = 100) -> bytes:
     """fo4rouletteQuest: start game enabled, priority 100. Collection aliases 0 'Dealers' and 1 'Bettors', each with
     the walk package. Scripts: fo4rouletteQuest on the quest (properties Dealers and Bettors), fo4rouletteGroupAlias
     on both aliases (papyrus/)."""
-    def collection(alias_id: int, name: str) -> bytes:
+    def collection(alias_id: int, name: str, package: int = package) -> bytes:
         # as vanilla WorkshopPermanentActors: ALCS id, ALMI 0 (no initial fill), then the alias: optional, allow reuse
         # in quest, allow reserved (settlers are often reserved by workshop quests)
         return (
@@ -231,14 +261,15 @@ def quest(form_id: int, editor_id: str, package: int, priority: int = 100) -> by
         )
     body = (
         subrecord(b"EDID", zstring(editor_id))
-        + subrecord(b"VMAD", quest_vmad(form_id, "fo4rouletteQuest", [("Dealers", 0), ("Bettors", 1)],
-                                        [(0, "fo4rouletteGroupAlias"), (1, "fo4rouletteGroupAlias")]))
+        + subrecord(b"VMAD", quest_vmad(form_id, "fo4rouletteQuest", [("Dealers", 0), ("Bettors", 1), ("Sitters", 2)],
+                                        [(0, "fo4rouletteGroupAlias"), (1, "fo4rouletteGroupAlias"), (2, "fo4rouletteGroupAlias")]))
         # flags (0x10 start game enabled, 0x1 as saved by the CK for those), priority, unknown, delay 0, type 0
         + subrecord(b"DNAM", struct.pack("<HBBfI", 0x0011, priority, 0, 0.0, 0))
         + subrecord(b"NEXT", b"")
-        + subrecord(b"ANAM", struct.pack("<I", 2))  # next alias id
+        + subrecord(b"ANAM", struct.pack("<I", 3))  # next alias id
         + collection(0, "Dealers")
         + collection(1, "Bettors")
+        + collection(2, "Sitters", sit)  # (poker players in their chairs: sitting in them)
     )
     return record(b"QUST", 0, form_id, body)
 
@@ -254,9 +285,11 @@ def build() -> bytes:
         stats.append(stat(own | (FIRST_ID + 2 + i), f"fo4rouletteChip{v}", f"fo4roulette\\Chip{v}.nif", bound=3))
     link = own | (FIRST_ID + 6)
     walk = own | (FIRST_ID + 7)
-    keywords = [keyword(link, "fo4rouletteLinkSpot")]
-    packages = [travel_package(walk, "fo4rouletteWalkToSpot", link)]
-    quests = [quest(own | (FIRST_ID + 8), "fo4rouletteQuest", walk)]
+    seat_link = own | (FIRST_ID + 0x48)
+    sit = own | (FIRST_ID + 0x49)
+    keywords = [keyword(link, "fo4rouletteLinkSpot"), keyword(seat_link, "fo4rouletteLinkSeat")]
+    packages = [travel_package(walk, "fo4rouletteWalkToSpot", link), sit_package(sit, "fo4rouletteSitInSeat", seat_link)]
+    quests = [quest(own | (FIRST_ID + 8), "fo4rouletteQuest", walk, sit)]
     recipes = [workshop_recipe(own | (FIRST_ID + 9), "workshop_co_fo4rouletteTable", table,
                                [(0x0001FAC2, 12), (0x0001FABD, 4), (0x001223C7, 4), (0x0003D294, 2)])]
     # the Roulette Table Kit: sold at the Dugout Inn (the plugin adds it to Vadim's stock); used, a table in front of
@@ -297,7 +330,7 @@ def build() -> bytes:
         b"TES4",
         FLAG_MASTER | FLAG_LIGHT,
         0,
-        subrecord(b"HEDR", struct.pack("<fiI", 1.0, count, FIRST_ID + 0x48))
+        subrecord(b"HEDR", struct.pack("<fiI", 1.0, count, FIRST_ID + 0x4A))
         + subrecord(b"CNAM", zstring("evodube"))
         + subrecord(b"SNAM", zstring("Real Roulette: a playable roulette table"))
         + subrecord(b"MAST", zstring("Fallout4.esm"))
