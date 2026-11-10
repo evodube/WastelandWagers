@@ -521,6 +521,12 @@ namespace fr
 					moving |= std::ranges::any_of(_pk.moves, [&](const PkChipMove& a_m) { return a_m.ref == h; });
 				}
 			}
+			static int lastPot = -1, lastShown = -1;
+			if (!moving && (pot != lastPot || shown != lastShown)) {
+				lastPot = pot;
+				lastShown = shown;
+				log::info("[pot] pot {}: its chips {} ({})", pot, shown, _pk.potChips.size());
+			}
 			if (!moving && shown != pot) {
 				log::warn("poker: the pot's chips come to {}, the pot's {}: the pot's chips made again", shown, pot);
 				for (auto& h : _pk.potChips) {
@@ -2031,6 +2037,10 @@ namespace fr
 			}
 			auto& n = _pk.stackCols[i];  // how many of each colour they have (shown up to kColMax)
 			auto& cols = _pk.stackChips[i];
+			// ([pot] log: each change to a stack, what the chips came to before and after)
+			const int wasShown = _pk.stackShown[i];
+			const int chipsBefore = value(n);
+			const auto landedN = _pk.landed[i].size();
 			// chips won, landed (or landing) on their stacks: theirs now
 			for (auto& h : _pk.landed[i]) {
 				if (auto r = h.get()) {
@@ -2099,6 +2109,9 @@ namespace fr
 				}
 			}
 			_pk.stackShown[i] = have;
+			log::info("[pot] seat {} stack {} -> {}: chips {} -> {}{}{}", i, wasShown, have, chipsBefore, value(n),
+				landedN ? std::format(", {} won chips taken in", landedN) : std::string(), paid[i].empty() ? std::string() :
+				std::format(", {} chips off for a bet", paid[i].size()));
 		}
 		if (!_pk.inHand || _pk.phase == PkPhase::kShowdown) {
 			for (auto& v : paid) {
@@ -2189,6 +2202,7 @@ namespace fr
 			}
 			int k = 0;
 			int into = 0;
+			log::info("[pot] seat {} bets {} (in now {}): {} chips out", i, bet, raised, out.size());
 			for (auto& [h, from] : out) {
 				auto r = h.get();
 				if (r) {
