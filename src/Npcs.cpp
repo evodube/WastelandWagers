@@ -25,10 +25,10 @@ namespace fr
 
 		// vanilla idles (Fallout4.esm IDLE)
 		// (just the thinking idle: the shopping looks turn them about, as if browsing a shop's shelves)
-		constexpr std::array<RE::TESFormID, 1> kWaitIdles{ 0x001E81AC };  // thinking
-		constexpr RE::TESFormID                kPlaceIdle = 0x001A8A0D;  // IdlePlaceEnvelopeOnTable
+		[[maybe_unused]] constexpr std::array<RE::TESFormID, 1> kWaitIdles{ 0x001E81AC };  // thinking
+		[[maybe_unused]] constexpr RE::TESFormID                kPlaceIdle = 0x001A8A0D;  // IdlePlaceEnvelopeOnTable
 		constexpr std::array<RE::TESFormID, 2> kWinIdles{ 0x0010BA3A, 0x0010F9C0 };  // cheering, fight winner
-		constexpr RE::TESFormID                kLoseIdle = 0x00038C7A;               // HeadShakeNo
+		[[maybe_unused]] constexpr RE::TESFormID                kLoseIdle = 0x00038C7A;               // HeadShakeNo
 		constexpr float kStepBack = 32.0f;       // where people stand: this far out from the table's edge
 
 		float Distance2D(const RE::NiPoint3& a, const RE::NiPoint3& b) { return std::hypot(a.x - b.x, a.y - b.y); }
@@ -492,11 +492,10 @@ namespace fr
 		}
 		auto pick = [&](const auto& a_list) { return a_list[std::uniform_int_distribution<std::size_t>(0, a_list.size() - 1)(_rng)]; };
 		RE::TESFormID idle = 0;
+		// (only the cheers: the thinking, the chips-down and the head shake are the game's activation idles, which
+		// step and turn them to line up first: the shuffle round on the spot between bets, every few seconds)
 		switch (a_kind) {
-		case 0: idle = pick(kWaitIdles); break;
-		case 1: idle = kPlaceIdle; break;
 		case 2: idle = pick(kWinIdles); break;
-		case 3: idle = kLoseIdle; break;
 		default: break;
 		}
 		if (idle) {

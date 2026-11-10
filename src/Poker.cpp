@@ -44,11 +44,11 @@ namespace fr
 		constexpr float kSettleIn = 2.0f;
 
 		// settlers' idles at the table (vanilla Fallout4.esm, as at the roulette table)
-		constexpr std::array<RE::TESFormID, 1> kLookIdles{ 0x001E81AC };  // thinking (the shopping looks turned them about)
-		constexpr RE::TESFormID                kThinkIdle = 0x001E81AC;                          // thinking: weighing up their hand
-		constexpr RE::TESFormID                kChipsIdle = 0x001A8A0D;                          // IdlePlaceEnvelopeOnTable: chips in
+		[[maybe_unused]] constexpr std::array<RE::TESFormID, 1> kLookIdles{ 0x001E81AC };  // thinking (the shopping looks turned them about)
+		[[maybe_unused]] constexpr RE::TESFormID                kThinkIdle = 0x001E81AC;                          // thinking: weighing up their hand
+		[[maybe_unused]] constexpr RE::TESFormID                kChipsIdle = 0x001A8A0D;                          // IdlePlaceEnvelopeOnTable: chips in
 		constexpr std::array<RE::TESFormID, 2> kWinIdles{ 0x0010BA3A, 0x0010F9C0 };              // cheering, fight winner
-		constexpr RE::TESFormID                kNoIdle = 0x00038C7A;                             // HeadShakeNo: a fold, a lost showdown
+		[[maybe_unused]] constexpr RE::TESFormID                kNoIdle = 0x00038C7A;                             // HeadShakeNo: a fold, a lost showdown
 
 		// sitting at the table (the chairs option): a dining chair of the game's, and the seated reactions
 		constexpr RE::TESFormID                kChair = 0x000E37D3;  // NpcChairIndustrialMetalDiningSit01
@@ -1124,15 +1124,16 @@ namespace fr
 			a_kind = 99;
 			idle = pick(kSeatedWin);
 		}
+		// (standing: only the cheers. The thinking, the chips-in and the head shake are the game's activation idles,
+		// which step and turn them to line up first: the shuffle round on the spot every few seconds)
 		switch (a_kind) {
-		case 0: idle = pick(kLookIdles); break;
-		case 1: idle = kThinkIdle; break;
-		case 2: idle = kChipsIdle; break;
 		case 3: idle = pick(kWinIdles); break;
 		case 99: break;
-		default: idle = kNoIdle; break;
+		default: idle = 0; break;
 		}
-		Npc::PlayIdle(actor, idle);
+		if (idle) {
+			Npc::PlayIdle(actor, idle);
+		}
 		// and a word or two: a cheer or a laugh for a win, a groan for a lost showdown (now and then)
 		if (Settings::Get().pkVoices && (kind == 3 || (kind == 4 && _pk.phase == PkPhase::kShowdown)) &&
 			std::uniform_real_distribution<float>(0.0f, 1.0f)(_rng) < 0.7f) {
