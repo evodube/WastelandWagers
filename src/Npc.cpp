@@ -338,7 +338,7 @@ namespace fr::Npc
 		}
 		const std::string what = std::format("{} {:08X}", What(a_actor, "SitOn"), a_chair->GetFormID());
 		const RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> logged{ new LogResult(what) };
-		CallQuest("SitOn", what, logged, FormArg(a_actor), static_cast<std::int32_t>(a_chair->GetFormID()));
+		CallQuest("SitOn", what, logged, FormArg(a_actor), static_cast<std::int32_t>(a_chair->GetFormID()), FormArg(Forms::LinkKeyword()));
 	}
 
 	void ClaimChair(RE::TESObjectREFR* a_chair)
