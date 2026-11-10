@@ -1047,6 +1047,19 @@ namespace fr
 		PkGreet(st);
 	}
 
+	RE::TESObjectREFR* Game::PkChairTable(const RE::TESObjectREFR* a_ref) const
+	{
+		if (!a_ref) {
+			return nullptr;
+		}
+		for (const auto& h : _pk.chairs) {
+			if (auto c = h.get(); c && c.get() == a_ref) {
+				return _pk.table.get().get();
+			}
+		}
+		return nullptr;
+	}
+
 	void Game::PkRelease(int a_seat, const char* a_why)
 	{
 		auto& st = _pk.seats[a_seat];

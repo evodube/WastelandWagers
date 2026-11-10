@@ -158,6 +158,7 @@ Bool Function ClaimChair(Int aiChair)
 		return false
 	endif
 	akChair.SetActorOwner(Game.GetPlayer().GetActorBase())
+	akChair.BlockActivation(true)  ; (you don't sit in it: activating it sits you at the table instead, no Wait prompt)
 	return true
 EndFunction
 

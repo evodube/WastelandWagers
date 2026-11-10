@@ -516,6 +516,7 @@ namespace fr
 		void         PkRemember(const PkSeat& a_st, int a_change);  // a hand played at your table, for their memory
 		void         PkSessionEnd(int a_cashOut);              // your session's summary
 		void         PkSitDown(RE::TESObjectREFR* a_table);
+		RE::TESObjectREFR* PkChairTable(const RE::TESObjectREFR* a_ref) const;  // one of the poker table's chairs: its table
 		void         PkIdle(int a_seat, int a_kind);  // a settler's idle: 0 looking on, 1 thinking, 2 chips in, 3 won, 4 folded or lost
 		void         PkHoldMenuKeys(bool a_hold);
 		void         PkStandUp(bool a_cashOut = false);  // up from the table: your seat kept (or cashed out)

@@ -8,8 +8,8 @@
 namespace rl::table
 {
 	inline constexpr double kScale = 5.6;  // (6.6 until 0.4.3: a table as high as the poker table's, 85% the size)
-	inline constexpr double kWide = 0.9;   // (0.5.2) then 10% narrower across (Y), the wheel kept round...
-	inline constexpr double kHigh = 1.05;  // ...and 5% higher (Z): build_meshes.py's WIDE and HIGH
+	inline constexpr double kWide = 0.855;  // (0.5.2) then 10% narrower across (Y), (0.6.3) 5% more, the wheel kept round...
+	inline constexpr double kHigh = 1.155;  // ...and 5% higher (Z), then 10% more: build_meshes.py's WIDE and HIGH
 
 	// the wheel
 	inline constexpr double kWheelX = -79.233 * kScale / 6.6;  // (build_meshes.py's wheel_centre)

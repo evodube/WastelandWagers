@@ -38,8 +38,8 @@ SCALE = 5.6  # (6.6 until 0.4.3; src/rl/Table.h kScale)
 # then (0.5.2) 10% narrower and 5% higher: across the table (Y) by WIDE, up (Z) by HIGH. The wheel stays round: within
 # WHEEL_R of its axis it's only moved (in Y, to where its centre goes), and between there and WHEEL_R + BLEND the
 # one way blends into the other (src/rl/Table.h kWide, kHigh)
-WIDE = 0.9
-HIGH = 1.05
+WIDE = 0.855  # (0.9 at 0.5.2, then 5% narrower again)
+HIGH = 1.155  # (1.05 at 0.5.2, then 10% higher again)
 WHEEL_R = 7.2 * SCALE  # (the bowl reaches 7.1 from the axis; the table round it starts at 7.0 below the felt, 9.4 above)
 BLEND = 2.0 * SCALE
 WOOD_TILE = 48.0  # game units a tile of the walnut (make_poker_table.py's, as on the poker table)

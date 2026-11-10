@@ -56,6 +56,19 @@ namespace fr
 							}
 						});
 					}
+				} else if (a_event.objectActivated && a_event.actionRef && a_event.actionRef.get() == player) {
+					// one of the poker table's chairs (their activation's blocked: you don't sit in it, with the game's
+					// Wait prompt up): sits you at the table, at the seat nearest you
+					auto handle = a_event.objectActivated->GetHandle();
+					if (auto* tasks = F4SE::GetTaskInterface()) {
+						tasks->AddTask([handle]() {
+							if (auto ref = handle.get()) {
+								if (auto* table = Game::Get().PkChairTable(ref.get())) {
+									Game::Get().OnActivated(table);
+								}
+							}
+						});
+					}
 				}
 				return RE::BSEventNotifyControl::kContinue;
 			}
