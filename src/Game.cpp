@@ -290,9 +290,54 @@ namespace fr
 		const bool lmb = seated && focus && (::GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
 		const bool rmb = seated && focus && (::GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0;
 		if (tasks && lmb && !_lmbWasDown) {
-			tasks->AddTask([this]() { PlaceChip(); });
+			if (_rlUi) {
+				// on the buttons: which one
+				double px, py;
+				{
+					std::scoped_lock lock(_camMutex);
+					px = _pkPtrX;
+					py = _pkPtrY;
+				}
+				int id = -1;
+				{
+					std::scoped_lock lock(_btnMutex);
+					for (const auto& b : _pkButtons) {
+						if (b.on && px >= b.x0 && px <= b.x1 && py >= b.y0 && py <= b.y1) {
+							id = b.id;
+						}
+					}
+				}
+				if (id >= 20 && id <= 23) {
+					_chip = id - 20;
+				} else if (id >= 24) {
+					tasks->AddTask([this, id]() {
+						if (id == 28) {
+							StandUp();
+							return;
+						}
+						if (IsGamePaused()) {
+							return;
+						}
+						switch (id) {
+						case 24: StartSpin(true); break;
+						case 25: Rebet(); break;
+						case 26:
+							if (_t.phase == Phase::kBetting && HasBets(0)) {
+								TakeAllBack(0);
+								Say("YOUR CHIPS ARE BACK");
+							}
+							break;
+						case 27: ToggleView(); break;
+						case 29: PackUpTable(); break;
+						default: break;
+						}
+					});
+				}
+			} else {
+				tasks->AddTask([this]() { PlaceChip(); });
+			}
 		}
-		if (tasks && rmb && !_rmbWasDown) {
+		if (tasks && rmb && !_rmbWasDown && !_rlUi) {
 			tasks->AddTask([this]() { RemoveChip(); });
 		}
 		_lmbWasDown = lmb;
@@ -755,8 +800,41 @@ namespace fr
 				std::scoped_lock lock(_camMutex);
 				const double k = Settings::Get().cursorSpeed;
 				const auto   lo = rl::LayoutMin(), hi = rl::LayoutMax();
-				_cursorX = std::clamp(_cursorX + _mouseDX * k, lo.x, hi.x);
-				_cursorY = std::clamp(_cursorY - _mouseDY * k, lo.y, hi.y);
+				// the cursor on the layout; pushed on down past the layout's near edge, the pointer drops onto the
+				// buttons along the bottom of the screen (and up off them again, back onto the layout)
+				float barTop = 1e9f, sw, sh;
+				{
+					std::scoped_lock blk(_btnMutex);
+					for (const auto& b : _pkButtons) {
+						barTop = std::min(barTop, b.y0);
+					}
+					sw = _scrW;
+					sh = _scrH;
+				}
+				if (!_rlUi) {
+					const double y = _cursorY - _mouseDY * k;
+					if (y < lo.y && _mouseDY > 0.0) {
+						_rlPush += lo.y - y;
+					} else if (_mouseDY < 0.0) {
+						_rlPush = 0.0;
+					}
+					_cursorX = std::clamp(_cursorX + _mouseDX * k, lo.x, hi.x);
+					_cursorY = std::clamp(y, lo.y, hi.y);
+					if (_rlPush > 6.0 && barTop < 1e8f) {
+						_rlUi = true;
+						_rlPush = 0.0;
+						_pkPtrX = sw * 0.5;
+						_pkPtrY = barTop + 20.0f;
+					}
+				} else {
+					const double kp = sh / 1080.0 * Settings::Get().cursorSpeed / 0.07;
+					_pkPtrX = std::clamp(_pkPtrX + _mouseDX * kp, 0.0, static_cast<double>(sw - 1.0f));
+					_pkPtrY = std::clamp(_pkPtrY + _mouseDY * kp, 0.0, static_cast<double>(sh - 1.0f));
+					if (_pkPtrY < barTop - 60.0f * sh / 1080.0f) {
+						_rlUi = false;  // (up off the buttons: back on the layout, at its near edge)
+						_cursorY = lo.y;
+					}
+				}
 				_mouseDX = _mouseDY = 0.0;
 				const auto& s = Settings::Get();
 				const bool  wheel = _wheelView.load();

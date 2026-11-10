@@ -331,7 +331,7 @@ namespace fr::Hud
 			if (a_st.hoverAll > a_st.hoverMine) {
 				tail += std::format(" · ALL {}", a_st.hoverAll);
 			}
-			const float cx = a_v.w * 0.5f, y = a_v.h - 124.0f;
+			const float cx = a_v.w * 0.5f, y = a_v.h - 150.0f;  // (above the buttons)
 			const float w = std::max(TextWidth(Title(), a_st.hover, 24, 2.0f), TextWidth(Mono(), tail, 13, 1.5f)) + 60.0f;
 			Chamfer(a_v, cx - w * 0.5f, y, w, 62.0f, 10.0f, kPanel, kEdge);
 			Print(a_v, Title(), a_st.hover, cx, y + 6, 24, kBright, kGlow, 2.0f, Align::kCentre);
@@ -646,6 +646,62 @@ namespace fr::Hud
 			}
 		}
 
+		// roulette's buttons, as the poker table's: along the bottom the chips to bet with and what to do with them,
+		// down the right the table's own. The pointer reaches them by pushing the cursor on down past the layout's near
+		// edge (and back up off them onto the layout); each says its key too
+		void RouletteButtons(const View& a_v, const Game::HudState& a_st, ImGuiViewport* a_viewport)
+		{
+			std::vector<Game::PkButton> out;
+			const bool  betting = a_st.phase == 0;
+			constexpr float h = 40.0f, gap = 8.0f;
+			const float wChip = 70.0f, wSpin = 150.0f, wSame = 150.0f, wClear = 130.0f;
+			const float w = wChip * 4 + gap * 3 + 24.0f + wSpin + wSame + wClear + gap * 2;
+			const float k = std::min(1.0f, (a_v.w - 48.0f) / w);
+			float       x = a_v.w * 0.5f - w * k * 0.5f;
+			const float y = a_v.h - 52.0f;
+			static constexpr std::array<const char*, 4> values{ "1", "5", "25", "100" };
+			for (int i = 0; i < 4; ++i) {
+				Button(a_v, a_st, out, 20 + i, values[i], x, y, wChip * k, h, true, a_st.chip == i, 16.0f);
+				if (a_st.chip == i) {
+					// (the chip you're betting with: marked under it)
+					DL::AddLine(a_v.dl, a_v.P(x + 10.0f, y + h + 4.0f), a_v.P(x + wChip * k - 10.0f, y + h + 4.0f), kBright, std::max(1.0f, 2.5f * a_v.s));
+				}
+				x += (wChip + gap) * k;
+			}
+			x += 24.0f * k;
+			Button(a_v, a_st, out, 24, std::format("SPIN ({})", a_st.rlKeys[0]), x, y, wSpin * k, h, betting && a_st.onTable > 0, true, 14.0f);
+			x += (wSpin + gap) * k;
+			Button(a_v, a_st, out, 25, std::format("SAME AGAIN ({})", a_st.rlKeys[1]), x, y, wSame * k, h, betting, false, 14.0f);
+			x += (wSame + gap) * k;
+			Button(a_v, a_st, out, 26, std::format("CLEAR ({})", a_st.rlKeys[2]), x, y, wClear * k, h, betting && a_st.onTable > 0, false, 14.0f,
+				Rgba(150, 30, 30));
+			// the table's, bottom right above the bar
+			const int   n = a_st.kitTable ? 3 : 2;
+			const float sx = a_v.w - kPkMargin - kPkSideW;
+			float       sy = y - 14.0f - (34.0f * static_cast<float>(n) - 6.0f);
+			auto side = [&](int a_id, const std::string& a_label, bool a_on) {
+				Button(a_v, a_st, out, a_id, a_label, sx, sy, kPkSideW, 28.0f, a_on, false, 12.0f);
+				sy += 34.0f;
+			};
+			side(27, std::format("{} ({})", a_st.wheelView ? "VIEW: THE LAYOUT" : "VIEW: THE WHEEL", a_st.rlKeys[3]), true);
+			side(28, std::format("LEAVE THE TABLE ({})", a_st.rlKeys[4]), true);
+			if (a_st.kitTable) {
+				side(29, std::format("PACK UP ({})", a_st.rlKeys[5]), betting && a_st.onTable == 0);
+			}
+			Game::Get().SetPkButtons(std::move(out), a_viewport->Size.x, a_viewport->Size.y);
+			if (a_st.pkPtrX >= 0.0f) {
+				const ImVec2 p{ a_v.origin.x + a_st.pkPtrX, a_v.origin.y + a_st.pkPtrY };
+				const float  s = std::max(0.6f, a_v.s);
+				const ImVec2 a{ p.x, p.y }, b{ p.x, p.y + 20.0f * s }, c{ p.x + 13.0f * s, p.y + 14.0f * s };
+				DL::AddTriangleFilled(a_v.dl, a, b, c, Rgba(230, 255, 230));
+				DL::AddTriangle(a_v.dl, a, b, c, Rgba(10, 40, 15), std::max(1.0f, 1.5f * s));
+			} else {
+				// (how to get to them)
+				Print(a_v, Mono(), "MOUSE DOWN PAST THE LAYOUT FOR THE BUTTONS · LMB BET · RMB TAKE BACK", a_v.w * 0.5f, y - 20.0f, 11, kDim, 0, 1.0f,
+					Align::kCentre);
+			}
+		}
+
 		void DrawPoker(View a_v, const Game::HudState& a_st, ImGuiViewport* a_viewport)
 		{
 			// room for it all: the status and the board side by side along the top, the log and your cards along the
@@ -752,7 +808,7 @@ namespace fr::Hud
 			if (st.seated) {
 				Status(v, st);
 				Hover(v, st);
-				Keys(v, st);
+				RouletteButtons(v, st, viewport);
 				Log(v, st, v.h - 140.0f);
 			} else {
 				Log(v, st, v.h - 24.0f);

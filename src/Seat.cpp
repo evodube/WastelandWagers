@@ -189,6 +189,8 @@ namespace fr
 		}
 		_wheelView = _t.phase == Phase::kSpinning && Settings::Get().wheelViewOnSpin;
 		_viewBackIn = -1.0f;
+		_rlUi = false;
+		_rlPush = 0.0;
 		_seated = true;
 		BlockControls(true);
 		QuietNpcs(true);
@@ -365,7 +367,7 @@ namespace fr
 	{
 		using namespace rl::table;
 		const int  value = std::clamp(_chip.load(), 0, 3);
-		const bool show = Here() && !_wheelView && _t.phase == Phase::kBetting;
+		const bool show = Here() && !_wheelView && _t.phase == Phase::kBetting && !_rlUi;
 		if (_ghostValue != value) {
 			Remove(_ghost);  // a different chip picked: a different object
 			_ghostValue = value;
@@ -556,6 +558,17 @@ namespace fr
 			key(s.keyLeave));
 		if (_seated && IsKitTable(_t.table.get().get())) {
 			h.keys += std::format(" · {} PACK UP", key(s.keyPackUp));
+			h.kitTable = true;
+		}
+		h.rlKeys = { key(s.keySpin > 0 ? s.keySpin : _activateVk.load()), key(s.keyRebet), key(s.keyClear), key(s.keyView), key(s.keyLeave),
+			key(s.keyPackUp), std::format("{}-{}", key(s.keyChip[0]), key(s.keyChip[3])) };
+		// the pointer, down on the buttons
+		if (_rlUi) {
+			std::scoped_lock lock(_camMutex);
+			h.pkPtrX = static_cast<float>(_pkPtrX);
+			h.pkPtrY = static_cast<float>(_pkPtrY);
+		} else {
+			h.pkPtrX = h.pkPtrY = -1.0f;
 		}
 		if (_kitPlacing) {
 			h.placing = true;

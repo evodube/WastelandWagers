@@ -108,6 +108,8 @@ namespace fr
 			int                  bannerNumber{ -1 };
 			float                bannerAge{ 0.0f };
 			bool                 wheelView{ false };
+			bool                 kitTable{ false };    // (roulette: a table from a kit, PACK UP on offer)
+			std::array<std::string, 7> rlKeys;         // (roulette's buttons: their keys, SPIN, SAME AGAIN, CLEAR, WHEEL, LEAVE, PACK UP, chips)
 			std::string          keys;                 // the key hints line
 			bool                 placing{ false };     // setting a kit table up: just the key hints
 			int                  lastWin{ 0 };
@@ -451,6 +453,8 @@ namespace fr
 		bool              _pkMenusHeld{ false };
 		bool              _pkTopView{ false };  // looking down on the poker table (V)
 		bool              _pkShowCards{ false };  // the SHOW MY CARDS button: your cards up
+		std::atomic<bool> _rlUi{ false };  // (roulette: the pointer's down on the buttons, off the layout)
+		double            _rlPush{ 0.0 };  // (...how far you've pushed the cursor down past the layout's edge)
 		double            _pkPtrX{ -1.0 }, _pkPtrY{ -1.0 };  // your mouse pointer at the poker table, screen pixels (under _camMutex)
 		mutable std::mutex     _btnMutex;
 		std::vector<PkButton>  _pkButtons;
