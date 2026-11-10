@@ -486,7 +486,7 @@ namespace fr::Hud
 			}
 		}
 
-		// your hand's name and your turn, bottom right above the keys
+		// your hand's name and your turn, top middle
 		void PokerHole(const View& a_v, const Game::HudState& a_st)
 		{
 			const std::string label = a_st.pkYourTurn ? (a_st.pkHand.empty() ? std::string("YOUR TURN") : "YOUR TURN · " + a_st.pkHand) : a_st.pkHand;
@@ -494,7 +494,7 @@ namespace fr::Hud
 				return;
 			}
 			const float w = PokerHoleW(), h = PokerHoleH();
-			const float x = a_v.w - kPkMargin - w, y = a_v.h - kPkBottom - h;
+			const float x = a_v.w * 0.5f - w * 0.5f, y = kPkMargin;
 			Chamfer(a_v, x, y, w, h, 10.0f, kPanel, a_st.pkYourTurn ? kBright : kEdge);
 			const float size = std::min(14.0f, 14.0f * (w - 24.0f) / std::max(1.0f, TextWidth(Mono(), label, 14, 1.0f)));
 			Print(a_v, Mono(), label, x + w * 0.5f, y + (h - size) * 0.5f - 2.0f, size, a_st.pkYourTurn ? kBright : kText, a_st.pkYourTurn ? kGlow : 0,
@@ -529,7 +529,7 @@ namespace fr::Hud
 				return;
 			}
 			constexpr float kLine = 22.0f;
-			const float     maxW = a_v.w - PokerHoleW() - kPkMargin * 3.0f;
+			const float     maxW = a_v.w - kPkSideW - kPkMargin * 3.0f;
 			float           w = 0.0f;
 			for (const auto& line : a_st.log) {
 				w = std::max(w, TextWidth(Mono(), "> " + line.text, 14, 1.0f));
@@ -589,23 +589,6 @@ namespace fr::Hud
 				Button(a_v, a_st, out, a_id, a_label, x, y, a_w * k, h, turn, a_strong, 14.0f, a_accent);
 				x += (a_w + gap) * k;
 			};
-			if (!turn) {
-				// not your turn: no buttons, just who's to act
-				std::string who;
-				for (const auto& r : a_st.pkRows) {
-					if (r.toAct && !r.you) {
-						who = r.name;
-					}
-				}
-				const std::string msg = !who.empty() ? std::format("{} IS THINKING", who) : a_st.pkHelp;
-				if (!msg.empty()) {
-					const float mw = std::min(a_v.w - kPkMargin * 2.0f, TextWidth(Mono(), msg, 14, 2.0f) + 60.0f);
-					Chamfer(a_v, a_v.w * 0.5f - mw * 0.5f, y + 4.0f, mw, h - 8.0f, 8.0f, kPanel, kEdge);
-					const float size = std::min(14.0f, 14.0f * (mw - 30.0f) / std::max(1.0f, TextWidth(Mono(), msg, 14, 2.0f)));
-					Print(a_v, Mono(), msg, a_v.w * 0.5f, y + (h - size) * 0.5f - 1.0f, size, kText, 0, 2.0f, Align::kCentre);
-				}
-				x = a_v.w;  // (the side buttons still drawn below)
-			}
 			const bool pad = a_st.pkPad;  // (a controller: its button on each)
 			auto       tag = [&](const char* a_b, const std::string& a_s) { return pad ? std::format("{} {}", a_b, a_s) : a_s; };
 			if (turn) {
@@ -638,9 +621,12 @@ namespace fr::Hud
 			next(2, tag("(X)", raise), wRaise, turn);
 			next(3, tag("(Y)", allIn), wAll, false, Rgba(170, 100, 20));
 			}
-			// the table, down the right
+			// the table's buttons, bottom right: in the corner, or above the action buttons when they'd run into them
+			const int   nSide = a_st.pkKit ? 5 : 4;
 			const float sx = a_v.w - kPkMargin - kPkSideW;
-			float       sy = kPkMargin + PokerBoardH() + 10.0f;
+			const float barRight = a_v.w * 0.5f + w * k * 0.5f;
+			const float sideFoot = barRight + gap < sx ? a_v.h - 12.0f : a_v.h - kPkBottom - 8.0f;
+			float       sy = sideFoot - (34.0f * static_cast<float>(nSide) - 6.0f);
 			auto side = [&](int a_id, const std::string& a_label, bool a_on) {
 				Button(a_v, a_st, out, a_id, a_label, sx, sy, kPkSideW, 28.0f, a_on, false, 12.0f);
 				sy += 34.0f;
@@ -667,9 +653,9 @@ namespace fr::Hud
 		{
 			// room for it all: the status and the board side by side along the top, the log and your cards along the
 			// bottom; too little, and everything's drawn smaller
-			const float needW = std::max(PokerStatusW(a_st) + PokerBoardW() + kPkMargin * 3.0f, 520.0f + PokerHoleW());
-			const float needH = kPkMargin + std::max(PokerStatusH(a_st), PokerBoardH() + 10.0f + kPkSideH) + 16.0f +
-			                    std::max(PokerLogH(a_st), PokerHoleH()) + kPkBottom;
+			const float needW = std::max(PokerStatusW(a_st) + PokerHoleW() + PokerBoardW() + kPkMargin * 4.0f, 520.0f + kPkSideW);
+			const float needH = kPkMargin + std::max({ PokerStatusH(a_st), PokerBoardH(), PokerHoleH() }) + 16.0f +
+			                    std::max(PokerLogH(a_st), kPkSideH) + kPkBottom;
 			const float f = std::min({ 1.0f, a_v.w / needW, a_v.h / needH });
 			if (f < 1.0f) {
 				a_v.s *= f;
@@ -687,7 +673,7 @@ namespace fr::Hud
 			PokerStatus(slid(0.0f, -1.0f), a_st);
 			PokerBoard(slid(0.08f, 1.0f), a_st);
 			PokerLog(slid(0.16f, -1.0f), a_st);
-			PokerHole(slid(0.2f, 1.0f), a_st);
+			PokerHole(a_v, a_st);
 			PokerBanner(a_v, a_st);
 			PokerButtons(a_v, a_st, a_viewport);
 		}
