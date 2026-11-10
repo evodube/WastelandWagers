@@ -39,6 +39,13 @@ namespace fr
 		constexpr float kPersonalSpace = 50.0f;
 		constexpr float kSettleIn = 2.0f;
 
+		// settlers' idles at the table (vanilla Fallout4.esm, as at the roulette table)
+		constexpr std::array<RE::TESFormID, 3> kLookIdles{ 0x0001F86C, 0x0001FA11, 0x0001FA12 };  // shopping looks A-C: eyeing the table
+		constexpr RE::TESFormID                kThinkIdle = 0x001E81AC;                          // thinking: weighing up their hand
+		constexpr RE::TESFormID                kChipsIdle = 0x001A8A0D;                          // IdlePlaceEnvelopeOnTable: chips in
+		constexpr std::array<RE::TESFormID, 2> kWinIdles{ 0x0010BA3A, 0x0010F9C0 };              // cheering, fight winner
+		constexpr RE::TESFormID                kNoIdle = 0x00038C7A;                             // HeadShakeNo: a fold, a lost showdown
+
 		// the seats, clockwise from the dealer's place (+X): the table's cup holders, table space
 		constexpr std::array<std::pair<float, float>, 7> kHolders{ {
 			{ 27.9f, -47.1f }, { 1.1f, -71.2f }, { -25.8f, -47.1f }, { -25.8f, -0.2f }, { -25.8f, 46.7f }, { 1.1f, 70.8f }, { 27.9f, 46.7f },
@@ -305,7 +312,7 @@ namespace fr
 		const auto& s = Settings::Get();
 		int         npcs = 0;
 		for (const auto& st : _pk.seats) {
-			npcs += st.used && !st.you && !st.house;
+			npcs += st.used && !st.you;
 		}
 		if (!s.pkPlayers || npcs >= s.pkMaxPlayers) {
 			return;
@@ -336,12 +343,9 @@ namespace fr
 		std::ranges::sort(found, {}, &std::pair<float, RE::Actor*>::first);
 		auto* actor = found[std::uniform_int_distribution<std::size_t>(0, std::min<std::size_t>(found.size(), 4) - 1)(_rng)].second;
 		// a free seat nobody's standing at
-		std::vector<int> free, house;
+		std::vector<int> free;
 		for (int i = 0; i < kPkSeats; ++i) {
 			if (_pk.seats[i].used) {
-				if (_pk.seats[i].house && !_pk.inHand) {
-					house.push_back(i);  // (a settler takes a house player's place, between hands)
-				}
 				continue;
 			}
 			float      heading = 0.0f;
@@ -359,11 +363,6 @@ namespace fr
 			if (!taken) {
 				free.push_back(i);
 			}
-		}
-		if (free.empty() && !house.empty()) {
-			PkSay(std::format("{} GIVES UP THE SEAT", Upper(_pk.seats[house.front()].name)));
-			PkRelease(house.front(), "a settler wants the seat");
-			free.push_back(house.front());
 		}
 		if (free.empty()) {
 			return;
@@ -396,11 +395,6 @@ namespace fr
 			st.stack = _pk.hand.players[st.hi].stack;
 			_pk.hand.players[st.hi].stack = 0;
 		}
-		if (st.house) {
-			log::info("poker: house player {} leaves ({})", st.name, a_why ? a_why : "");
-			st = PkSeat{};
-			return;
-		}
 		AddToPurse(st.id, st.stack);
 		auto  ref = st.actor.get();
 		auto* actor = ref ? ref->As<RE::Actor>() : nullptr;
@@ -415,6 +409,33 @@ namespace fr
 		st = PkSeat{};
 	}
 
+	void Game::PkIdle(int a_seat, int a_kind)
+	{
+		if (a_kind < 0 || a_seat < 0 || a_seat >= kPkSeats || !Settings::Get().bettorIdles) {
+			return;
+		}
+		auto& st = _pk.seats[a_seat];
+		if (!st.used || st.you || !st.held || st.step != Seat::Step::kPlaying) {
+			return;
+		}
+		auto  ref = st.actor.get();
+		auto* actor = ref ? ref->As<RE::Actor>() : nullptr;
+		if (!actor) {
+			return;
+		}
+		auto pick = [&](auto& a_list) { return a_list[std::uniform_int_distribution<std::size_t>(0, a_list.size() - 1)(_rng)]; };
+		RE::TESFormID idle = 0;
+		switch (a_kind) {
+		case 0: idle = pick(kLookIdles); break;
+		case 1: idle = kThinkIdle; break;
+		case 2: idle = kChipsIdle; break;
+		case 3: idle = pick(kWinIdles); break;
+		default: idle = kNoIdle; break;
+		}
+		Npc::PlayIdle(actor, idle);
+		st.nextIdle = std::uniform_real_distribution<float>(10.0f, 22.0f)(_rng);  // (no idle on top of this one for a while)
+	}
+
 	void Game::PkTickSeats(const Frame& a_frame, float a_dt)
 	{
 		const auto& s = Settings::Get();
@@ -423,20 +444,9 @@ namespace fr
 			_pk.seatTimer = s.bettorEvery * std::uniform_real_distribution<float>(0.6f, 1.2f)(_rng);
 			PkFindPlayer(a_frame);
 		}
-		PkHouse(a_dt);
 		for (int i = 0; i < kPkSeats; ++i) {
 			auto& st = _pk.seats[i];
 			if (!st.used || st.you) {
-				continue;
-			}
-			if (st.house) {
-				// between hands: broke, or nobody to play for any more
-				if (!_pk.inHand && (st.stack < s.pkBigBlind || !_pkSeated)) {
-					if (_pkSeated) {
-						PkSay(std::format("{} IS OUT OF CAPS", Upper(st.name)));
-					}
-					PkRelease(i, "done");
-				}
 				continue;
 			}
 			auto  ref = st.actor.get();
@@ -463,6 +473,11 @@ namespace fr
 				}
 				FaceTowards(actor, heading);
 				st.atSpot = Distance2D(actor->data.location, spot) < kArrived + 10.0f ? st.atSpot + a_dt : 0.0f;
+				// now and then, while it isn't their turn: a look over the table
+				st.nextIdle -= a_dt;
+				if (st.nextIdle <= 0.0f && !(_pk.inHand && st.hi >= 0 && _pk.hand.ToAct() == st.hi)) {
+					PkIdle(i, 0);
+				}
 				break;
 			default:
 				break;
@@ -473,57 +488,6 @@ namespace fr
 				PkRelease(i, "done");
 			}
 		}
-	}
-
-	void Game::PkHouse(float a_dt)
-	{
-		// you at the table and not enough settlers: the house sits players in (a seat each, no settler at it: cards
-		// and chips in front of an empty place), one every second or so, until there are as many as the setting says
-		const auto& s = Settings::Get();
-		if (!_pkSeated || _pk.inHand || s.pkHouse <= 0) {
-			_pk.houseTimer = 0.0f;
-			return;
-		}
-		int others = 0;
-		for (const auto& st : _pk.seats) {
-			others += st.used && !st.you;
-		}
-		if (others >= s.pkHouse) {
-			return;
-		}
-		_pk.houseTimer += a_dt;
-		if (_pk.houseTimer < 1.2f) {
-			return;
-		}
-		_pk.houseTimer = 0.0f;
-		std::vector<int> free;
-		for (int i = 0; i < kPkSeats; ++i) {
-			if (!_pk.seats[i].used) {
-				free.push_back(i);
-			}
-		}
-		if (free.empty()) {
-			return;
-		}
-		static constexpr std::array<const char*, 10> kNames{ "Lucky Lou", "Silver Sue", "One-Eyed Jack", "Dot", "Smokey", "Ace Malone",
-			"Big Tom", "Rosie", "Doc Holloway", "Three-Card Vic" };
-		std::vector<const char*> names;
-		for (const char* n : kNames) {
-			if (std::ranges::none_of(_pk.seats, [&](const PkSeat& st) { return st.used && st.name == n; })) {
-				names.push_back(n);
-			}
-		}
-		const int seat = free[std::uniform_int_distribution<std::size_t>(0, free.size() - 1)(_rng)];
-		auto&     st = _pk.seats[seat];
-		st = PkSeat{};
-		st.used = true;
-		st.house = true;
-		st.name = names.empty() ? "The House" : names[std::uniform_int_distribution<std::size_t>(0, names.size() - 1)(_rng)];
-		st.style = pk::Style::From(std::uniform_int_distribution<std::uint32_t>()(_rng));
-		st.stack = s.pkNpcBuyIn;
-		st.step = Seat::Step::kPlaying;
-		log::info("poker: house player {} sits in at seat {}", st.name, seat);
-		PkSay(std::format("{} (HOUSE) SITS IN WITH {}", Upper(st.name), st.stack));
 	}
 
 	// ---------------------------------------------------------------- the hand
@@ -537,7 +501,7 @@ namespace fr
 			auto& st = _pk.seats[i];
 			st.hi = -1;
 			st.last.clear();
-			const bool ready = st.used && (st.you || st.house || (st.step == Seat::Step::kPlaying && st.atSpot > kSettleIn)) && st.stack >= s.pkBigBlind;
+			const bool ready = st.used && (st.you || (st.step == Seat::Step::kPlaying && st.atSpot > kSettleIn)) && st.stack >= s.pkBigBlind;
 			if (!ready) {
 				continue;
 			}
@@ -621,6 +585,9 @@ namespace fr
 			what = std::format("{} {}", toCall == 0 && street != pk::Street::kPreflop ? "BETS" : "RAISES TO",
 				street == _pk.hand.street ? p.bet : p.committed);
 		}
+		if (seat >= 0 && !_pk.seats[seat].you) {
+			PkIdle(seat, p.folded ? 4 : paid > 0 ? 2 : -1);
+		}
 		if (seat >= 0) {
 			_pk.seats[seat].last = what;
 			PkSay(std::format("{} {}", _pk.seats[seat].you ? std::string("YOU") : Upper(_pk.seats[seat].name), what), p.folded ? 2 : 0);
@@ -646,7 +613,7 @@ namespace fr
 				_pk.timer = 1.0f;
 				int ready = 0;
 				for (const auto& st : _pk.seats) {
-					ready += st.used && (st.you || st.house || (st.step == Seat::Step::kPlaying && st.atSpot > kSettleIn)) && st.stack >= s.pkBigBlind;
+					ready += st.used && (st.you || (st.step == Seat::Step::kPlaying && st.atSpot > kSettleIn)) && st.stack >= s.pkBigBlind;
 				}
 				if (ready >= 2) {
 					PkStartHand();
@@ -715,6 +682,9 @@ namespace fr
 				st.last = "THINKING";
 				if (_pk.think <= 0.0f) {
 					_pk.think = s.pkThink * std::uniform_real_distribution<float>(0.8f, 2.4f)(_rng);
+					if (_pk.think > 1.6f) {
+						PkIdle(seat, 1);  // a long think: they look it over
+					}
 				}
 				_pk.think -= a_dt;
 				if (_pk.think > 0.0f) {
@@ -781,6 +751,15 @@ namespace fr
 			}
 			if (st.you) {
 				youResult = "won";
+			}
+			PkIdle(i, 3);
+		}
+		if (h.showdown) {
+			for (int i = 0; i < kPkSeats; ++i) {
+				const auto& st = _pk.seats[i];
+				if (st.used && st.hi >= 0 && won[st.hi] <= 0 && !h.players[st.hi].folded) {
+					PkIdle(i, 4);  // shown down and lost
+				}
 			}
 		}
 		_pk.bannerAge = 0.0f;
@@ -1109,8 +1088,6 @@ namespace fr
 						a_h.pkHand = "A POCKET PAIR";
 					}
 				}
-			} else if (st.house) {
-				r.status = "HOUSE PLAYER";
 			} else if (!st.you && st.step != Seat::Step::kPlaying) {
 				r.status = "ON THE WAY";
 			}
@@ -1135,14 +1112,13 @@ namespace fr
 		if (!_pk.inHand) {
 			int ready = 0, coming = 0;
 			for (const auto& st : _pk.seats) {
-				const bool r = st.used && (st.you || st.house || (st.step == Seat::Step::kPlaying && st.atSpot > kSettleIn));
+				const bool r = st.used && (st.you || (st.step == Seat::Step::kPlaying && st.atSpot > kSettleIn));
 				ready += r;
 				coming += st.used && !r;
 			}
 			a_h.pkHelp = ready >= 2  ? std::string("NEXT HAND COMING UP")
-			             : coming > 0 ? std::string("WAITING FOR PLAYERS TO SIT DOWN")
-			             : s.pkHouse > 0 ? std::string("THE HOUSE IS FINDING YOU PLAYERS")
-			                             : std::string("WAITING FOR SETTLERS (OR TURN ON HOUSE PLAYERS)");
+			             : coming > 0 ? std::string("WAITING FOR PLAYERS TO GET TO THE TABLE")
+			                          : std::string("WAITING FOR SETTLERS TO JOIN · THE TABLE DEALS ONCE TWO ARE SEATED");
 		} else if (!a_h.pkYourTurn) {
 			a_h.pkHelp = hi >= 0 && !h.players[hi].folded ? "WAIT FOR YOUR TURN" : "YOU'RE OUT OF THIS HAND · THE NEXT ONE DEALS YOU IN";
 		}

@@ -288,7 +288,6 @@ namespace fr
 		{
 			bool                used{ false };
 			bool                you{ false };
-			bool                house{ false };  // a house player: no settler, just a seat the table plays (so you're never alone)
 			RE::ObjectRefHandle actor;
 			RE::TESFormID       id{ 0 };
 			std::string         name;
@@ -339,7 +338,6 @@ namespace fr
 			std::vector<RE::ObjectRefHandle>                       potChips;
 			int                                                    potShown{ -1 };
 			float                                                  seatTimer{ 4.0f };
-			float                                                  houseTimer{ 0.0f };
 			int                                                    raiseTo{ 0 };
 			std::deque<HudLine>                                    log;
 			std::string                                            bannerTitle;
@@ -371,7 +369,7 @@ namespace fr
 		void         PkMakeChips(const Frame& a_frame);
 		void         PkSay(const std::string& a_text, int a_tone = 0);
 		void         PkSitDown(RE::TESObjectREFR* a_table);
-		void         PkHouse(float a_dt);  // too few settlers: house players fill seats
+		void         PkIdle(int a_seat, int a_kind);  // a settler's idle: 0 looking on, 1 thinking, 2 chips in, 3 won, 4 folded or lost
 		void         PkStandUp();
 		void         PkKey(int a_key);  // 0 fold, 1 check/call, 2 raise, 3 all in, 4 raise up, 5 raise down, 6 leave, 7 pack up
 		void         PkHud(HudState& a_h) const;
