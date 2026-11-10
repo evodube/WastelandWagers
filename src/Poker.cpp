@@ -637,6 +637,17 @@ namespace fr
 		st.id = actor->GetFormID();
 		st.name = actor->GetDisplayFullName();
 		st.style = pk::Style::From(st.id);
+		{
+			// the wasteland's own: ghouls and synths play like what they are
+			auto*       race = actor->race;
+			const char* raceId = race ? race->formEditorID.c_str() : nullptr;
+			if (raceId && std::strstr(raceId, "Ghoul")) {
+				st.style = pk::Style::Of(pk::Archetype::kGhoul, st.id);
+			} else if (raceId && std::strstr(raceId, "Synth")) {
+				st.style = pk::Style::Of(pk::Archetype::kSynth, st.id);
+			}
+		}
+		log::info("poker: {} plays like a {}", st.name, pk::ArchetypeName(st.style.archetype));
 		st.hands = std::uniform_int_distribution<int>(6, 20)(_rng);
 		st.stack = TakePurse(st.id, s.pkNpcBuyIn);
 		log::info("poker: {} ({:08X}) sits in at seat {} with {} caps", st.name, st.id, seat, st.stack);
@@ -805,6 +816,8 @@ namespace fr
 			p.id = st.you ? 0 : st.id;
 			p.stack = st.stack;
 			p.style = st.style;
+			p.tilt = st.tilt;
+			st.handStart = st.stack;
 			st.hi = static_cast<int>(players.size());
 			players.push_back(p);
 			seatOf.push_back(i);
@@ -1012,6 +1025,12 @@ namespace fr
 						st.stack = _pk.hand.players[st.hi].stack;
 						if (!st.you) {
 							--st.hands;
+							// a bad loss puts them on tilt (how much: their kind); it cools off a hand at a time
+							st.tilt *= 0.75;
+							if (st.handStart > 0 && st.stack < st.handStart * 0.6 && _pk.hand.showdown) {
+								st.tilt = std::min(1.0, st.tilt + st.style.tiltProne * 0.8);
+								log::info("poker: {} is on tilt ({:.2f})", st.name, st.tilt);
+							}
 						}
 					}
 					st.hi = -1;

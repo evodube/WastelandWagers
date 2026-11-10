@@ -27,12 +27,35 @@ namespace pk
 
 	// How a settler plays: how loose (plays weaker hands), how aggressive (raises rather than calls), how often they
 	// bluff. Fixed per settler (from their form ID), so the regulars have a style.
+	// The kinds of player at the table: the classic ones, and some of the wasteland's own
+	enum class Archetype : std::uint8_t
+	{
+		kTightAggressive,  // few hands, played hard
+		kLooseAggressive,  // lots of hands, lots of pressure
+		kCallingStation,   // calls anything, rarely raises, never believes you
+		kManiac,           // raises everything
+		kRock,             // waits for aces
+		kRaider,           // loose, aggressive, bluffs too much, tilts easily
+		kGhoul,            // two hundred years of patience: tight, traps, never tilts
+		kSynth,            // plays the odds exactly, hardly any randomness
+		kPrewarSnob,       // tight and passive, then a big bluff to show you how it's done
+		kCount
+	};
+	const char* ArchetypeName(Archetype a_a);  // "TIGHT-AGGRESSIVE", "GHOUL"...
+
 	struct Style
 	{
-		double looseness{ 0.5 };   // 0 tight .. 1 loose
-		double aggression{ 0.5 };  // 0 passive .. 1 aggressive
-		double bluffing{ 0.1 };    // chance of betting with nothing
-		static Style From(std::uint32_t a_seed);
+		Archetype archetype{ Archetype::kTightAggressive };
+		double    looseness{ 0.5 };   // 0 tight .. 1 loose (hands played)
+		double    aggression{ 0.5 };  // 0 passive .. 1 aggressive (raises over calls)
+		double    bluffing{ 0.1 };    // chance of betting with nothing
+		double    stubborn{ 0.0 };    // 0 .. 1: calls rather than folds (the calling station)
+		double    trapping{ 0.1 };    // chance of slow-playing a monster (check / call, raise later)
+		double    drawing{ 0.4 };     // chance of betting a draw (the semi-bluff)
+		double    noise{ 0.15 };      // how much each decision wobbles (0: the same every time)
+		double    tiltProne{ 0.5 };   // how much a bad beat gets to them
+		static Style From(std::uint32_t a_seed);               // a random kind, from a seed (the same settler, the same kind)
+		static Style Of(Archetype a_a, std::uint32_t a_seed);  // that kind, with a little variety
 	};
 
 	struct Player
@@ -46,6 +69,7 @@ namespace pk
 		bool                acted{ false };  // has acted since the last raise
 		std::array<Card, 2> hole{};
 		Style               style;
+		double              tilt{ 0.0 };  // 0 .. 1: steaming after a bad loss (looser, wilder; cools off hand by hand)
 	};
 
 	struct Pot

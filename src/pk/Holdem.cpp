@@ -17,15 +17,63 @@ namespace pk
 		}
 	}
 
-	Style Style::From(std::uint32_t a_seed)
+	const char* ArchetypeName(Archetype a_a)
+	{
+		switch (a_a) {
+		case Archetype::kTightAggressive: return "TIGHT-AGGRESSIVE";
+		case Archetype::kLooseAggressive: return "LOOSE-AGGRESSIVE";
+		case Archetype::kCallingStation: return "CALLING STATION";
+		case Archetype::kManiac: return "MANIAC";
+		case Archetype::kRock: return "ROCK";
+		case Archetype::kRaider: return "RAIDER";
+		case Archetype::kGhoul: return "GHOUL";
+		case Archetype::kSynth: return "SYNTH";
+		case Archetype::kPrewarSnob: return "PRE-WAR SNOB";
+		default: return "";
+		}
+	}
+
+	Style Style::Of(Archetype a_a, std::uint32_t a_seed)
 	{
 		std::mt19937                           rng(a_seed * 2654435761u + 17u);
-		std::uniform_real_distribution<double> u(0.0, 1.0);
-		Style                                  s;
-		s.looseness = 0.2 + 0.6 * u(rng);
-		s.aggression = 0.2 + 0.6 * u(rng);
-		s.bluffing = 0.03 + 0.15 * u(rng);
+		std::uniform_real_distribution<double> u(-1.0, 1.0);
+		//                         loose  aggr  bluff  stubborn trap  draw  noise tilt
+		struct P { double l, a, b, s, t, d, n, tp; };
+		static constexpr std::array<P, static_cast<std::size_t>(Archetype::kCount)> kP{ {
+			{ 0.30, 0.75, 0.10, 0.05, 0.15, 0.55, 0.12, 0.35 },  // tight-aggressive
+			{ 0.75, 0.80, 0.20, 0.10, 0.10, 0.70, 0.18, 0.50 },  // loose-aggressive
+			{ 0.70, 0.15, 0.03, 0.85, 0.05, 0.15, 0.15, 0.30 },  // calling station
+			{ 0.90, 0.95, 0.35, 0.20, 0.02, 0.80, 0.30, 0.80 },  // maniac
+			{ 0.10, 0.35, 0.02, 0.05, 0.25, 0.20, 0.08, 0.10 },  // rock
+			{ 0.70, 0.85, 0.28, 0.25, 0.05, 0.65, 0.28, 0.95 },  // raider
+			{ 0.25, 0.45, 0.06, 0.15, 0.45, 0.35, 0.10, 0.00 },  // ghoul
+			{ 0.30, 0.75, 0.10, 0.05, 0.18, 0.55, 0.02, 0.00 },  // synth
+			{ 0.25, 0.25, 0.15, 0.10, 0.20, 0.25, 0.12, 0.60 },  // pre-war snob
+		} };
+		const auto& p = kP[static_cast<std::size_t>(a_a)];
+		auto        wob = [&](double a_v, double a_by) { return std::clamp(a_v + u(rng) * a_by, 0.0, 1.0); };
+		Style       s;
+		s.archetype = a_a;
+		s.looseness = wob(p.l, 0.08);
+		s.aggression = wob(p.a, 0.08);
+		s.bluffing = wob(p.b, 0.03);
+		s.stubborn = wob(p.s, 0.05);
+		s.trapping = wob(p.t, 0.05);
+		s.drawing = wob(p.d, 0.08);
+		s.noise = p.n;
+		s.tiltProne = p.tp;
 		return s;
+	}
+
+	Style Style::From(std::uint32_t a_seed)
+	{
+		// most tables: a mix of the classic kinds and the wasteland's (the plugin picks ghouls and synths by who they are)
+		std::mt19937 rng(a_seed * 747796405u + 2891336453u);
+		static constexpr std::array<Archetype, 7> kCommon{ Archetype::kTightAggressive, Archetype::kLooseAggressive, Archetype::kCallingStation,
+			Archetype::kManiac, Archetype::kRock, Archetype::kRaider, Archetype::kPrewarSnob };
+		static constexpr std::array<double, 7> kWeight{ 3, 2, 3, 1, 2, 2, 1 };
+		std::discrete_distribution<int>        pick(kWeight.begin(), kWeight.end());
+		return Of(kCommon[static_cast<std::size_t>(pick(rng))], a_seed);
 	}
 
 	int Hand::Live() const
@@ -432,11 +480,71 @@ namespace pk
 		}
 	}
 
+	namespace
+	{
+		// a drawing hand after the flop (one of their own cards in it): four to a flush, or four to an open-ended straight
+		bool OnADraw(const std::array<Card, 2>& a_hole, const std::vector<Card>& a_board)
+		{
+			if (a_board.size() < 3 || a_board.size() >= 5) {
+				return false;
+			}
+			for (int s = 0; s < 4; ++s) {
+				int n = 0, mine = 0;
+				for (auto c : a_board) {
+					n += Suit(c) == s;
+				}
+				for (auto c : a_hole) {
+					n += Suit(c) == s;
+					mine += Suit(c) == s;
+				}
+				if (n == 4 && mine > 0) {
+					return true;
+				}
+			}
+			std::array<bool, 14> have{}, mine{};
+			auto mark = [&](Card c, bool a_mine) {
+				const int r = Rank(c) + 1;  // 1 = two .. 13 = ace
+				have[r] = true;
+				mine[r] = mine[r] || a_mine;
+				if (r == 13) {
+					have[0] = true;  // (the ace low too)
+					mine[0] = mine[0] || a_mine;
+				}
+			};
+			for (auto c : a_board) {
+				mark(c, false);
+			}
+			for (auto c : a_hole) {
+				mark(c, true);
+			}
+			for (int lo = 1; lo + 3 <= 12; ++lo) {  // four in a row with room at both ends
+				bool run = true, own = false;
+				for (int r = lo; r < lo + 4; ++r) {
+					run = run && have[r];
+					own = own || mine[r];
+				}
+				if (run && own) {
+					return true;
+				}
+			}
+			return false;
+		}
+	}
+
 	Action Decide(const Hand& a_hand, int a_seat, std::mt19937& a_rng, double* a_equity)
 	{
 		const auto&                            p = a_hand.players[a_seat];
-		const auto&                            st = p.style;
 		std::uniform_real_distribution<double> u(0.0, 1.0);
+		// their style as it is right now: on tilt, looser and wilder; and every decision wobbles a little (a style's
+		// noise), so the same spot isn't always played the same way
+		Style st = p.style;
+		{
+			const double tilt = std::clamp(p.tilt, 0.0, 1.0);
+			std::uniform_real_distribution<double> w(-st.noise, st.noise);
+			st.looseness = std::clamp(st.looseness + 0.35 * tilt + w(a_rng), 0.0, 1.0);
+			st.aggression = std::clamp(st.aggression + 0.3 * tilt + w(a_rng), 0.0, 1.0);
+			st.bluffing = std::clamp(st.bluffing + 0.15 * tilt, 0.0, 0.6);
+		}
 		const int                              opponents = std::max(1, a_hand.Live() - 1);
 		const int                              toCall = a_hand.ToCall(a_seat);
 		const int                              pot = a_hand.PotTotal();
@@ -492,7 +600,15 @@ namespace pk
 		const double rel = equity * (opponents + 1);  // 1 = an average hand against this many
 		const double odds = toCall > 0 ? static_cast<double>(toCall) / (pot + toCall) : 0.0;
 		const double strong = 1.45 - 0.35 * st.aggression;
+		const bool draw = OnADraw(p.hole, a_hand.board);
+		const bool monster = rel > strong + 0.8 && a_hand.street != Street::kRiver;
 		if (toCall == 0) {
+			if (monster && u(a_rng) < st.trapping) {
+				return { Action::Kind::kCheck };  // the slow-play: let them bet into it
+			}
+			if (draw && u(a_rng) < st.drawing * (0.5 + 0.5 * st.aggression)) {
+				return raiseTo(0.45 + 0.25 * u(a_rng));  // the semi-bluff: a bet that can win now, or hit later
+			}
 			if (rel > strong && u(a_rng) < 0.6 + 0.35 * st.aggression) {
 				// value: bigger the stronger (a third of the pot up to the whole of it)
 				return raiseTo(std::clamp(0.33 + (rel - strong) * 0.5 + 0.2 * u(a_rng), 0.33, 1.0));
@@ -509,9 +625,15 @@ namespace pk
 		// facing a bet: they believe big bets more (a bigger bet means a stronger hand), tight players most
 		const double betShare = static_cast<double>(toCall) / std::max(1, pot);
 		const double doubt = 1.0 - std::min(0.5, (0.15 + betShare * 0.35) * (1.2 - st.looseness));
-		const double eq = equity * doubt;
-		if (rel * doubt > strong + 0.4 && u(a_rng) < 0.35 + 0.45 * st.aggression) {
+		const double eq = equity * (doubt + (1.0 - doubt) * st.stubborn);  // (a calling station doesn't believe you)
+		if (monster && u(a_rng) < st.trapping) {
+			return { Action::Kind::kCall };  // the slow-play: just call, raise on a later street
+		}
+		if (rel * doubt > strong + 0.4 && u(a_rng) < 0.35 + 0.45 * st.aggression * (1.0 - st.stubborn)) {
 			return raiseTo(0.6 + 0.4 * u(a_rng));  // a raise for value
+		}
+		if (draw && toCall * 2 < pot && u(a_rng) < st.drawing * st.aggression * 0.5) {
+			return raiseTo(0.7);  // the semi-bluff raise
 		}
 		const double need = odds * (1.25 - 0.35 * st.looseness) + 0.1 * (1.2 - st.looseness);  // (a bet usually means something)
 		if (eq >= need) {

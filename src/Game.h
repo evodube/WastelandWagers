@@ -326,6 +326,8 @@ namespace fr
 			pk::Style           style;
 			float               nextIdle{ 8.0f };
 			float               sitCheck{ 0.0f };  // (chairs) seconds before checking they're still sat down
+			double              tilt{ 0.0 };       // steaming after a bad beat (cools off hand by hand)
+			int                 handStart{ 0 };    // their caps when this hand began
 			std::string         last;            // what they last did
 			int                 hi{ -1 };        // their place in the hand being played, or -1
 		};
