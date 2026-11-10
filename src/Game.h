@@ -130,6 +130,7 @@ namespace fr
 			bool                  pkPeek{ false };
 			bool                  pkTop{ false };
 			float                 pkAge{ 99.0f };     // seconds since you sat down (the panels slide in)
+			bool                  pkPad{ false };     // a controller in use: its buttons on the HUD
 			std::string           pkHelp;             // what's happening / what to do, under the board
 		};
 		HudState Hud() const;
@@ -412,6 +413,10 @@ namespace fr
 		std::vector<PkButton>  _pkButtons;
 		float                  _scrW{ 1920.0f }, _scrH{ 1080.0f };
 		bool                   _pkLmbWasDown{ false };
+		WORD                   _padWas{ 0 };
+		std::atomic<int>       _padTurn{ 0 };      // LB / RB held: turning the view at the poker table
+		std::atomic<bool>      _padUsed{ false };  // a controller's been used at the table (its buttons shown on the HUD)
+		void                   PollPad();
 		bool                   _pkDragging{ false };  // the raise slider held
 		RE::BSTSmartPointer<RE::BSInputEnableLayer> _pkMenuLayer;
 

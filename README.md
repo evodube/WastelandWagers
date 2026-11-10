@@ -55,6 +55,9 @@ deals itself as soon as you and at least one settler are seated.
   button held shows your cards.
 - Buttons along the bottom: check / call, fold, a slider for the raise and the raise button, all in. Keys: **1** fold, **2** check / call, **3** raise (**Up / Down** change it), **4** all in.
 - **X** steps away (your seat and chips kept), **C** cashes out. **P** packs a kit table up between hands.
+- Controller: **A** check / call, **B** fold, **X** raise (**D-pad up / down** set it), **Y** all in, **LB / RB** turn
+  the view, **Back** step away, **Start** switch the view, **right stick click** show your cards, **left stick click**
+  cash out.
 - Blinds, buy-ins, how many settlers play and how long they think are on the Poker settings page.
 
 Winning bets are paid at the usual odds (35 to 1 down to even money). The result is drawn fairly first, and the ball

@@ -551,8 +551,10 @@ namespace fr::Hud
 				Button(a_v, a_st, out, a_id, a_label, x, y, a_w * k, h, turn, a_strong);
 				x += (a_w + gap) * k;
 			};
-			next(1, call, wCall, turn);
-			next(0, "FOLD", wFold);
+			const bool pad = a_st.pkPad;  // (a controller: its button on each)
+			auto       tag = [&](const char* a_b, const std::string& a_s) { return pad ? std::format("{} {}", a_b, a_s) : a_s; };
+			next(1, tag("(A)", call), wCall, turn);
+			next(0, tag("(B)", "FOLD"), wFold);
 			{
 				// the slider: from the smallest raise to all in
 				const bool  on = turn && a_st.pkMaxRaise > a_st.pkMinRaise;
@@ -572,8 +574,8 @@ namespace fr::Hud
 				out.push_back({ 11, p0.x - a_v.origin.x, p0.y - a_v.origin.y, p1.x - a_v.origin.x, p1.y - a_v.origin.y, on });
 				x += (wSlider + gap) * k;
 			}
-			next(2, raise, wRaise, turn);
-			next(3, allIn, wAll);
+			next(2, tag("(X)", raise), wRaise, turn);
+			next(3, tag("(Y)", allIn), wAll);
 			// the table, down the right
 			const float sx = a_v.w - kPkMargin - kPkSideW;
 			float       sy = kPkMargin + PokerBoardH() + 10.0f;
@@ -581,10 +583,10 @@ namespace fr::Hud
 				Button(a_v, a_st, out, a_id, a_label, sx, sy, kPkSideW, 28.0f, a_on, false, 12.0f);
 				sy += 34.0f;
 			};
-			side(10, a_st.pkPeek ? "HIDE MY CARDS" : "SHOW MY CARDS", a_st.pkHole[0] >= 0);
-			side(9, a_st.pkTop ? "VIEW: MY SEAT" : "VIEW: FROM ABOVE", true);
-			side(6, "STEP AWAY", true);
-			side(8, "CASH OUT", true);
+			side(10, tag("(RS)", a_st.pkPeek ? "HIDE MY CARDS" : "SHOW MY CARDS"), a_st.pkHole[0] >= 0);
+			side(9, tag("(START)", a_st.pkTop ? "VIEW: MY SEAT" : "VIEW: FROM ABOVE"), true);
+			side(6, tag("(BACK)", "STEP AWAY"), true);
+			side(8, tag("(LS)", "CASH OUT"), true);
 			if (a_st.pkKit) {
 				side(7, "PACK UP THE TABLE", a_st.pkInfo.find("BETWEEN HANDS") != std::string::npos);
 			}

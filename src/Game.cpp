@@ -56,6 +56,75 @@ namespace fr
 		});
 	}
 
+	namespace
+	{
+		// the controller, read straight from XInput (loaded at first use; no controller, no pad)
+		struct PadState
+		{
+			WORD buttons{ 0 };
+			bool ok{ false };
+		};
+
+		PadState ReadPad()
+		{
+			struct XState
+			{
+				DWORD packet;
+				WORD  buttons;
+				BYTE  lt, rt;
+				SHORT lx, ly, rx, ry;
+			};
+			using Get_t = DWORD(WINAPI*)(DWORD, XState*);
+			static Get_t get = []() -> Get_t {
+				for (const wchar_t* dll : { L"xinput1_4.dll", L"xinput1_3.dll", L"xinput9_1_0.dll" }) {
+					if (HMODULE m = ::LoadLibraryW(dll)) {
+						if (auto f = reinterpret_cast<Get_t>(::GetProcAddress(m, "XInputGetState"))) {
+							return f;
+						}
+					}
+				}
+				return nullptr;
+			}();
+			PadState s;
+			XState   x{};
+			if (get && get(0, &x) == 0) {
+				s.ok = true;
+				s.buttons = x.buttons;
+			}
+			return s;
+		}
+	}
+
+	void Game::PollPad()
+	{
+		// at the poker table: A check / call, B fold, X raise, Y all in, the D-pad up / down the raise, LB / RB turn,
+		// Back step away, Start the view, the right stick's click your cards, the left stick's cash out
+		const bool poker = _pkSeated.load();
+		const auto pad = poker && util::GameHasFocus() ? ReadPad() : PadState{};
+		const WORD now = pad.ok ? pad.buttons : 0;
+		const WORD pressed = now & ~_padWas;
+		_padWas = now;
+		_padTurn = (now & 0x0200 ? 1 : 0) - (now & 0x0100 ? 1 : 0);  // RB, LB
+		if (now) {
+			_padUsed = true;
+		}
+		auto* tasks = F4SE::GetTaskInterface();
+		if (!pressed || !tasks || !poker) {
+			return;
+		}
+		static constexpr std::array<std::pair<WORD, int>, 10> kMap{ { { 0x1000, 1 }, { 0x2000, 0 }, { 0x4000, 2 }, { 0x8000, 3 },
+			{ 0x0001, 4 }, { 0x0002, 5 }, { 0x0020, 6 }, { 0x0010, 9 }, { 0x0080, 10 }, { 0x0040, 8 } } };
+		for (const auto& [mask, key] : kMap) {
+			if (pressed & mask) {
+				tasks->AddTask([this, key]() {
+					if (!IsGamePaused()) {
+						PkKey(key);
+					}
+				});
+			}
+		}
+	}
+
 	void Game::PollKeys()
 	{
 		const auto& s = Settings::Get();
@@ -67,6 +136,7 @@ namespace fr
 		const std::array<int, 15> keys{ spin, s.keyLeave, s.keyView, s.keyRebet, s.keyClear, s.keyChip[0], s.keyChip[1], s.keyChip[2],
 			s.keyChip[3], s.keyPackUp, VK_LEFT, VK_RIGHT, _activateVk.load(), VK_UP, VK_DOWN };
 		auto* tasks = F4SE::GetTaskInterface();
+		PollPad();
 		// at the poker table: a left click on one of the buttons
 		{
 			const bool down = focus && poker && (::GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;

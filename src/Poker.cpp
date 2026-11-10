@@ -390,7 +390,7 @@ namespace fr
 			const auto& ks = Settings::Get();
 			const bool  left = focus && ks.keyTurnLeft > 0 && (::GetAsyncKeyState(ks.keyTurnLeft) & 0x8000);
 			const bool  right = focus && ks.keyTurnRight > 0 && (::GetAsyncKeyState(ks.keyTurnRight) & 0x8000);
-			const int   turn = (right ? 1 : 0) - (left ? 1 : 0);
+			const int   turn = std::clamp((right ? 1 : 0) - (left ? 1 : 0) + _padTurn.load(), -1, 1);
 			PkHoldMenuKeys(left || right);
 			float yaw, pitch;
 			{
@@ -406,6 +406,9 @@ namespace fr
 				if (_pkPtrX < 0.0) {
 					_pkPtrX = sw * 0.5;
 					_pkPtrY = sh * 0.75;
+				}
+				if (_mouseDX != 0.0 || _mouseDY != 0.0) {
+					_padUsed = false;  // (the mouse again: the buttons without the controller's names)
 				}
 				_pkPtrX = std::clamp(_pkPtrX + _mouseDX * k, 0.0, static_cast<double>(sw - 1.0f));
 				_pkPtrY = std::clamp(_pkPtrY + _mouseDY * k, 0.0, static_cast<double>(sh - 1.0f));
@@ -1367,6 +1370,7 @@ namespace fr
 		_pkTopView = Settings::Get().pkTopDown;
 		_pk.seatedAge = 0.0f;
 		_pkShowCards = false;
+		_padUsed = false;
 		_pkPtrX = _pkPtrY = -1.0;
 		_pkSeated = true;
 		BlockControls(true);
@@ -1583,6 +1587,7 @@ namespace fr
 		a_h.pkPeek = _pk.peeking || _pkShowCards;
 		a_h.pkTop = _pkTopView;
 		a_h.pkAge = _pk.seatedAge;
+		a_h.pkPad = _padUsed.load();
 		if (auto table = _pk.table.get()) {
 			a_h.pkKit = IsKitTable(table.get());
 		}
@@ -1700,7 +1705,8 @@ namespace fr
 		const auto& s = Settings::Get();
 		const bool  key = a_event->device.get() == RE::INPUT_DEVICE::kKeyboard && code != 0 &&
 		                 (static_cast<int>(code) == s.keyTurnLeft || static_cast<int>(code) == s.keyTurnRight);
-		if (key || std::string_view(name) == "Workshop") {
+		const bool pad = a_event->device.get() == RE::INPUT_DEVICE::kGamepad;  // (the controller's all ours at the table)
+		if (key || pad || std::string_view(name) == "Workshop") {
 			static std::set<std::string> logged;
 			if (logged.insert(name).second) {
 				log::info("poker: the {} key ({}) kept from the game's menus while you're at the table", name, code);
