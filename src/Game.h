@@ -412,12 +412,12 @@ namespace fr
 			float                                                  bannerAge{ 99.0f };
 			int                                                    bannerTone{ 0 };
 			pk::Action                                             pending;      // what the settler thinking will do
-			std::array<std::vector<RE::ObjectRefHandle>, kPkSeats> stackChips;   // each player's caps in front of them
+			std::array<std::array<std::vector<RE::ObjectRefHandle>, 4>, kPkSeats> stackChips;  // each player's caps in front of them, by colour (as shown)
 			std::array<RE::ObjectRefHandle, kPkSeats>              chairs;       // (the chairs option) one at each seat
 			std::array<int, kPkSeats>                              stackShown{};
-			std::array<std::array<int, 4>, kPkSeats>               stackCols{};  // ...how many of each colour are shown
-			std::vector<RE::NiPoint3>                              potSpots;     // where the pot's chips lie (table space)
-			std::vector<RE::ObjectRefHandle>                       landed;       // chips won, on the winner's stacks until theirs are remade
+			std::array<std::array<int, 4>, kPkSeats>               stackCols{};  // ...how many of each colour they have
+			std::array<int, 4>                                     potCount{};   // the pot's stacks, by colour
+			std::array<std::vector<RE::ObjectRefHandle>, kPkSeats> landed;       // chips won, landing on the winner's stacks
 			std::vector<PkChipMove>                                moves;
 			float                                                  potHold{ 0.0f };
 			float                                                  pushAge{ 99.0f };  // the camera's push in: seconds since
@@ -432,6 +432,7 @@ namespace fr
 		};
 		PokerState        _pk;
 		std::atomic<bool> _pkSeated{ false };
+		std::atomic<std::int64_t> _afterTable{ 0 };  // (up from the poker table: the click or button that did it kept from the game until let go)
 		int               _pkYou{ -1 };       // your seat (sitting there, or away with it kept)
 		float             _camPitch{ -1.0f };  // the view's pitch at a poker table (below 0: straight down, the roulette layout)
 		float             _pkLookYaw{ 0.0f }, _pkLookPitch{ 0.0f };  // looking about from your poker seat (under _camMutex)
@@ -466,8 +467,7 @@ namespace fr
 		void         PkClearTable(bool a_cards = true);
 		void         PkDeal(int a_card, const RE::NiPoint3& a_to, float a_yaw, bool a_faceUp, float a_delay, int a_seat = -1);
 		void         PkSlideChips(std::vector<RE::ObjectRefHandle>& a_chips, int a_seat, float a_delay);  // to a player's stacks
-		RE::NiPoint3 PkPotSpot();  // a free place on the felt round the pot, for a chip thrown in
-		void         PkThrowChips(std::vector<RE::ObjectRefHandle>& a_chips, float a_delay);  // into the pot, each lying on its own
+		void         PkThrowChips(std::vector<RE::ObjectRefHandle>& a_chips, float a_delay);  // into the pot, onto its stack of each colour
 		void         PkTickMoves(const Frame& a_frame, float a_dt);
 		void         PkMuck(int a_seat);  // a fold: their cards slide back to the dealer (-2: every card on the table)
 		void         PkTickCards(const Frame& a_frame, float a_dt);
