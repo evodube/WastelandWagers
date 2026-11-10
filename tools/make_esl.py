@@ -313,7 +313,7 @@ def build() -> bytes:
                               f"fo4roulette\\Cards\\Card_{rank}{suit}.nif", bound=4))
     poker = own | (FIRST_ID + 0x44)
     acti.append(activator(poker, "fo4roulettePokerTable", "Poker Table", "fo4roulette\\PokerTable.nif",
-                          (-47, -91, 0, 47, 91, 68), "Play", 0x001A03DD))
+                          (-47, -91, 0, 47, 91, 65), "Play", 0x001A03DD))
     recipes.append(workshop_recipe(own | (FIRST_ID + 0x45), "workshop_co_fo4roulettePokerTable", poker,
                                    [(0x0001FAC2, 10), (0x001223C7, 6), (0x0003D294, 2), (0x0001FAA5, 1)]))
     pkit = own | (FIRST_ID + 0x46)

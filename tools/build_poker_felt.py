@@ -12,7 +12,7 @@ import bpy
 
 HERE = r"C:\Users\Dan\Desktop\table\work"
 NIF = os.path.join(HERE, "Data", "Meshes", "fo4roulette", "PokerTable.nif")
-FELT_Z = 63.0
+FELT_Z = 59.875  # (build_poker.py: 53 + RAISE; a NIF's half floats keep it exactly)
 HALF_W, HALF_L = 20.25, 63.5   # make_poker_felt.py's...
 INSET = 3.4
 PLAQUE_W, PLAQUE_H = 21.0, 3.4

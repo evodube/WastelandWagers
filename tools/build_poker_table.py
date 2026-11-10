@@ -9,6 +9,7 @@ table they wrote and writes it back. ATLAS: poker_d as a PNG (to sort by).
 """
 
 import colorsys
+import math
 import os
 
 import bmesh
@@ -44,7 +45,74 @@ def classify(body):
             out[p.index] = "rail"
         elif 0.02 < h < 0.12 and s > 0.4:
             out[p.index] = "wood"
+    # (a face sorted unlike all its neighbours is the atlas's doing, not the table's: a cup holder's triangle whose
+    # middle fell on the wood next to it in the atlas, a notch of walnut cut into the leather. It goes with its
+    # neighbours: the most of them, a few passes)
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bm.faces.ensure_lookup_table()
+    for _ in range(3):
+        changed = 0
+        for f in bm.faces:
+            kinds = []
+            for e in f.edges:
+                for g in e.link_faces:
+                    if g.index != f.index:
+                        kinds.append(out.get(g.index, "atlas"))
+            if not kinds:
+                continue
+            mine = out.get(f.index, "atlas")
+            best = max(set(kinds), key=kinds.count)
+            if mine not in kinds and kinds.count(best) * 2 > len(kinds):
+                if best == "atlas":
+                    out.pop(f.index, None)
+                else:
+                    out[f.index] = best
+                changed += 1
+        if not changed:
+            break
+    bm.free()
     return out
+
+
+HOLDERS = [(27.9, -47.1), (1.1, -71.2), (-25.8, -47.1), (-25.8, -0.2), (-25.8, 46.7), (1.1, 70.8), (27.9, 46.7)]
+HOLDER_R = 3.3     # the leather tops reach 3.1 from their middles
+HOLDER_UV_R = 0.066  # where the edge of a leather top lands in the atlas: inside the drawn disc's stitching
+
+
+def fix_holders(body):
+    """The cup holders' leather tops onto their discs in the atlas cleanly: the model's UVs put the tops' edges a
+    little outside the drawn discs, onto the dark bits round them (a notch of it showed at each holder's edge). Each
+    top's UVs fitted as one flat map (least squares) and pulled in about its middle till its edge is inside the
+    disc's stitching."""
+    import numpy as np
+    me = body.data
+    uvl = me.uv_layers.active.data
+    fixed = 0
+    for hx, hy in HOLDERS:
+        faces = [p for p in me.polygons if p.normal.z > 0.9 and math.hypot(p.center.x - hx, p.center.y - hy) < HOLDER_R]
+        if not faces:
+            continue
+        top = max(p.center.z for p in faces)
+        faces = [p for p in faces if abs(p.center.z - top) < 0.015]  # (the wood round them is 0.03 lower)
+        rows, us = [], []
+        for p in faces:
+            for li in p.loop_indices:
+                co = me.vertices[me.loops[li].vertex_index].co
+                rows.append([co.x - hx, co.y - hy, 1.0])
+                us.append(list(uvl[li].uv))
+        A, *_ = np.linalg.lstsq(np.array(rows), np.array(us), rcond=None)  # (3 x 2)
+        c = A[2]
+        rim = max(math.hypot(r[0], r[1]) for r in rows)
+        scale = np.linalg.norm(A[:2], axis=0).mean() * rim  # (the edge's distance from the middle, in the atlas)
+        f = HOLDER_UV_R / scale
+        for p in faces:
+            for li in p.loop_indices:
+                co = me.vertices[me.loops[li].vertex_index].co
+                uv = np.array([co.x - hx, co.y - hy, 1.0]) @ A
+                uvl[li].uv = tuple(c + (uv - c) * f)
+        fixed += len(faces)
+    return fixed
 
 
 def split(body, faces, name, mat, tile):
@@ -104,6 +172,7 @@ def main():
     system = bpy.data.objects["bhkPhysicsSystem"]
     bsx = next(o for o in bpy.data.objects if o.name.startswith("BSXFlags"))
     felt = bpy.data.objects["PokerFelt"]
+    holders = fix_holders(body)
     kinds = classify(body)
     wood_faces = [i for i, k in kinds.items() if k == "wood"]
     rail_faces = [i for i, k in kinds.items() if k == "rail"]
@@ -116,7 +185,7 @@ def main():
         c.target = system
     extra = [o for o in bpy.data.objects if o.type == 'MESH' and o.parent == root and o.name == "PokerPrint"]
     export([root, bsx, body, felt, wood, rail] + extra + [system], NIF)
-    return {"wood_faces": nw, "rail_faces": nr, "left": len(body.data.polygons)}
+    return {"wood_faces": nw, "rail_faces": nr, "left": len(body.data.polygons), "holder_faces": holders}
 
 
 result = main()

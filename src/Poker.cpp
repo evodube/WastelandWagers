@@ -23,7 +23,7 @@ namespace fr
 
 	namespace
 	{
-		constexpr float kFeltZ = 63.0f;  // (build_poker.py: 53 at the model's proportions, raised 10)
+		constexpr float kFeltZ = 59.875f;  // (build_poker.py: 53 at the model's proportions, raised 6.875: 63 until 0.6.8, then 5% lower)
 		constexpr float kFeltR = 20.0f;   // the felt: half its width (and its ends' radius)...
 		constexpr float kFeltC = 43.0f;   // ...and where its straight sides end
 		constexpr float kRailR = 45.0f;   // the rail's outside
