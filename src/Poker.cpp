@@ -64,7 +64,7 @@ namespace fr
 		// from the dealer's side (+X, the chip tray) in: the deck, the board, then the pot
 		const RE::NiPoint3 kDeck{ 15.0f, 0.0f, kFeltZ };  // where cards come from (by the tray)
 		const RE::NiPoint3 kMuck{ 15.0f, 13.0f, kFeltZ }; // where folded hands go
-		const RE::NiPoint3 kPot{ -6.0f, 0.0f, kFeltZ };
+		const RE::NiPoint3 kPot{ 0.8f, 0.0f, kFeltZ };  // (just under the board, clear of the players' chips)
 
 		// the stadium of half-width a_r with straight sides to +-a_c: the nearest point on its edge to (x, y), and the
 		// outward normal there
