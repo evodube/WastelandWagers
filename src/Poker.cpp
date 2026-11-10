@@ -298,7 +298,7 @@ namespace fr
 		PkMakeChips(frame);
 		if (_pkSeated && _pkYou >= 0) {
 			// the view from your seat: from just behind your cards, straight across the table. The mouse looks about
-			// (Q and E turn too); looking down at your cards turns them up for you
+			// (the turn keys, A and D, turn too); looking down at your cards turns them up for you
 			const auto  n = SeatNormal(_pkYou);
 			const auto  a = HoleSpot(_pkYou, 0), b = HoleSpot(_pkYou, 1);
 			const auto  mid = (a + b) * 0.5f;
@@ -315,7 +315,7 @@ namespace fr
 			float yaw, pitch;
 			{
 				std::scoped_lock lock(_camMutex);
-				// the mouse moves the pointer for the buttons; Q and E turn the view
+				// the mouse moves the pointer for the buttons; the turn keys turn the view
 				float sw, sh;
 				{
 					std::scoped_lock blk(_btnMutex);
@@ -334,7 +334,7 @@ namespace fr
 				yaw = baseYaw + _pkLookYaw;
 				pitch = basePitch + _pkLookPitch;
 				if (_pkTopView) {
-					// from above the middle of the table, your side at the bottom of the screen (Q and E turn it)
+					// from above the middle of the table, your side at the bottom of the screen (the turn keys turn it)
 					_camWant = ToWorld(frame, 0.0, 0.0, kFeltZ + Settings::Get().pkTopHeight);
 					_camYaw = baseYaw + _pkLookYaw;
 					_camPitch = -1.0f;  // (straight down)
@@ -370,7 +370,7 @@ namespace fr
 
 	void Game::PkHoldMenuKeys(bool a_hold)
 	{
-		// Q and E turn the view at the poker table: while either's down, the game's menus (the workshop's among them)
+		// the turn keys (A and D) turn the view at the poker table: while either's down, the game's menus (the workshop's among them)
 		// don't open
 		if (a_hold == _pkMenusHeld) {
 			return;
