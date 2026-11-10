@@ -37,7 +37,7 @@ namespace fr
 		// chips sit a hair off the felt and off each other: face on face (exactly the felt's height, exactly a chip's
 		// thickness apart), the two surfaces fight over which is drawn and the chips flicker
 		constexpr float kLift = 0.08f;
-		constexpr float kStep = kChipH * 1.04f;
+		constexpr float kStep = kChipH + 0.05f;  // (the chip's 0.43 thick: 0.02 apart still flickered, stacked)
 		constexpr float kArrived = 30.0f;
 		constexpr float kSnap = 12.0f;
 		constexpr float kPersonalSpace = 50.0f;
