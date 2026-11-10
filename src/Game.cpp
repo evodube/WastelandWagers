@@ -223,8 +223,7 @@ namespace fr
 			}
 		}
 		if (_pkSeated) {
-			static const RE::BSFixedString dialogue("DialogueMenu");
-			if (auto* ui = RE::UI::GetSingleton(); ui && ui->GetMenuOpen(dialogue)) {
+			if (menus::Open(menus::kDialogue)) {
 				log::info("a conversation started while you were at the poker table: getting up");
 				PkStandUp();
 			}
