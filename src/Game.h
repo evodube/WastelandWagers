@@ -361,7 +361,6 @@ namespace fr
 			float               nextIdle{ 8.0f };
 			float               sitCheck{ 0.0f };  // (chairs) seconds before checking they're still sat down
 			int                 sitTries{ 0 };     // (chairs) told to sit, and not sitting, in a row
-			bool                standing{ false }; // (chairs) couldn't get into their chair: they play standing instead
 			double              tilt{ 0.0 };       // steaming after a bad beat (cools off hand by hand)
 			int                 handStart{ 0 };    // their caps when this hand began
 			std::string         last;            // what they last did

@@ -1079,7 +1079,7 @@ namespace fr
 		auto  ref = st.actor.get();
 		auto* actor = ref ? ref->As<RE::Actor>() : nullptr;
 		if (actor) {
-			if (st.held && (!Settings::Get().pkChairs || st.standing)) {
+			if (st.held && !Settings::Get().pkChairs) {
 				Npc::SetRestrained(actor, false);
 			}
 			if (auto* proc = actor->currentProcess; proc && proc->GetOccupiedFurniture()) {
@@ -1163,6 +1163,13 @@ namespace fr
 			const auto spot = PkStand(a_frame, i, heading);
 			switch (st.step) {
 			case Seat::Step::kWalking:
+				if (s.pkChairs && _pk.chairs[i].get() && Distance2D(actor->data.location, spot) < 110.0f) {
+					// (chairs: near enough, put straight in it: no last steps round the chairs to a spot to sit from)
+					st.step = Seat::Step::kPlaying;
+					st.sitCheck = 0.0f;
+					st.sitTries = 0;
+					break;
+				}
 				if (WalkTo(actor, st.walk, a_frame, spot, heading, a_dt, false, 15.0f)) {
 					st.step = Seat::Step::kPlaying;
 					// (put exactly on their spot and turned to the table, always: a step put, their walk's last stride and its
@@ -1177,7 +1184,7 @@ namespace fr
 				}
 				break;
 			case Seat::Step::kPlaying:
-				if (s.pkChairs && !st.standing) {
+				if (s.pkChairs) {
 					// sat in their chair: the chair holds them (and turns them to the table); now and then, if they've
 					// got up, back down
 					st.sitCheck -= a_dt;
@@ -1192,17 +1199,16 @@ namespace fr
 						                  sit == RE::SIT_SLEEP_STATE::kIsSitting;
 						if (down) {
 							st.sitTries = 0;
-						} else if (++st.sitTries > 3) {
-							// (three goes and they're not in it: something's in the way. They play standing at their spot)
-							log::info("poker: {} can't get into their chair (sit state {}): playing standing", st.name, static_cast<int>(sit));
-							st.standing = true;
-							st.held = false;
-							if (auto marker = st.walk.marker.get()) {
-								Npc::MoveTo(actor, marker.get());
-							}
-							break;
 						} else {
-							log::info("poker: {} isn't in their chair (sit state {}): sat down again", st.name, static_cast<int>(sit));
+							// put in their chair (and, after a couple of goes that didn't take, moved onto it first: something
+							// was in the way)
+							if (++st.sitTries > 2) {
+								log::info("poker: {} still isn't in their chair (sit state {}): moved onto it and sat", st.name, static_cast<int>(sit));
+								Npc::MoveTo(actor, chair.get());
+								st.sitTries = 0;
+							} else if (st.sitTries > 1) {
+								log::info("poker: {} isn't in their chair (sit state {}): sat down again", st.name, static_cast<int>(sit));
+							}
 							Npc::SitOn(actor, chair.get());
 						}
 					}
