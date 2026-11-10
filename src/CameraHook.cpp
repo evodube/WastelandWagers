@@ -76,7 +76,8 @@ namespace fr::CameraHook
 		}
 
 		// Every frame's input, as the menus and the player's controls get it: at the poker table, the turn keys' events
-		// are marked disabled first, so no handler of the game's acts on them (the workshop, VATS, anything bound to them)
+		// are emptied first, so no handler acts on them: the game's (the workshop, VATS, anything bound to them) nor any
+		// other mod's on the menus' handler list (MCM puts its keybinds there)
 		using Process_t = void (*)(RE::BSInputEventReceiver*, const RE::InputEvent*);
 		Process_t g_menuProcess{ nullptr };
 		Process_t g_playerProcess{ nullptr };
@@ -87,7 +88,11 @@ namespace fr::CameraHook
 				if (e->eventType.get() == RE::INPUT_EVENT_TYPE::kButton) {
 					auto* b = static_cast<const RE::ButtonEvent*>(e);
 					if (Game::Get().SwallowButton(b)) {
-						const_cast<RE::ButtonEvent*>(b)->disabled = true;
+						// disabled for the game's own handlers, and no key at all for anyone else's on the menus' list
+						// (MCM's keybinds read the key code itself: Workshop Framework's workshop hotkey is one)
+						auto* m = const_cast<RE::ButtonEvent*>(b);
+						m->disabled = true;
+						m->idCode = 0;
 					}
 				}
 			}
