@@ -417,9 +417,25 @@ namespace fr
 
 	RE::ObjectRefHandle Game::Spawn(RE::TESBoundObject* a_form, const RE::NiPoint3& a_pos, float a_angle) const
 	{
-		auto* dh = RE::TESDataHandler::GetSingleton();
-		auto  table = _t.table.get();
-		auto* cell = table ? table->GetParentCell() : nullptr;
+		// in the cell of the table it's for: whichever table in play (roulette or poker) is nearest the spot; failing
+		// both, yours
+		auto*                       dh = RE::TESDataHandler::GetSingleton();
+		RE::TESObjectCELL*          cell = nullptr;
+		float                       best = 1e30f;
+		for (auto ref : { _t.table.get(), _other.table.get(), _pk.table.get() }) {
+			if (auto* c = ref ? ref->GetParentCell() : nullptr) {
+				const float d = (ref->data.location - a_pos).Length();
+				if (d < best) {
+					best = d;
+					cell = c;
+				}
+			}
+		}
+		if (!cell) {
+			if (auto* player = RE::PlayerCharacter::GetSingleton()) {
+				cell = player->GetParentCell();
+			}
+		}
 		if (!dh || !cell || !a_form) {
 			return {};
 		}

@@ -371,10 +371,7 @@ namespace fr
 
 	bool Game::OnLookMouse(const RE::MouseMoveEvent* a_event)
 	{
-		if (_pkSeated && a_event) {
-			return true;  // at the poker table the view's fixed: the mouse does nothing
-		}
-		if (!_seated || !a_event) {
+		if ((!_seated && !_pkSeated) || !a_event) {
 			return false;
 		}
 		std::scoped_lock lock(_camMutex);

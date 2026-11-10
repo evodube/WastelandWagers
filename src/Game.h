@@ -346,11 +346,14 @@ namespace fr
 			std::string                                            bannerSub;
 			float                                                  bannerAge{ 99.0f };
 			int                                                    lifted{ 0 };  // your stack, back in your pocket over a save
+			RE::ObjectRefHandle                                    pointer;      // the chip under your mouse
+			bool                                                   peeking{ false };  // the pointer's on your cards: they're turned up
 		};
 		PokerState        _pk;
 		std::atomic<bool> _pkSeated{ false };
 		int               _pkYou{ -1 };       // your seat
 		float             _camPitch{ -1.0f };  // the view's pitch at a poker table (below 0: straight down, the roulette layout)
+		double            _pkCurX{ 0.0 }, _pkCurY{ 0.0 };  // your mouse pointer on the poker felt (table space; under _camMutex)
 
 		bool         PkFrame(Frame& a_out) const;
 		RE::NiPoint3 PkStand(const Frame& a_frame, int a_seat, float& a_heading) const;  // where someone at a seat stands

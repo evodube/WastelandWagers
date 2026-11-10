@@ -163,9 +163,6 @@ namespace pk
 		};
 		int paidIn = 0;
 		using K = Action::Kind;
-		if (a_action.kind == K::kFold && toCall == 0) {
-			a_action.kind = K::kCheck;  // (nothing to call: no need to fold)
-		}
 		if (a_action.kind == K::kCheck && toCall > 0) {
 			a_action.kind = K::kFold;
 		}
@@ -434,6 +431,6 @@ namespace pk
 		if (!preflop && u(a_rng) < st.bluffing * 0.5 && toCall * 3 < pot && opponents <= 2) {
 			return raiseTo(0.7);  // a bluff raise
 		}
-		return { Action::Kind::kFold };
+		return { toCall == 0 ? Action::Kind::kCheck : Action::Kind::kFold };  // (a settler never folds when checking is free)
 	}
 }
