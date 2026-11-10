@@ -584,7 +584,7 @@ namespace pk
 			}
 			// calling: cheap and a playable hand (more of them for loose players, in late seats, and in the big blind)
 			const double price = static_cast<double>(toCall) / std::max(1, a_hand.bigBlind);
-			const double need = 6.5 - loose * 0.7 + std::min(price, 8.0) * 0.6 + (a_hand.raises >= 1 ? 1.5 : 0.0);
+			const double need = 5.6 - loose * 0.8 + std::min(price, 8.0) * 0.45 + (a_hand.raises >= 1 ? 1.0 : 0.0);
 			if (toCall == 0 || chen >= need) {
 				return toCall == 0 ? Action{ Action::Kind::kCheck } : Action{ Action::Kind::kCall };
 			}
@@ -624,7 +624,7 @@ namespace pk
 		}
 		// facing a bet: they believe big bets more (a bigger bet means a stronger hand), tight players most
 		const double betShare = static_cast<double>(toCall) / std::max(1, pot);
-		const double doubt = 1.0 - std::min(0.5, (0.15 + betShare * 0.35) * (1.2 - st.looseness));
+		const double doubt = 1.0 - std::min(0.4, (0.08 + betShare * 0.3) * (1.2 - st.looseness));
 		const double eq = equity * (doubt + (1.0 - doubt) * st.stubborn);  // (a calling station doesn't believe you)
 		if (monster && u(a_rng) < st.trapping) {
 			return { Action::Kind::kCall };  // the slow-play: just call, raise on a later street
@@ -635,7 +635,7 @@ namespace pk
 		if (draw && toCall * 2 < pot && u(a_rng) < st.drawing * st.aggression * 0.5) {
 			return raiseTo(0.7);  // the semi-bluff raise
 		}
-		const double need = odds * (1.25 - 0.35 * st.looseness) + 0.1 * (1.2 - st.looseness);  // (a bet usually means something)
+		const double need = odds * (1.1 - 0.35 * st.looseness) + 0.04 * (1.2 - st.looseness);  // (a bet usually means something)
 		if (eq >= need) {
 			return { Action::Kind::kCall };
 		}

@@ -240,7 +240,7 @@ namespace fr::Audio
 
 		const RE::NiPoint3 to = a_pos - ear;
 		const float        distance = std::sqrt(to.x * to.x + to.y * to.y + to.z * to.z);
-		constexpr float kFull = 200.0f, kMax = 2500.0f;  // full volume within, silent beyond
+		constexpr float kFull = 120.0f, kMax = 350.0f;  // full volume within, silent beyond (about five metres)
 		if (distance >= kMax) {
 			return;
 		}

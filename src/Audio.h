@@ -21,7 +21,8 @@ namespace fr::Audio
 	// than once.
 	void Init();
 
-	// Plays one of the bank's sounds at a_pos in the world, quieter with distance from the camera. a_gain 0..1.
+	// Plays one of the bank's sounds at a_pos in the world, quieter with distance from the camera (silent past about five
+	// metres). a_gain 0..1.
 	// a_seconds > 0 plays only that much of it, fading out at the end.
 	void Play(Bank a_bank, const RE::NiPoint3& a_pos, float a_gain, float a_seconds = 0.0f);
 

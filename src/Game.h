@@ -3,6 +3,7 @@
 #include "rl/Layout.h"
 #include "rl/Wheel.h"
 #include "pk/Holdem.h"
+#include "Audio.h"
 
 namespace fr
 {
@@ -467,6 +468,7 @@ namespace fr
 		void         PkClearTable(bool a_cards = true);
 		void         PkDeal(int a_card, const RE::NiPoint3& a_to, float a_yaw, bool a_faceUp, float a_delay, int a_seat = -1);
 		void         PkSlideChips(std::vector<RE::ObjectRefHandle>& a_chips, int a_seat, float a_delay);  // to a player's stacks
+		void         PkSound(Audio::Bank a_bank, float a_gain);  // a sound at the poker table
 		void         PkThrowChips(std::vector<RE::ObjectRefHandle>& a_chips, float a_delay);  // into the pot, onto its stack of each colour
 		void         PkTickMoves(const Frame& a_frame, float a_dt);
 		void         PkMuck(int a_seat);  // a fold: their cards slide back to the dealer (-2: every card on the table)

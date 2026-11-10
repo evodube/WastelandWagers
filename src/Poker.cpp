@@ -1001,7 +1001,7 @@ namespace fr
 			PkSay(std::format("{} {}", _pk.seats[seat].you ? std::string("YOU") : Upper(_pk.seats[seat].name), what), p.folded ? 2 : 0);
 		}
 		if (paid > 0) {
-			Audio::PlayUI(Audio::Bank::kChip, 0.6f);
+			PkSound(Audio::Bank::kChip, 0.6f);
 		}
 		_pk.think = 0.0f;
 		_pk.raiseTo = 0;
@@ -1290,7 +1290,7 @@ namespace fr
 
 	void Game::PkMuck(int a_seat)
 	{
-		Audio::PlayUI(Audio::Bank::kSlide, 0.4f);
+		PkSound(Audio::Bank::kSlide, 0.4f);
 		float delay = 0.0f;
 		for (auto& c : _pk.cards) {
 			if ((a_seat != -2 && c.seat != a_seat) || c.mucked || !c.ref) {
@@ -1343,7 +1343,7 @@ namespace fr
 			if (c.t < 1.0f) {
 				c.t = std::min(1.0f, c.t + a_dt / (c.mucked ? 0.4f : 0.35f));
 				if (c.t >= 1.0f && !c.mucked) {
-					Audio::PlayUI(Audio::Bank::kCard, 0.45f);
+					PkSound(Audio::Bank::kCard, 0.45f);
 				}
 			}
 			if (c.flipWait > 0.0f) {
@@ -1359,7 +1359,7 @@ namespace fr
 			const float want = c.faceUp ? 1.0f : 0.0f;
 			if (c.flip != want && c.flipWait <= 0.0f) {
 				if ((c.flip == 0.0f || c.flip == 1.0f) && c.t >= 1.0f) {
-					Audio::PlayUI(Audio::Bank::kCard, 0.25f);
+					PkSound(Audio::Bank::kCard, 0.25f);
 				}
 				c.flip = c.flip < want ? std::min(want, c.flip + a_dt / 0.3f) : std::max(want, c.flip - a_dt / 0.3f);
 			}
@@ -1425,7 +1425,7 @@ namespace fr
 		}
 		a_chips.clear();
 		if (k > 0) {
-			Audio::PlayUI(Audio::Bank::kChip, 0.6f);
+			PkSound(Audio::Bank::kChip, 0.6f);
 		}
 	}
 
@@ -1465,7 +1465,16 @@ namespace fr
 		}
 		a_chips.clear();
 		if (k > 0) {
-			Audio::PlayUI(Audio::Bank::kChip, 0.6f);
+			PkSound(Audio::Bank::kChip, 0.6f);
+		}
+	}
+
+	void Game::PkSound(Audio::Bank a_bank, float a_gain)
+	{
+		// at the table, not in your ear: quieter further off, gone past five metres (Audio::Play)
+		Frame frame;
+		if (PkFrame(frame)) {
+			Audio::Play(a_bank, ToWorld(frame, 0.0f, 0.0f, kFeltZ), a_gain);
 		}
 	}
 
