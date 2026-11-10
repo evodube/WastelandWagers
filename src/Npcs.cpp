@@ -109,6 +109,68 @@ namespace fr
 		};
 		std::unordered_map<RE::TESFormID, IdleWatch> g_idles;
 
+		// (the animation log: every animation event of a settler held at a table, [anim]. Their animation graph's
+		// events reach the actor through its BSTEventSink<BSAnimationGraphEvent> (at 0x38 in it): that slot of the
+		// actors' vtable swapped for ours, which notes the event and passes it on)
+		using GraphSink_t = RE::BSEventNotifyControl (*)(RE::BSTEventSink<RE::BSAnimationGraphEvent>*, const RE::BSAnimationGraphEvent&,
+			RE::BSTEventSource<RE::BSAnimationGraphEvent>*);
+		GraphSink_t                        g_graphSink{ nullptr };
+		std::mutex                         g_animLock;
+		std::unordered_set<RE::TESFormID>  g_animWatched;  // (who: the settlers held at a table, now)
+		int                                g_animLines = 0;
+		std::chrono::steady_clock::time_point g_animSecond{};
+		int                                g_animThisSecond = 0;
+
+		RE::BSEventNotifyControl HookedGraphEvent(RE::BSTEventSink<RE::BSAnimationGraphEvent>* a_this, const RE::BSAnimationGraphEvent& a_event,
+			RE::BSTEventSource<RE::BSAnimationGraphEvent>* a_source)
+		{
+			auto* actor = reinterpret_cast<RE::Actor*>(reinterpret_cast<std::uintptr_t>(a_this) - 0x38);
+			bool  log = false;
+			{
+				std::scoped_lock lock(g_animLock);
+				if (g_animWatched.contains(actor->GetFormID())) {
+					const auto now = std::chrono::steady_clock::now();
+					if (now - g_animSecond > std::chrono::seconds(1)) {
+						g_animSecond = now;
+						g_animThisSecond = 0;
+					}
+					log = g_animLines < 4000 && g_animThisSecond < 40;
+					if (log) {
+						++g_animLines;
+						++g_animThisSecond;
+					}
+				}
+			}
+			if (log) {
+				const char* tag = a_event.tag.c_str();
+				const char* payload = a_event.payload.c_str();
+				log::info("[anim] {} ({:08X}): {}{}{} · facing {:.0f}", actor->GetDisplayFullName() ? actor->GetDisplayFullName() : "?",
+					actor->GetFormID(), tag ? tag : "", payload && *payload ? " · " : "", payload ? payload : "", actor->data.angle.z * 57.2958f);
+			}
+			return g_graphSink ? g_graphSink(a_this, a_event, a_source) : RE::BSEventNotifyControl::kContinue;
+		}
+
+		void WatchAnims(RE::Actor* a_actor)
+		{
+			if (!a_actor) {
+				return;
+			}
+			if (!g_graphSink) {
+				// (once: the slot in the actors' vtable for that sink, from a live actor)
+				auto* sink = static_cast<RE::BSTEventSink<RE::BSAnimationGraphEvent>*>(a_actor);
+				auto** vtable = *reinterpret_cast<void***>(sink);
+				DWORD old = 0;
+				if (::VirtualProtect(&vtable[1], sizeof(void*), PAGE_EXECUTE_READWRITE, &old)) {
+					g_graphSink = reinterpret_cast<GraphSink_t>(vtable[1]);
+					vtable[1] = reinterpret_cast<void*>(&HookedGraphEvent);
+					::VirtualProtect(&vtable[1], sizeof(void*), old, &old);
+					log::info("[anim] watching the animation events of settlers at a table");
+				}
+			}
+			std::scoped_lock lock(g_animLock);
+			g_animWatched.insert(a_actor->GetFormID());
+		}
+
 		std::string FormName(const RE::TESForm* a_form)
 		{
 			if (!a_form) {
@@ -124,6 +186,7 @@ namespace fr
 		// every idle a held settler starts, ours or the game's own, and what it did to their facing ([idle]): the
 		// twist between our idles is whatever plays there
 		if (a_actor && Settings::Get().logTurning) {
+			WatchAnims(a_actor);
 			auto*       proc = a_actor->currentProcess;
 			auto*       mh = proc ? proc->middleHigh : nullptr;
 			const auto  cur = mh && mh->currentIdle ? mh->currentIdle->GetFormID() : 0;

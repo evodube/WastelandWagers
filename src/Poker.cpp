@@ -638,6 +638,31 @@ namespace fr
 		PkTickCards(frame, dt);
 		PkTickMoves(frame, dt);
 		PkWatchChips(frame, dt, "camera update");
+		// (and every chip and card held unfaded every frame, not only on the table's own tick: away from the table the
+		// chip log caught the game fading chips to nothing between our ticks)
+		for (const auto& seat : _pk.stackChips) {
+			for (const auto& v : seat) {
+				for (const auto& h : v) {
+					NoFade(h);
+				}
+			}
+		}
+		for (const auto& v : _pk.betChips) {
+			for (const auto& h : v) {
+				NoFade(h);
+			}
+		}
+		for (const auto& v : _pk.landed) {
+			for (const auto& h : v) {
+				NoFade(h);
+			}
+		}
+		for (const auto& h : _pk.potChips) {
+			NoFade(h);
+		}
+		for (const auto& c : _pk.cards) {
+			NoFade(c.ref);
+		}
 	}
 
 	bool Game::PkAnimating() const
