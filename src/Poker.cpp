@@ -139,41 +139,56 @@ namespace fr
 			return n;
 		}
 
-		// where a player's stack of one colour stands: four in a square by their cards, the hundreds and twenty-fives
-		// further in, the fives and ones nearer them
-		// how far a point (table space) is inside the felt's edge
-		float InsideFelt(const RE::NiPoint3& a_p)
+		// Where each player's things lie, laid out for the whole table so no two players' run into each other (nor the
+		// board, the pot, the deck or the muck): their cards near the rail in front of them, their four stacks beside the
+		// cards (to one side, along the rail), their bet in from the cards. Each seat's numbers were fitted together:
+		// which side the stacks go, how far along the rail, how far in the stacks and the bet are, how far the bet is
+		// off to the side
+		struct SeatLayout
 		{
-			if (std::abs(a_p.y) <= kFeltC) {
-				return kFeltR - std::abs(a_p.x);
-			}
-			return kFeltR - std::hypot(a_p.x, std::abs(a_p.y) - kFeltC);
+			RE::NiPoint3 stacks, bet, n, side;
+		};
+
+		const std::array<SeatLayout, 7>& Layout()
+		{
+			static const std::array<SeatLayout, 7> layout = [] {
+				struct Fit
+				{
+					float side, along, stacksIn, betIn, betAlong;
+				};
+				constexpr std::array<Fit, 7> kFit{ {
+					{ -1.0f, 9.0f, 13.0f, 14.0f, -4.0f },
+					{ 1.0f, 9.0f, 9.0f, 16.0f, 4.0f },
+					{ 1.0f, 9.0f, 13.0f, 18.0f, 2.0f },
+					{ -1.0f, 9.0f, 13.0f, 14.0f, -4.0f },
+					{ -1.0f, 9.0f, 13.0f, 14.0f, -4.0f },
+					{ 1.0f, 9.0f, 9.0f, 16.0f, 4.0f },
+					{ 1.0f, 9.0f, 13.0f, 18.0f, 2.0f },
+				} };
+				std::array<SeatLayout, 7> l{};
+				for (int i = 0; i < 7; ++i) {
+					RE::NiPoint3 e, n;
+					Stadium(kHolders[i].first, kHolders[i].second, kFeltR, kFeltC, e, n);
+					const RE::NiPoint3 side{ n.y, -n.x, 0.0f };
+					const auto&        f = kFit[i];
+					l[i].n = n;
+					l[i].side = side;
+					l[i].stacks = e - n * f.stacksIn + side * (f.side * f.along);
+					l[i].bet = e - n * f.betIn + side * (f.side * f.betAlong);
+					l[i].stacks.z = kFeltZ;
+					l[i].bet.z = kFeltZ;
+				}
+				return l;
+			}();
+			return layout;
 		}
 
 		RE::NiPoint3 ColumnSpot(int a_seat, int a_d)
 		{
-			RE::NiPoint3 e, n;
-			Stadium(kHolders[a_seat].first, kHolders[a_seat].second, kFeltR, kFeltC, e, n);
-			const RE::NiPoint3 side{ n.y, -n.x, 0.0f };
-			// (beside their cards, 2 clear of them)
-			const RE::NiPoint3 base = e - n * 5.0f - side * (kCardW + 0.4f + 2.0f + kChipR * 2.2f);
-			const float        a = kChipR * 1.2f;  // (clear of each other)
-			float in = 0.0f;  // (how far all four are moved in)
-			auto  spot = [&](int d) { return base - n * in + n * (d >= 2 ? -a : a) + side * (d == 1 || d == 3 ? a : -a); };
-			// all four moved in together, as far as it takes for every chip to be clear of the edge (round the ends,
-			// where the felt curves away, it does)
-			const float need = kChipR + 0.8f;
-			for (int tries = 0; tries < 12; ++tries) {
-				float least = 1e9f;
-				for (int d = 0; d < 4; ++d) {
-					least = std::min(least, InsideFelt(spot(d)));
-				}
-				if (least >= need) {
-					break;
-				}
-				in += need - least + 0.2f;
-			}
-			const RE::NiPoint3 p = spot(a_d);
+			// the four stacks in a square, the hundreds and twenty-fives further in, the fives and ones nearer them
+			const auto& L = Layout()[a_seat];
+			const float a = kChipR * 1.2f;  // (clear of each other)
+			const RE::NiPoint3 p = L.stacks + L.n * (a_d >= 2 ? -a : a) + L.side * (a_d == 1 || a_d == 3 ? a : -a);
 			return { p.x, p.y, kFeltZ };
 		}
 
@@ -234,23 +249,7 @@ namespace fr
 
 		RE::NiPoint3 BetSpot(int a_seat)
 		{
-			RE::NiPoint3 e, n;
-			Stadium(kHolders[a_seat].first, kHolders[a_seat].second, kFeltR, kFeltC, e, n);
-			// in front of them, and further in if that's where their stacks are (round the table's ends they're moved in)
-			RE::NiPoint3 p = e - n * 13.0f;
-			const float  clear = kChipR * 2.0f + 1.5f;
-			for (int tries = 0; tries < 20; ++tries) {
-				float least = 1e9f;
-				for (int d = 0; d < 4; ++d) {
-					const auto c = ColumnSpot(a_seat, d);
-					least = std::min(least, std::hypot(p.x - c.x, p.y - c.y));
-				}
-				if (least >= clear) {
-					break;
-				}
-				p = p - n * 1.0f;
-			}
-			return { p.x, p.y, kFeltZ };
+			return Layout()[a_seat].bet;
 		}
 
 		RE::NiPoint3 BoardSpot(int a_k)
