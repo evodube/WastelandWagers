@@ -68,6 +68,24 @@ namespace fr
 			bool              opening;
 		};
 
+		// workshop mode started while you're at a table (Workshop Framework's hotkey, anything else that starts it): out
+		// again straight away
+		struct WorkshopSink final : RE::BSTEventSink<RE::Workshop::WorkshopModeEvent>
+		{
+			RE::BSEventNotifyControl ProcessEvent(const RE::Workshop::WorkshopModeEvent& a_event, RE::BSTEventSource<RE::Workshop::WorkshopModeEvent>*) override
+			{
+				if (a_event.start && Game::Get().AtATable()) {
+					if (auto* tasks = F4SE::GetTaskInterface()) {
+						tasks->AddTask([]() {
+							log::info("workshop mode started while you're at a table: leaving it");
+							RE::Workshop::RequestExitWorkshop(false);
+						});
+					}
+				}
+				return RE::BSEventNotifyControl::kContinue;
+			}
+		};
+
 		struct LoadingSink final : RE::BSTEventSink<RE::MenuOpenCloseEvent>
 		{
 			RE::BSEventNotifyControl ProcessEvent(const RE::MenuOpenCloseEvent& a_event, RE::BSTEventSource<RE::MenuOpenCloseEvent>*) override
@@ -85,6 +103,7 @@ namespace fr
 	{
 		static ActivateSink activate;
 		static LoadingSink  loading;
+		static WorkshopSink workshop;
 		static bool         registered = false;
 		if (registered) {
 			return;
@@ -98,6 +117,7 @@ namespace fr
 		if (auto* ui = RE::UI::GetSingleton()) {
 			ui->RegisterSink<RE::MenuOpenCloseEvent>(&loading);
 		}
+		RE::Workshop::RegisterForWorkshopModeEvent(&workshop);
 		log::info("listening for activations and loading screens");
 	}
 
