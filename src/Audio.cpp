@@ -95,6 +95,9 @@ namespace fr::Audio
 			case Bank::kRoll: return L"roll";
 			case Bank::kSpin: return L"spin";
 			case Bank::kWin: return L"win";
+			case Bank::kCard: return L"card";
+			case Bank::kSlide: return L"slide";
+			case Bank::kShuffle: return L"shuffle";
 			default: return L"";
 			}
 		}

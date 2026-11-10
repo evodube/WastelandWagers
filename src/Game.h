@@ -338,6 +338,21 @@ namespace fr
 			bool                faceUp{ false }; // ...where it's going
 			int                 seat{ -1 };      // whose hand it's in (-1 the board)
 			bool                mucked{ false }; // folded: going back to the dealer, then gone
+			float               spin{ 0.0f };    // turning in the air on its way (radians left to turn)
+			float               flipWait{ 0.0f };  // seconds before it turns over (the showdown, one hand after another)
+			float               lift{ 0.0f };    // raised off the felt now (one of the winning five)...
+			float               liftTo{ 0.0f };  // ...and where it's going
+		};
+		// a chip on its way across the felt (to the pot, to a winner): removed when it gets there
+		struct PkChipMove
+		{
+			RE::ObjectRefHandle ref;
+			RE::NiPoint3        from, to;  // table space (z: height over the felt)
+			float               t{ 0.0f };
+			float               delay{ 0.0f };
+			float               dur{ 0.45f };
+			float               yaw{ 0.0f };
+			bool                remove{ true };
 		};
 		enum class PkPhase
 		{
@@ -369,7 +384,11 @@ namespace fr
 			std::string                                            bannerSub;
 			float                                                  bannerAge{ 99.0f };
 			int                                                    bannerTone{ 0 };
-			pk::Action                                             pending;      // what the settler thinking will do  // 1 you won, 2 you lost, 0 neither
+			pk::Action                                             pending;      // what the settler thinking will do
+			std::array<std::vector<RE::ObjectRefHandle>, kPkSeats> stackChips;   // each player's caps in front of them
+			std::array<int, kPkSeats>                              stackShown{};
+			std::vector<PkChipMove>                                moves;
+			float                                                  potHold{ 0.0f };  // chips on their way in: the pot's stack after  // 1 you won, 2 you lost, 0 neither
 			int                                                    lifted{ 0 };  // your stack, back in your pocket over a save
 			bool                                                   peeking{ false };  // you're looking at your cards: they're turned up
 		};
@@ -404,6 +423,8 @@ namespace fr
 		void         PkEndHand();
 		void         PkClearTable(bool a_cards = true);
 		void         PkDeal(int a_card, const RE::NiPoint3& a_to, float a_yaw, bool a_faceUp, float a_delay, int a_seat = -1);
+		void         PkSlideChips(std::vector<RE::ObjectRefHandle>& a_chips, const RE::NiPoint3& a_to, float a_delay);
+		void         PkTickMoves(const Frame& a_frame, float a_dt);
 		void         PkMuck(int a_seat);  // a fold: their cards slide back to the dealer (-2: every card on the table)
 		void         PkTickCards(const Frame& a_frame, float a_dt);
 		void         PkMakeChips(const Frame& a_frame);

@@ -11,6 +11,9 @@ namespace fr::Audio
 		kRoll,    // the ball running round the track
 		kSpin,    // the rotor turned by hand
 		kWin,     // (unused since 0.2.3: a win is the caps' own clink)
+		kCard,    // a card landing on the felt
+		kSlide,   // cards or chips slid across the felt
+		kShuffle, // the deck shuffled between hands
 		kCount
 	};
 

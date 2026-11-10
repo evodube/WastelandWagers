@@ -98,6 +98,46 @@ namespace fr
 			return { p.x, p.y, kFeltZ };
 		}
 
+		// a player's own caps: on the felt to the left of their cards
+		RE::NiPoint3 StackSpot(int a_seat)
+		{
+			RE::NiPoint3 e, n;
+			Stadium(kHolders[a_seat].first, kHolders[a_seat].second, kFeltR, kFeltC, e, n);
+			const RE::NiPoint3 side{ n.y, -n.x, 0.0f };
+			const RE::NiPoint3 p = e - n * 5.0f - side * (kCardW + 4.5f);
+			return { p.x, p.y, kFeltZ };
+		}
+
+		// the best five of seven: which cards make it (for lifting them at the showdown)
+		std::vector<int> BestFive(const std::array<pk::Card, 2>& a_hole, const std::vector<pk::Card>& a_board)
+		{
+			std::vector<pk::Card> all{ a_hole[0], a_hole[1] };
+			all.insert(all.end(), a_board.begin(), a_board.end());
+			std::vector<int> best;
+			pk::Score        top = 0;
+			const int        n = static_cast<int>(all.size());
+			for (int a = 0; a < n; ++a) {
+				for (int b = a + 1; b < n; ++b) {
+					std::array<pk::Card, 5> five{};
+					int                     k = 0;
+					for (int i = 0; i < n && k < 5; ++i) {
+						if (i != a && i != b) {
+							five[k++] = all[i];
+						}
+					}
+					if (k < 5) {
+						continue;
+					}
+					const auto sc = pk::Evaluate(std::span<const pk::Card>(five.data(), 5));
+					if (sc > top) {
+						top = sc;
+						best.assign(five.begin(), five.end());
+					}
+				}
+			}
+			return best;
+		}
+
 		RE::NiPoint3 BetSpot(int a_seat)
 		{
 			RE::NiPoint3 e, n;
@@ -250,6 +290,11 @@ namespace fr
 			}
 		}
 		PkClearTable();
+		for (auto& v : _pk.stackChips) {
+			for (auto& h : v) {
+				Remove(h);
+			}
+		}
 		log::info("poker table no longer in play: {}", a_why);
 		_pk = PokerState{};
 	}
@@ -278,6 +323,12 @@ namespace fr
 		_pk.potShown = -1;
 		_pk.boardShown = 0;
 		_pk.peeking = false;
+		if (a_cards) {
+			for (auto& m : _pk.moves) {
+				Remove(m.ref);
+			}
+			_pk.moves.clear();
+		}
 	}
 
 	void Game::PkSay(const std::string& a_text, int a_tone)
@@ -301,10 +352,12 @@ namespace fr
 			return;
 		}
 		_pk.bannerAge += a_dt;
+		_pk.potHold = std::max(0.0f, _pk.potHold - a_dt);
 		PkTickSeats(frame, a_dt);
 		PkTickHand(frame, a_dt);
 		PkTickCards(frame, a_dt);
 		PkMakeChips(frame);
+		PkTickMoves(frame, a_dt);
 		if (_pkSeated && _pkYou >= 0) {
 			// the view from your seat: from just behind your cards, straight across the table. The mouse looks about
 			// (the turn keys, Q and E, turn too); looking down at your cards turns them up for you
@@ -658,14 +711,15 @@ namespace fr
 				}
 				// (the right way up for whoever's there: yours turn up while your mouse is over them)
 				const auto n = SeatNormal(seat);
-				PkDeal(_pk.hand.players[hi].hole[round], HoleSpot(seat, round), std::atan2(-n.x, -n.y), false, delay, seat);
+				const float jitter = std::uniform_real_distribution<float>(-0.12f, 0.12f)(_rng);  // (never quite square)
+				PkDeal(_pk.hand.players[hi].hole[round], HoleSpot(seat, round), std::atan2(-n.x, -n.y) + jitter, false, delay, seat);
 				delay += 0.14f;
 			}
 		}
 		_pk.timer = delay + 0.4f;
 		_pk.think = 0.0f;
 		PkSay(std::format("NEW HAND · BLINDS {}/{}", s.pkSmallBlind, s.pkBigBlind));
-		Audio::PlayUI(Audio::Bank::kChip, 0.5f);
+		Audio::PlayUI(Audio::Bank::kShuffle, 0.6f);
 	}
 
 	void Game::PkAct(pk::Action a_action)
@@ -845,6 +899,20 @@ namespace fr
 		_pk.timer = h.showdown ? 6.0f : 3.5f;
 		// the cards of everyone still in, turned up
 		if (h.showdown) {
+			// the hands still in turned up one after another, from the last to bet (or the button's left)
+			std::array<float, kPkSeats> when{};
+			float                       next = 0.3f;
+			const int                   first = h.lastAggressor >= 0 ? h.lastAggressor : h.NextSeat(h.button, false);
+			for (int k = 0; k < kPkSeats; ++k) {
+				for (int s = 0; s < kPkSeats; ++s) {
+					const auto& st = _pk.seats[s];
+					if (st.used && st.hi >= 0 && !h.players[st.hi].folded &&
+						(st.hi - first + static_cast<int>(h.players.size())) % static_cast<int>(h.players.size()) == k) {
+						when[s] = next;
+						next += 0.7f;
+					}
+				}
+			}
 			for (auto& c : _pk.cards) {
 				int hi = -1;
 				if (c.seat >= 0) {
@@ -852,8 +920,10 @@ namespace fr
 				}
 				if (!c.mucked && (c.seat < 0 || (hi >= 0 && !h.players[hi].folded))) {
 					c.faceUp = true;
+					c.flipWait = c.seat >= 0 && !_pk.seats[c.seat].you ? when[c.seat] : 0.0f;
 				}
 			}
+			_pk.timer = std::max(_pk.timer, next + 3.5f);
 		}
 		// who won what
 		std::vector<int> won(h.players.size(), 0);
@@ -872,6 +942,7 @@ namespace fr
 			youIn |= st.used && st.you && st.hi >= 0;
 		}
 		std::string youResult;
+		int         winnerSeat = -1;
 		for (int i = 0; i < kPkSeats; ++i) {
 			const auto& st = _pk.seats[i];
 			if (!st.used || st.hi < 0 || won[st.hi] <= 0) {
@@ -889,6 +960,18 @@ namespace fr
 				_pk.bannerTone = 1;
 			}
 			PkIdle(i, 3);
+			// the winning five raised off the felt a touch (at a showdown)
+			if (h.showdown) {
+				const auto five = BestFive(h.players[st.hi].hole, h.board);
+				for (auto& c : _pk.cards) {
+					if ((c.seat < 0 || c.seat == i) && std::ranges::find(five, c.card) != five.end()) {
+						c.liftTo = 0.8f;
+					}
+				}
+			}
+			if (winnerSeat < 0) {
+				winnerSeat = i;
+			}
 		}
 		if (h.showdown) {
 			for (int i = 0; i < kPkSeats; ++i) {
@@ -902,20 +985,16 @@ namespace fr
 			_pk.bannerTone = 2;  // you were in the hand and didn't take any of it: the banner in red
 		}
 		_pk.bannerAge = 0.0f;
-		Audio::PlayUI(Audio::Bank::kChip, 0.9f);
-		// the pot's chips go to the winner: off the table now
+		// the pot (and the last bets) slide over to the winner's stack, once their cards are up
+		const float reveal = h.showdown ? 1.2f : 0.4f;
+		const auto  to = winnerSeat >= 0 ? StackSpot(winnerSeat) : kPot;
 		for (auto& v : _pk.betChips) {
-			for (auto& c : v) {
-				Remove(c);
-			}
-			v.clear();
+			PkSlideChips(v, to, reveal);
 		}
 		_pk.betShown.fill(0);
-		for (auto& c : _pk.potChips) {
-			Remove(c);
-		}
-		_pk.potChips.clear();
+		PkSlideChips(_pk.potChips, to, reveal);
 		_pk.potShown = 0;
+		_pk.potHold = reveal + 0.8f;
 		(void)youResult;
 	}
 
@@ -923,6 +1002,7 @@ namespace fr
 
 	void Game::PkMuck(int a_seat)
 	{
+		Audio::PlayUI(Audio::Bank::kSlide, 0.4f);
 		float delay = 0.0f;
 		for (auto& c : _pk.cards) {
 			if ((a_seat != -2 && c.seat != a_seat) || c.mucked || !c.ref) {
@@ -936,6 +1016,9 @@ namespace fr
 			delay += 0.05f;
 			c.faceUp = false;
 			c.mucked = true;
+			c.spin = 0.0f;
+			c.liftTo = 0.0f;
+			c.flipWait = 0.0f;
 		}
 	}
 
@@ -943,6 +1026,7 @@ namespace fr
 	{
 		PkCard c;
 		c.seat = a_seat;
+		c.spin = std::uniform_real_distribution<float>(-1.6f, 1.6f)(_rng);  // (a little turn in the air)
 		c.card = a_card;
 		c.from = kDeck;
 		c.to = a_to;
@@ -969,17 +1053,26 @@ namespace fr
 				}
 			}
 			if (c.t < 1.0f) {
-				c.t = std::min(1.0f, c.t + a_dt / 0.35f);
+				c.t = std::min(1.0f, c.t + a_dt / (c.mucked ? 0.4f : 0.35f));
 				if (c.t >= 1.0f && !c.mucked) {
-					Audio::PlayUI(Audio::Bank::kTick, 0.25f);
+					Audio::PlayUI(Audio::Bank::kCard, 0.45f);
 				}
+			}
+			if (c.flipWait > 0.0f) {
+				c.flipWait -= a_dt;
+			}
+			if (c.lift != c.liftTo) {
+				c.lift = c.lift < c.liftTo ? std::min(c.liftTo, c.lift + a_dt * 2.0f) : std::max(c.liftTo, c.lift - a_dt * 2.0f);
 			}
 			if (c.mucked && c.t >= 1.0f) {
 				Remove(c.ref);  // back in the dealer's pile
 				continue;
 			}
 			const float want = c.faceUp ? 1.0f : 0.0f;
-			if (c.flip != want) {
+			if (c.flip != want && c.flipWait <= 0.0f) {
+				if ((c.flip == 0.0f || c.flip == 1.0f) && c.t >= 1.0f) {
+					Audio::PlayUI(Audio::Bank::kCard, 0.25f);
+				}
 				c.flip = c.flip < want ? std::min(want, c.flip + a_dt / 0.3f) : std::max(want, c.flip - a_dt / 0.3f);
 			}
 			if (!ref->Get3D()) {
@@ -987,56 +1080,161 @@ namespace fr
 			}
 			const float  e = 1.0f - (1.0f - c.t) * (1.0f - c.t);  // easing out
 			RE::NiPoint3 p = c.from + (c.to - c.from) * e;
-			// face down, the card's lying on its face: up by its thickness; turning over, lifted a little
+			// face down, the card's lying on its face: up by its thickness; turning over, lifted a little; on its way,
+			// a low arc through the air, turning as it goes; one of the winning five, raised a touch
 			const float flipAngle = (1.0f - c.flip) * 3.14159265f;
-			const float lift = std::sin(c.flip * 3.14159265f) * 2.5f + (c.flip < 0.5f ? kCardT : 0.0f) + 0.02f;
+			const float arc = c.t < 1.0f ? std::sin(c.t * 3.14159265f) * (c.mucked ? 0.6f : 3.0f) : 0.0f;
+			const float lift = std::sin(c.flip * 3.14159265f) * 2.5f + (c.flip < 0.5f ? kCardT : 0.0f) + 0.02f + arc + c.lift;
+			const float yaw = c.yaw + c.spin * (1.0f - e);
 			const auto  world = ToWorld(a_frame, p.x, p.y, kFeltZ + lift);
-			PlaceRoot(ref.get(), world, Lying(c.yaw, flipAngle) * a_frame.rot);
+			PlaceRoot(ref.get(), world, Lying(yaw, flipAngle) * a_frame.rot);
 		}
 		std::erase_if(_pk.cards, [](const PkCard& c) { return c.mucked && c.t >= 1.0f; });
+	}
+
+	void Game::PkSlideChips(std::vector<RE::ObjectRefHandle>& a_chips, const RE::NiPoint3& a_to, float a_delay)
+	{
+		// each chip off where it is to a_to (stacked up as they go), then gone
+		Frame frame;
+		if (!PkFrame(frame)) {
+			for (auto& h : a_chips) {
+				Remove(h);
+			}
+			a_chips.clear();
+			return;
+		}
+		int k = 0;
+		for (auto& h : a_chips) {
+			auto ref = h.get();
+			if (!ref) {
+				continue;
+			}
+			// where it is, back in table space
+			const auto d = ref->data.location - frame.origin;
+			const auto local = frame.rot * d;
+			PkChipMove m;
+			m.ref = h;
+			m.from = { local.x, local.y, local.z - kFeltZ };
+			m.to = { a_to.x, a_to.y, 0.02f + static_cast<float>(k % kMaxStack) * kChipH };
+			m.delay = a_delay + 0.015f * static_cast<float>(k);
+			m.yaw = ref->data.angle.z;
+			_pk.moves.push_back(m);
+			++k;
+		}
+		a_chips.clear();
+		if (k > 0) {
+			Audio::PlayUI(Audio::Bank::kChip, 0.6f);
+		}
+	}
+
+	void Game::PkTickMoves(const Frame& a_frame, float a_dt)
+	{
+		for (auto& m : _pk.moves) {
+			if (m.delay > 0.0f) {
+				m.delay -= a_dt;
+				continue;
+			}
+			m.t = std::min(1.0f, m.t + a_dt / m.dur);
+			const float e = m.t * m.t * (3.0f - 2.0f * m.t);
+			const auto  p = m.from + (m.to - m.from) * e;
+			if (auto ref = m.ref.get()) {
+				PlaceNode(ref.get(), ToWorld(a_frame, p.x, p.y, kFeltZ + p.z + std::sin(m.t * 3.14159265f) * 0.6f), m.yaw, false);
+			}
+			if (m.t >= 1.0f && m.remove) {
+				Remove(m.ref);
+			}
+		}
+		std::erase_if(_pk.moves, [](const PkChipMove& m) { return m.t >= 1.0f; });
 	}
 
 	void Game::PkMakeChips(const Frame& a_frame)
 	{
 		std::uniform_real_distribution<float> spin(0.0f, 6.283f);
-		auto stack = [&](int a_amount, float a_x, float a_y, std::vector<RE::ObjectRefHandle>& a_out) {
+		// a_amount in chips at (a_x, a_y), up to three columns; a_fromX/Y: where they come from (they slide over), or NaN
+		auto stack = [&](int a_amount, float a_x, float a_y, std::vector<RE::ObjectRefHandle>& a_out, const RE::NiPoint3* a_from = nullptr) {
 			auto chips = rl::ChipsFor(a_amount);
-			// up to three stacks of kMaxStack side by side
 			for (std::size_t i = 0; i < chips.size() && i < kMaxStack * 3; ++i) {
-				const int  idx = static_cast<int>(std::ranges::find(rl::kChipValues, chips[i]) - std::begin(rl::kChipValues));
-				const int  col = static_cast<int>(i) / kMaxStack, row = static_cast<int>(i) % kMaxStack;
-				const auto pos = ToWorld(a_frame, a_x, a_y + (col - 1) * kChipR * 2.2f * (chips.size() > kMaxStack ? 1.0f : 0.0f),
-					kFeltZ + 0.02f + row * kChipH);
-				a_out.push_back(Spawn(Forms::Chip(idx), pos, a_frame.yaw + spin(_rng)));
+				const int   idx = static_cast<int>(std::ranges::find(rl::kChipValues, chips[i]) - std::begin(rl::kChipValues));
+				const int   col = static_cast<int>(i) / kMaxStack, row = static_cast<int>(i) % kMaxStack;
+				const float x = a_x, y = a_y + (col - 1) * kChipR * 2.2f * (chips.size() > kMaxStack ? 1.0f : 0.0f);
+				const float z = 0.02f + row * kChipH;
+				const float yaw = a_frame.yaw + spin(_rng);
+				if (a_from) {
+					// spawned where it's coming from, slid over (kept: not removed at the end)
+					auto h = Spawn(Forms::Chip(idx), ToWorld(a_frame, a_from->x, a_from->y, kFeltZ + z), yaw);
+					a_out.push_back(h);
+					PkChipMove m;
+					m.ref = h;
+					m.from = { a_from->x, a_from->y, z };
+					m.to = { x, y, z };
+					m.delay = 0.02f * static_cast<float>(i);
+					m.dur = 0.3f;
+					m.yaw = yaw;
+					m.remove = false;
+					_pk.moves.push_back(m);
+				} else {
+					a_out.push_back(Spawn(Forms::Chip(idx), ToWorld(a_frame, x, y, kFeltZ + z), yaw));
+				}
 			}
 		};
-		if (!_pk.inHand) {
-			return;
-		}
-		// each player's bet this street
+		// each player's caps in front of them
 		for (int i = 0; i < kPkSeats; ++i) {
 			const auto& st = _pk.seats[i];
-			const int   bet = st.used && st.hi >= 0 && _pk.phase != PkPhase::kShowdown ? _pk.hand.players[st.hi].bet : 0;
-			if (bet == _pk.betShown[i]) {
+			int         have = 0;
+			if (st.used && !st.away && (st.you || st.step == Seat::Step::kPlaying)) {
+				have = _pk.inHand && st.hi >= 0 ? _pk.hand.players[st.hi].stack : st.stack;
+			}
+			if (_pk.potHold > 0.0f && _pk.phase == PkPhase::kShowdown) {
+				continue;  // (the pot's on its way over: the winner's stack grows once it's there)
+			}
+			if (have == _pk.stackShown[i]) {
 				continue;
 			}
-			for (auto& h : _pk.betChips[i]) {
+			for (auto& h : _pk.stackChips[i]) {
 				Remove(h);
 			}
-			_pk.betChips[i].clear();
-			_pk.betShown[i] = bet;
-			if (bet > 0) {
-				const auto b = BetSpot(i);
-				stack(bet, b.x, b.y, _pk.betChips[i]);
+			_pk.stackChips[i].clear();
+			_pk.stackShown[i] = have;
+			if (have > 0) {
+				const auto sp = StackSpot(i);
+				stack(have, sp.x, sp.y, _pk.stackChips[i]);
 			}
 		}
-		// the pot: everything put in on earlier streets
-		if (_pk.phase == PkPhase::kShowdown) {
+		if (!_pk.inHand || _pk.phase == PkPhase::kShowdown) {
 			return;
 		}
+		// the pot: everything put in on earlier streets (built once the bets have slid in)
 		int pot = 0;
 		for (const auto& p : _pk.hand.players) {
 			pot += p.committed - p.bet;
+		}
+		const bool potGrew = pot > _pk.potShown && _pk.potShown >= 0;
+		// each player's bet this street: a new bet slides out from their stack; at the end of a street, into the pot
+		for (int i = 0; i < kPkSeats; ++i) {
+			const auto& st = _pk.seats[i];
+			const int   bet = st.used && st.hi >= 0 ? _pk.hand.players[st.hi].bet : 0;
+			if (bet == _pk.betShown[i]) {
+				continue;
+			}
+			if (bet == 0 && potGrew) {
+				PkSlideChips(_pk.betChips[i], kPot, 0.1f);
+				_pk.potHold = 0.75f;
+			} else {
+				for (auto& h : _pk.betChips[i]) {
+					Remove(h);
+				}
+				_pk.betChips[i].clear();
+			}
+			const bool more = bet > _pk.betShown[i];
+			_pk.betShown[i] = bet;
+			if (bet > 0) {
+				const auto b = BetSpot(i);
+				const auto from = StackSpot(i);
+				stack(bet, b.x, b.y, _pk.betChips[i], more ? &from : nullptr);
+			}
+		}
+		if (_pk.potHold > 0.0f) {
+			return;
 		}
 		if (pot != _pk.potShown) {
 			for (auto& h : _pk.potChips) {
@@ -1399,6 +1597,17 @@ namespace fr
 		_pk.potChips.clear();
 		_pk.potShown = -1;
 		_pk.peeking = false;
+		for (auto& v : _pk.stackChips) {
+			for (auto& h : v) {
+				Remove(h);
+			}
+			v.clear();
+		}
+		_pk.stackShown.fill(-1);
+		for (auto& m : _pk.moves) {
+			Remove(m.ref);
+		}
+		_pk.moves.clear();
 		for (auto& st : _pk.seats) {
 			if (st.used && !st.you && st.held) {
 				if (auto ref = st.actor.get(); ref && ref->As<RE::Actor>()) {
