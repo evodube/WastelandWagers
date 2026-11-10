@@ -92,9 +92,9 @@ namespace fr
 
 	void Game::FaceTowards(RE::Actor* a_actor, float a_heading)
 	{
-		// (only when they've turned well away: put back every frame, an idle that moves them a little fights it and they
-		// twitch round)
-		if (a_actor && std::abs(util::AngleDiff(a_actor->data.angle.z, a_heading)) > 0.35f) {
+		// held to it every frame (the AI turns them slowly round on the spot otherwise: let them get 0.35 off before
+		// putting them back, as before 0.5.5, and they could be seen going round)
+		if (a_actor && std::abs(util::AngleDiff(a_actor->data.angle.z, a_heading)) > 0.01f) {
 			a_actor->SetHeading(a_heading);
 		}
 	}
