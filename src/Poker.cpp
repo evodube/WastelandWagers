@@ -1182,6 +1182,25 @@ namespace fr
 		if (youIn && youResult.empty()) {
 			_pk.bannerTone = 2;  // you were in the hand and didn't take any of it: the banner in red
 		}
+		// a tie: the main pot split between two or more
+		std::vector<int> splitSeats;
+		if (!h.pots.empty() && h.pots.front().winners.size() > 1) {
+			for (int w : h.pots.front().winners) {
+				for (int i = 0; i < kPkSeats; ++i) {
+					if (_pk.seats[i].used && _pk.seats[i].hi == w) {
+						splitSeats.push_back(i);
+					}
+				}
+			}
+			_pk.bannerTitle = "TIE - SPLIT POT";
+			_pk.bannerSub = h.showdown ? pk::HandName(h.scores[h.pots.front().winners.front()]) : std::string();
+			bool youSplit = false;
+			for (int i : splitSeats) {
+				youSplit |= _pk.seats[i].you;
+			}
+			_pk.bannerTone = youSplit ? 1 : youIn ? 2 : 0;
+			PkSay("TIE - SPLIT POT", 1);
+		}
 		// your session's count
 		if (youIn) {
 			++_pk.session.hands;
@@ -1199,6 +1218,17 @@ namespace fr
 			PkSlideChips(v, winnerSeat, reveal);
 		}
 		_pk.betShown.fill(0);
+		if (splitSeats.size() > 1) {
+			// (a split: the pot's chips dealt out between them, one each in turn)
+			std::vector<std::vector<RE::ObjectRefHandle>> shares(splitSeats.size());
+			for (std::size_t c = 0; c < _pk.potChips.size(); ++c) {
+				shares[c % shares.size()].push_back(_pk.potChips[c]);
+			}
+			_pk.potChips.clear();
+			for (std::size_t k = 0; k < shares.size(); ++k) {
+				PkSlideChips(shares[k], splitSeats[k], reveal);
+			}
+		}
 		PkSlideChips(_pk.potChips, winnerSeat, reveal);
 		_pk.potSpots.clear();
 		_pk.potShown = 0;
