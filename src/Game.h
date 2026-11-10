@@ -146,6 +146,7 @@ namespace fr
 			bool                  pkPeek{ false };
 			bool                  pkTop{ false };
 			bool                  pkZoom{ false };
+			bool                  pkDealer{ true };   // the board's cards shown on the HUD, under your hand
 			float                 pkAge{ 99.0f };     // seconds since you sat down (the panels slide in)
 			bool                  pkPad{ false };     // a controller in use: its buttons on the HUD
 			std::string           pkHelp;             // what's happening / what to do, under the board
@@ -453,6 +454,7 @@ namespace fr
 		bool              _pkMenusHeld{ false };
 		bool              _pkTopView{ false };  // looking down on the poker table (V)
 		bool              _pkShowCards{ false };  // the SHOW MY CARDS button: your cards up
+		bool              _pkShowDealer{ true };  // the SHOW / HIDE DEALER button: the board's cards on the HUD
 		std::atomic<bool> _rlUi{ false };  // (roulette: the pointer's down on the buttons, off the layout)
 		double            _rlPush{ 0.0 };  // (...how far you've pushed the cursor down past the layout's edge)
 		double            _pkPtrX{ -1.0 }, _pkPtrY{ -1.0 };  // your mouse pointer at the poker table, screen pixels (under _camMutex)

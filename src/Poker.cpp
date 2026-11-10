@@ -2239,6 +2239,10 @@ namespace fr
 			_pkShowCards = !_pkShowCards;
 			return;
 		}
+		if (a_key == 15) {
+			_pkShowDealer = !_pkShowDealer;  // the board's cards on the HUD
+			return;
+		}
 		if (a_key == 6 || a_key == 8) {
 			PkStandUp(a_key == 8);  // (6: step away, the seat kept; 8: cash out)
 			return;
@@ -2375,6 +2379,7 @@ namespace fr
 		a_h.pkPeek = _pk.peeking || _pkShowCards;
 		a_h.pkTop = _pkTopView;
 		a_h.pkZoom = _pkZoom;
+		a_h.pkDealer = _pkShowDealer;
 		a_h.pkAge = _pk.seatedAge;
 		a_h.pkPad = _padUsed.load();
 		if (auto table = _pk.table.get()) {

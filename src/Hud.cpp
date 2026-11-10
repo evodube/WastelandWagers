@@ -390,7 +390,7 @@ namespace fr::Hud
 		constexpr float kPkRow = 46.0f;
 		constexpr float kPkBottom = 66.0f;  // the button row's room along the bottom
 		constexpr float kPkSideW = 170.0f;  // the column of buttons on the right
-		constexpr float kPkSideH = 6 * 34.0f;
+		constexpr float kPkSideH = 7 * 34.0f;
 
 		float PokerStatusW(const Game::HudState& a_st)
 		{
@@ -495,6 +495,69 @@ namespace fr::Hud
 			const float size = std::min(14.0f, 14.0f * (w - 24.0f) / std::max(1.0f, TextWidth(Mono(), label, 14, 1.0f)));
 			Print(a_v, Mono(), label, x + w * 0.5f, y + (h - size) * 0.5f - 2.0f, size, a_st.pkYourTurn ? kBright : kText, a_st.pkYourTurn ? kGlow : 0,
 				1.0f, Align::kCentre);
+		}
+
+		// a card's suit, drawn (the HUD's fonts are plain ASCII): clubs, diamonds, hearts, spades, about 2r across
+		void SuitShape(const View& a_v, int a_suit, float a_cx, float a_cy, float a_r, ImU32 a_col)
+		{
+			auto P = [&](float a_x, float a_y) { return a_v.P(a_cx + a_x * a_r, a_cy + a_y * a_r); };
+			const float r = a_r * a_v.s;
+			auto circle = [&](float a_x, float a_y, float a_rad) { DL::AddCircleFilled(a_v.dl, P(a_x, a_y), a_rad * r, a_col, 20); };
+			auto stem = [&]() { DL::AddTriangleFilled(a_v.dl, P(0.0f, 0.1f), P(-0.45f, 1.05f), P(0.45f, 1.05f), a_col); };
+			switch (a_suit) {
+			case 0:  // clubs
+				circle(0.0f, -0.48f, 0.42f);
+				circle(-0.5f, 0.18f, 0.42f);
+				circle(0.5f, 0.18f, 0.42f);
+				circle(0.0f, 0.05f, 0.25f);
+				stem();
+				break;
+			case 1:  // diamonds
+				{
+					const std::array<ImVec2, 4> pts{ P(0.0f, -1.05f), P(0.72f, 0.0f), P(0.0f, 1.05f), P(-0.72f, 0.0f) };
+					DL::AddConvexPolyFilled(a_v.dl, pts.data(), 4, a_col);
+				}
+				break;
+			case 2:  // hearts
+				circle(-0.46f, -0.32f, 0.5f);
+				circle(0.46f, -0.32f, 0.5f);
+				DL::AddTriangleFilled(a_v.dl, P(-0.94f, -0.18f), P(0.94f, -0.18f), P(0.0f, 0.95f), a_col);
+				break;
+			default:  // spades
+				circle(-0.44f, 0.22f, 0.44f);
+				circle(0.44f, 0.22f, 0.44f);
+				DL::AddTriangleFilled(a_v.dl, P(0.0f, -1.0f), P(-0.86f, 0.12f), P(0.86f, 0.12f), a_col);
+				stem();
+				break;
+			}
+		}
+
+		// the dealer's cards (the board), under your hand's panel, top middle: the SHOW / HIDE DEALER button
+		void PokerDealer(const View& a_v, const Game::HudState& a_st)
+		{
+			if (!a_st.pkDealer || a_st.pkBoard.empty()) {
+				return;
+			}
+			constexpr float cw = 46.0f, ch = 64.0f, gap = 7.0f, pad = 8.0f;
+			const float     w = cw * 5.0f + gap * 4.0f + pad * 2.0f, h = ch + pad * 2.0f;
+			const float     x = a_v.w * 0.5f - w * 0.5f, y = kPkMargin + PokerHoleH() + 8.0f;
+			Chamfer(a_v, x, y, w, h, 10.0f, kPanel, kEdge);
+			for (int k = 0; k < 5; ++k) {
+				const float cx = x + pad + static_cast<float>(k) * (cw + gap), cy = y + pad;
+				if (k >= static_cast<int>(a_st.pkBoard.size())) {
+					// (still to come: an empty place)
+					DL::AddRect(a_v.dl, a_v.P(cx, cy), a_v.P(cx + cw, cy + ch), Rgba(80, 200, 100, 0.25f), 5.0f * a_v.s, 0, std::max(1.0f, a_v.s));
+					continue;
+				}
+				const int   card = a_st.pkBoard[k];
+				const int   rank = card % 13, suit = card / 13;
+				const bool  red = suit == 1 || suit == 2;
+				const ImU32 ink = red ? Rgba(200, 30, 35) : Rgba(20, 20, 24);
+				DL::AddRectFilled(a_v.dl, a_v.P(cx, cy), a_v.P(cx + cw, cy + ch), Rgba(246, 244, 236), 5.0f * a_v.s, 0);
+				static constexpr std::array<const char*, 13> kRanks{ "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A" };
+				Print(a_v, Mono(), kRanks[rank], cx + 5.0f, cy + 4.0f, 16, ink, 0, 0.0f);
+				SuitShape(a_v, suit, cx + cw * 0.5f, cy + ch * 0.6f, 11.0f, ink);
+			}
 		}
 
 		void PokerBanner(const View& a_v, const Game::HudState& a_st)
@@ -618,7 +681,7 @@ namespace fr::Hud
 			next(3, tag("(Y)", allIn), wAll, false, Rgba(170, 100, 20));
 			}
 			// the table's buttons, bottom right: in the corner, or above the action buttons when they'd run into them
-			const int   nSide = a_st.pkKit ? 6 : 5;
+			const int   nSide = a_st.pkKit ? 7 : 6;
 			const float sx = a_v.w - kPkMargin - kPkSideW;
 			const float barRight = a_v.w * 0.5f + w * k * 0.5f;
 			const float sideFoot = barRight + gap < sx ? a_v.h - 12.0f : a_v.h - kPkBottom - 8.0f;
@@ -628,6 +691,7 @@ namespace fr::Hud
 				sy += 34.0f;
 			};
 			side(10, tag("(RS)", a_st.pkPeek ? "HIDE MY CARDS" : "SHOW MY CARDS"), a_st.pkHole[0] >= 0);
+			side(15, a_st.pkDealer ? "HIDE DEALER" : "SHOW DEALER", true);
 			side(9, tag("(START)", a_st.pkTop ? "VIEW: MY SEAT" : "VIEW: FROM ABOVE"), true);
 			side(12, a_st.pkZoom ? "ZOOM OUT" : "ZOOM IN", true);
 			side(6, tag("(BACK)", "STEP AWAY"), true);
@@ -727,6 +791,7 @@ namespace fr::Hud
 			PokerBoard(slid(0.08f, 1.0f), a_st);
 			PokerLog(slid(0.16f, -1.0f), a_st);
 			PokerHole(a_v, a_st);
+			PokerDealer(a_v, a_st);
 			PokerBanner(a_v, a_st);
 			PokerButtons(a_v, a_st, a_viewport);
 		}
