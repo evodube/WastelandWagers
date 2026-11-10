@@ -82,7 +82,7 @@ namespace fr
 		using namespace rl::table;
 		// two along the players' side and two along the far side, by the layout, well apart; filled front, back,
 		// front, back
-		static constexpr std::array<std::pair<double, int>, kSpots> spots{ { { 20.0, -1 }, { 50.0, 1 }, { 105.0, -1 }, { 120.0, 1 } } };
+		static constexpr std::array<std::pair<double, int>, kSpots> spots{ { { 17.0, -1 }, { 42.0, 1 }, { 89.0, -1 }, { 102.0, 1 } } };
 		const auto& [x, side] = spots[static_cast<std::size_t>(a_spot) % spots.size()];
 		const double y = side < 0 ? kPlayersEdgeY - kStepBack : kFarEdgeY + kStepBack;
 		a_heading = HeadingOf(a_frame, 0.0, side < 0 ? 1.0 : -1.0);

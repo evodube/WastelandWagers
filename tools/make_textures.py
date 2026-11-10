@@ -48,7 +48,7 @@ NUMBER_R = (3.78, 4.45)     # the sloped number ring outside it
 # ---------------------------------------------------------------- layout (felt): planar UVs, from the model
 LU = (-0.0246004, 0.795347)
 LV = (-0.0246004, 0.390572)
-# the betting layout, model units (src/rl/Layout.h has the same numbers x 6.6, from the table's origin)
+# the betting layout, model units (src/rl/Layout.h has the same numbers x 5.6, from the table's origin)
 LX0 = 10.2      # the zero column starts here (wheel side)
 ZERO_W = 2.2
 CELL_W = 1.45   # 12 number columns

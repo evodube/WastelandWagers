@@ -34,7 +34,7 @@ OBJ = r"C:\Users\Dan\Desktop\table\model\RuletMasası.obj"
 TEMPLATE = r"C:\Users\Dan\Desktop\table\work\PoolTable01.nif"
 OUT = r"C:\Users\Dan\Desktop\table\work\Data"
 
-SCALE = 6.6
+SCALE = 5.6  # (6.6 until 0.4.3; src/rl/Table.h kScale)
 ORIGIN = Vector((12.005, 3.755, -8.22))   # model units: footprint centre, floor
 BALL_R = 0.16 * SCALE
 TEX = "textures\\fo4roulette\\"

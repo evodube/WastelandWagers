@@ -51,8 +51,10 @@ namespace fr
 			{ 27.9f, -47.1f }, { 1.1f, -71.2f }, { -25.8f, -47.1f }, { -25.8f, -0.2f }, { -25.8f, 46.7f }, { 1.1f, 70.8f }, { 27.9f, 46.7f },
 		} };
 
-		const RE::NiPoint3 kDeck{ 14.0f, 0.0f, kFeltZ };  // where cards come from (by the tray)
-		const RE::NiPoint3 kPot{ 9.0f, 0.0f, kFeltZ };
+		// from the dealer's side (+X, the chip tray) in: the deck, the board, then the pot
+		const RE::NiPoint3 kDeck{ 15.0f, 0.0f, kFeltZ };  // where cards come from (by the tray)
+		const RE::NiPoint3 kMuck{ 15.0f, 13.0f, kFeltZ }; // where folded hands go
+		const RE::NiPoint3 kPot{ -6.0f, 0.0f, kFeltZ };
 
 		// the stadium of half-width a_r with straight sides to +-a_c: the nearest point on its edge to (x, y), and the
 		// outward normal there
@@ -101,7 +103,7 @@ namespace fr
 
 		RE::NiPoint3 BoardSpot(int a_k)
 		{
-			return { -3.0f, (static_cast<float>(a_k) - 2.0f) * 5.4f, kFeltZ };
+			return { 7.0f, (static_cast<float>(a_k) - 2.0f) * 5.0f, kFeltZ };
 		}
 
 		float Distance2D(const RE::NiPoint3& a, const RE::NiPoint3& b) { return std::hypot(a.x - b.x, a.y - b.y); }
@@ -234,8 +236,9 @@ namespace fr
 			_pk.inHand = false;
 		}
 		if (_pkSeated) {
-			PkStandUp();
+			PkStandUp(true);
 		}
+		PkCashOut();  // (away from it: your stack back in your pocket)
 		for (int s = 0; s < kPkSeats; ++s) {
 			if (_pk.seats[s].used) {
 				PkRelease(s, a_why);
@@ -354,8 +357,8 @@ namespace fr
 		for (const auto& st : _pk.seats) {
 			npcs += st.used && !st.you;
 		}
-		if (!s.pkPlayers || npcs >= s.pkMaxPlayers) {
-			return;
+		if (!s.pkPlayers || npcs >= s.pkMaxPlayers || _pk.inHand) {
+			return;  // (nobody joins in the middle of a hand: they wait for it to finish)
 		}
 		auto*        player = RE::PlayerCharacter::GetSingleton();
 		static auto* npcType = RE::TESForm::GetFormByID<RE::BGSKeyword>(Forms::kActorTypeNPC);
@@ -542,7 +545,7 @@ namespace fr
 			auto& st = _pk.seats[i];
 			st.hi = -1;
 			st.last.clear();
-			const bool ready = st.used && (st.you || (st.step == Seat::Step::kPlaying && st.atSpot > kSettleIn)) && st.stack >= s.pkBigBlind;
+			const bool ready = st.used && (st.you ? !st.away : (st.step == Seat::Step::kPlaying && st.atSpot > kSettleIn)) && st.stack >= s.pkBigBlind;
 			if (!ready) {
 				continue;
 			}
@@ -658,7 +661,7 @@ namespace fr
 				_pk.timer = 1.0f;
 				int ready = 0;
 				for (const auto& st : _pk.seats) {
-					ready += st.used && (st.you || (st.step == Seat::Step::kPlaying && st.atSpot > kSettleIn)) && st.stack >= s.pkBigBlind;
+					ready += st.used && (st.you ? !st.away : (st.step == Seat::Step::kPlaying && st.atSpot > kSettleIn)) && st.stack >= s.pkBigBlind;
 				}
 				if (ready >= 2) {
 					PkStartHand();
@@ -841,7 +844,7 @@ namespace fr
 			}
 			const float e = 1.0f - (1.0f - c.t) * (1.0f - c.t);
 			c.from = c.from + (c.to - c.from) * e;  // from wherever it is now
-			c.to = kDeck + RE::NiPoint3{ -4.0f, 0.0f, 0.0f };
+			c.to = kMuck;
 			c.t = 0.0f;
 			c.delay = 0.0f;
 			c.faceUp = false;
@@ -980,15 +983,20 @@ namespace fr
 			return;
 		}
 		const auto& s = Settings::Get();
-		const int   caps = PlayerCaps();
-		if (caps < s.pkBigBlind * 2) {
+		// back from being away: your seat and your stack (too short a stack to play: cashed out, a fresh buy-in)
+		if (_pkYou >= 0 && _pk.seats[_pkYou].away && _pk.seats[_pkYou].stack < s.pkBigBlind) {
+			PkCashOut();
+		}
+		const bool back = _pkYou >= 0 && _pk.seats[_pkYou].away;
+		const int  caps = PlayerCaps();
+		if (!back && caps < s.pkBigBlind * 2) {
 			Notify(std::format("Poker: you need at least {} caps to sit in", s.pkBigBlind * 2));
 			return;
 		}
 		// the free seat nearest you
-		int   best = -1;
+		int   best = back ? _pkYou : -1;
 		float bestD = 1e9f;
-		for (int i = 0; i < kPkSeats; ++i) {
+		for (int i = 0; i < kPkSeats && !back; ++i) {
 			if (_pk.seats[i].used) {
 				continue;
 			}
@@ -1004,17 +1012,23 @@ namespace fr
 			Notify("Poker: the table's full");
 			return;
 		}
-		const int buyIn = std::min(caps, s.pkBuyIn);
-		if (!TakeFromPlayer(buyIn)) {
-			return;
+		int buyIn = 0;
+		if (back) {
+			_pk.seats[best].away = false;
+			buyIn = _pk.seats[best].stack;
+		} else {
+			buyIn = std::min(caps, s.pkBuyIn);
+			if (!TakeFromPlayer(buyIn)) {
+				return;
+			}
+			auto& st = _pk.seats[best];
+			st = PkSeat{};
+			st.used = true;
+			st.you = true;
+			st.name = "You";
+			st.stack = buyIn;
+			st.step = Seat::Step::kPlaying;
 		}
-		auto& st = _pk.seats[best];
-		st = PkSeat{};
-		st.used = true;
-		st.you = true;
-		st.name = "You";
-		st.stack = buyIn;
-		st.step = Seat::Step::kPlaying;
 		_pkYou = best;
 		// the camera: as at the roulette table, the free camera held where the tick puts it
 		if (!InFreeCamera()) {
@@ -1046,17 +1060,17 @@ namespace fr
 		_pk.raiseTo = 0;
 		log::info("poker: you sit in at seat {} with {} caps", best, buyIn);
 		const auto key = [](int a_vk) { return Upper(Settings::Key(a_vk)); };
-		PkSay(std::format("YOU SIT IN WITH {}", buyIn));
+		PkSay(back ? std::format("YOU'RE BACK WITH {}", buyIn) : std::format("YOU SIT IN WITH {}", buyIn));
 		(void)key;
 	}
 
-	void Game::PkStandUp()
+	void Game::PkCashOut()
 	{
-		if (!_pkSeated) {
+		// your seat given up (you're up from the table already, or never sat): your stack back in your pocket
+		if (_pkYou < 0 || _pkSeated) {
 			return;
 		}
 		auto& st = _pk.seats[_pkYou];
-		// out of the hand if you're in one; what's in front of you back in your pocket
 		if (_pk.inHand && st.hi >= 0) {
 			if (!_pk.hand.Over()) {
 				_pk.hand.Fold(st.hi);
@@ -1066,11 +1080,36 @@ namespace fr
 			_pk.hand.players[st.hi].stack = 0;
 		}
 		GivePlayer(st.stack);
-		log::info("poker: you leave the table with {} caps", st.stack);
-		Notify(std::format("Poker: you leave the table with {} caps", st.stack));
+		log::info("poker: you cash out with {} caps", st.stack);
+		Notify(std::format("Poker: you cash out with {} caps", st.stack));
 		st = PkSeat{};
 		_pkYou = -1;
+	}
+
+	void Game::PkStandUp(bool a_cashOut)
+	{
+		if (!_pkSeated) {
+			return;
+		}
+		auto& st = _pk.seats[_pkYou];
+		// out of the hand if you're in one (what you put in stays in the pot); your seat and your stack kept for you
+		// while you're away from the table, unless you're cashing out
+		if (_pk.inHand && st.hi >= 0 && !_pk.hand.Over()) {
+			_pk.hand.Fold(st.hi);
+			PkMuck(_pkYou);
+		}
+		st.away = true;
+		st.last.clear();
 		_pkSeated = false;
+		_pk.peeking = false;
+		if (a_cashOut) {
+			PkCashOut();
+		} else {
+			log::info("poker: you step away from the table (seat {} kept)", _pkYou);
+			const int left = _pk.inHand && st.hi >= 0 ? _pk.hand.players[st.hi].stack : st.stack;
+			Notify(std::format("Poker: your seat and {} caps are kept. Activate the table to sit back down ({} there cashes out)", left,
+				Upper(Settings::Key(Settings::Get().keyClear))));
+		}
 		_camPitch = -1.0f;
 		HoldPlayerView();
 		_haveEntryView = false;
@@ -1086,15 +1125,15 @@ namespace fr
 		if (!_pkSeated || _pkYou < 0) {
 			return;
 		}
-		if (a_key == 6) {
-			PkStandUp();
+		if (a_key == 6 || a_key == 8) {
+			PkStandUp(a_key == 8);  // (6: step away, the seat kept; 8: cash out)
 			return;
 		}
 		if (a_key == 7) {
 			// a kit table: back into a kit (between hands)
 			auto table = _pk.table.get();
 			if (table && IsKitTable(table.get()) && !_pk.inHand) {
-				PkStandUp();
+				PkStandUp(true);
 				PackUpPokerTable(table.get());
 			} else if (_pk.inHand) {
 				PkSay("WAIT FOR THE HAND TO END", 2);
@@ -1188,8 +1227,8 @@ namespace fr
 				h.players[hi].stack + h.players[hi].bet);
 		} else {
 			auto table = _pk.table.get();
-			a_h.keys = std::format("ON YOUR TURN: {} FOLD · {} CHECK/CALL · {} RAISE · {} ALL IN    {} LEAVE{}", key(s.keyChip[0]), key(s.keyChip[1]),
-				key(s.keyChip[2]), key(s.keyChip[3]), key(s.keyLeave),
+			a_h.keys = std::format("ON YOUR TURN: {} FOLD · {} CHECK/CALL · {} RAISE · {} ALL IN    {} STEP AWAY · {} CASH OUT{}", key(s.keyChip[0]),
+				key(s.keyChip[1]), key(s.keyChip[2]), key(s.keyChip[3]), key(s.keyLeave), key(s.keyClear),
 				table && IsKitTable(table.get()) ? std::format(" · {} PACK UP", key(s.keyPackUp)) : std::string());
 		}
 		// what's going on, in a line under the board
@@ -1226,7 +1265,7 @@ namespace fr
 		if (!_pk.table) {
 			return;
 		}
-		if (_pkSeated && _pkYou >= 0) {
+		if (_pkYou >= 0) {  // (sitting there, or away with your seat kept)
 			const auto& st = _pk.seats[_pkYou];
 			_pk.lifted = _pk.inHand && st.hi >= 0 ? _pk.hand.players[st.hi].stack : st.stack;
 			GivePlayer(_pk.lifted);

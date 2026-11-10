@@ -33,8 +33,8 @@ namespace fr
 		float activeDistance{ 3000.0f };   // a table this close to you is played at (NPCs come)
 
 		// [Camera]
-		float layoutHeight{ 115.0f };      // the top view over the layout, above the felt
-		float wheelHeight{ 70.0f };        // ...over the wheel
+		float layoutHeight{ 98.0f };      // the top view over the layout, above the felt
+		float wheelHeight{ 60.0f };        // ...over the wheel
 		bool  wheelViewOnSpin{ true };     // the camera goes over the wheel while the ball's going round
 		float cursorSpeed{ 0.07f };        // how far the cursor moves per bit of mouse movement
 

@@ -2,12 +2,12 @@
 
 // The roulette table's geometry, in the table's own space: game units, origin at the middle of its footprint on the
 // floor, X along its length (the wheel at -X), Z up, the players' side at -Y. These come from the model
-// (tools/build_meshes.py scales it by 6.6 about model point (12.005, 3.755, -8.22)); the layout's cells are the ones
+// (tools/build_meshes.py scales it by 5.6 about model point (12.005, 3.755, -8.22)); the layout's cells are the ones
 // tools/make_textures.py draws.
 
 namespace rl::table
 {
-	inline constexpr double kScale = 6.6;
+	inline constexpr double kScale = 5.6;  // (6.6 until 0.4.3: a table as high as the poker table's, 85% the size)
 
 	// the wheel
 	inline constexpr double kWheelX = -79.233;
@@ -48,10 +48,10 @@ namespace rl::table
 
 	// chips
 	inline constexpr double kChipRadius = 0.34 * kScale;
-	inline constexpr double kChipHeight = 0.51;  // the chip set's chips at this size (tools/build_chips.py)
+	inline constexpr double kChipHeight = 0.51 * kScale / 6.6;  // the chip set's chips at this size (tools/build_chips.py)
 
 	// the table's edges (for walking round it)
-	inline constexpr double kHalfLength = 138.2;
+	inline constexpr double kHalfLength = 138.2 * kScale / 6.6;
 	inline constexpr double kPlayersEdgeY = Y(-8.86);
 	inline constexpr double kFarEdgeY = Y(11.29);
 }

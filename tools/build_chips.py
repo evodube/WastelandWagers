@@ -17,7 +17,7 @@ from mathutils import Matrix, Vector
 CHIPS = r"C:\Users\Dan\Desktop\table\work\poker_chip_set_numbers.blend"
 TEMPLATE = r"C:\Users\Dan\Desktop\table\work\PoolTable01.nif"
 OUT = r"C:\Users\Dan\Desktop\table\work\Data"
-DIAMETER = 0.34 * 6.6 * 2  # the table's chips (src/rl/Table.h kChipRadius)
+DIAMETER = 0.34 * 5.6 * 2  # the table's chips (src/rl/Table.h kChipRadius)
 TEX = "textures\\fo4roulette\\"
 
 

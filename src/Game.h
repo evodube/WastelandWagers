@@ -288,6 +288,7 @@ namespace fr
 		{
 			bool                used{ false };
 			bool                you{ false };
+			bool                away{ false };  // you, up from the table with your seat kept
 			RE::ObjectRefHandle actor;
 			RE::TESFormID       id{ 0 };
 			std::string         name;
@@ -351,7 +352,7 @@ namespace fr
 		};
 		PokerState        _pk;
 		std::atomic<bool> _pkSeated{ false };
-		int               _pkYou{ -1 };       // your seat
+		int               _pkYou{ -1 };       // your seat (sitting there, or away with it kept)
 		float             _camPitch{ -1.0f };  // the view's pitch at a poker table (below 0: straight down, the roulette layout)
 		double            _pkCurX{ 0.0 }, _pkCurY{ 0.0 };  // your mouse pointer on the poker felt (table space; under _camMutex)
 
@@ -376,7 +377,8 @@ namespace fr
 		void         PkSay(const std::string& a_text, int a_tone = 0);
 		void         PkSitDown(RE::TESObjectREFR* a_table);
 		void         PkIdle(int a_seat, int a_kind);  // a settler's idle: 0 looking on, 1 thinking, 2 chips in, 3 won, 4 folded or lost
-		void         PkStandUp();
+		void         PkStandUp(bool a_cashOut = false);  // up from the table: your seat kept (or cashed out)
+		void         PkCashOut();                        // away from it: your seat given up, your stack back to you
 		void         PkKey(int a_key);  // 0 fold, 1 check/call, 2 raise, 3 all in, 4 raise up, 5 raise down, 6 leave, 7 pack up
 		void         PkHud(HudState& a_h) const;
 		void         PkBeforeSave();
