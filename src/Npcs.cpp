@@ -165,6 +165,9 @@ namespace fr
 
 	void Game::FindBettor(const Frame& a_frame)
 	{
+		if (const auto* you = RE::PlayerCharacter::GetSingleton(); you && you->IsInCombat()) {
+			return;  // (nobody sits down in a fight)
+		}
 		const auto& s = Settings::Get();
 		if (!s.bettors || static_cast<int>(_t.seats.size()) >= s.maxBettors || _t.phase != Phase::kBetting) {
 			return;
@@ -259,7 +262,9 @@ namespace fr
 		for (auto& seat : _t.seats) {
 			auto  ref = seat.actor.get();
 			auto* actor = ref ? ref->As<RE::Actor>() : nullptr;
-			if (!Usable(actor) || actor->IsInCombat()) {
+			// (a fight: everyone up. Held, their AI is off and they'd not notice it themselves)
+			const auto* you = RE::PlayerCharacter::GetSingleton();
+			if (!Usable(actor) || actor->IsInCombat() || (you && you->IsInCombat())) {
 				seat.step = Seat::Step::kLeaving;
 				continue;
 			}

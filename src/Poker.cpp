@@ -600,6 +600,9 @@ namespace fr
 
 	void Game::PkFindPlayer(const Frame& a_frame)
 	{
+		if (const auto* you = RE::PlayerCharacter::GetSingleton(); you && you->IsInCombat()) {
+			return;  // (nobody sits down in a fight)
+		}
 		const auto& s = Settings::Get();
 		int         npcs = 0;
 		for (const auto& st : _pk.seats) {
@@ -786,7 +789,9 @@ namespace fr
 			}
 			auto  ref = st.actor.get();
 			auto* actor = ref ? ref->As<RE::Actor>() : nullptr;
-			if (!Usable(actor) || actor->IsInCombat()) {
+			// (a fight: everyone up. Held, their AI is off and they'd not notice it themselves)
+			const auto* you = RE::PlayerCharacter::GetSingleton();
+			if (!Usable(actor) || actor->IsInCombat() || (you && you->IsInCombat())) {
 				PkRelease(i, "gone");
 				continue;
 			}
