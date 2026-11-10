@@ -150,7 +150,8 @@ namespace fr
 			RE::NiPoint3 e, n;
 			Stadium(kHolders[a_seat].first, kHolders[a_seat].second, kFeltR, kFeltC, e, n);
 			const RE::NiPoint3 side{ n.y, -n.x, 0.0f };
-			const RE::NiPoint3 base = e - n * 5.0f - side * (kCardW + 4.5f);
+			// (beside their cards, 2 clear of them)
+			const RE::NiPoint3 base = e - n * 5.0f - side * (kCardW + 0.4f + 2.0f + kChipR * 2.2f);
 			const float        a = kChipR * 1.2f;  // (clear of each other)
 			float in = 0.0f;  // (how far all four are moved in)
 			auto  spot = [&](int d) { return base - n * in + n * (d >= 2 ? -a : a) + side * (d == 1 || d == 3 ? a : -a); };
@@ -257,7 +258,8 @@ namespace fr
 			if (auto ref = a_handle.get()) {
 				if (auto* root = ref->Get3D()) {
 					if (auto* fade = root->IsFadeNode()) {
-						fade->currentFade = 1.0f;
+						fade->currentFade = 1.0f;  // (no fading in as it's made, nor out with distance)
+						fade->currentDecalFade = 1.0f;
 					}
 				}
 			}
@@ -394,6 +396,14 @@ namespace fr
 				}
 			}
 		}
+		for (auto& v : _pk.landed) {
+			for (auto& h : v) {
+				Remove(h);
+			}
+		}
+		for (auto& m : _pk.moves) {
+			Remove(m.ref);
+		}
 		for (auto& h : _pk.chairs) {
 			Remove(h);
 		}
@@ -427,16 +437,13 @@ namespace fr
 		_pk.boardShown = 0;
 		_pk.peeking = false;
 		if (a_cards) {
+			// (chips still on their way onto someone's stacks keep going: theirs. Only those that were to go are gone)
 			for (auto& m : _pk.moves) {
-				Remove(m.ref);
-			}
-			_pk.moves.clear();
-			for (auto& v : _pk.landed) {
-				for (auto& h : v) {
-					Remove(h);
+				if (m.remove) {
+					Remove(m.ref);
 				}
-				v.clear();
 			}
+			std::erase_if(_pk.moves, [](const PkChipMove& a_m) { return a_m.remove || !a_m.ref.get(); });
 		}
 	}
 
