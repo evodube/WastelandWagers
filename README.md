@@ -73,7 +73,8 @@ line bet). Every table shows the matching wheel and layout; a table in play swit
 ### Settings
 
 Every setting is in `Data\F4SE\Plugins\fo4roulette.ini` and on the Real Roulette pages in the F4SE Menu Framework
-menu (Table, Camera, NPCs, HUD & sound, Keys).
+menu (Table, Camera, NPCs, HUD & sound, Keys). What you change in the menu goes to `fo4roulette_user.ini` beside it,
+read first, so updating the mod doesn't put your settings back.
 
 `Documents\My Games\Fallout4\F4SE\fo4roulette.log` records what happened: tables, spins (and how many throws it took
 to land on the drawn number), the bettors' walks.

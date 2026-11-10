@@ -7,11 +7,18 @@ namespace fr
 	namespace
 	{
 		constexpr auto kIniPath = L"Data\\F4SE\\Plugins\\fo4roulette.ini";
+		// what you've changed in the settings menu: its own file, not in the mod's download, so a new version (which
+		// brings its fo4roulette.ini with it) doesn't put your settings back to the defaults
+		constexpr auto kUserIniPath = L"Data\\F4SE\\Plugins\\fo4roulette_user.ini";
 
 		std::wstring ReadString(const wchar_t* a_section, const wchar_t* a_key, const std::wstring& a_default)
 		{
 			wchar_t buf[512]{};
-			::GetPrivateProfileStringW(a_section, a_key, a_default.c_str(), buf, static_cast<DWORD>(std::size(buf)), kIniPath);
+			constexpr auto kNone = L"\x01";
+			::GetPrivateProfileStringW(a_section, a_key, kNone, buf, static_cast<DWORD>(std::size(buf)), kUserIniPath);
+			if (std::wstring_view(buf) == kNone) {
+				::GetPrivateProfileStringW(a_section, a_key, a_default.c_str(), buf, static_cast<DWORD>(std::size(buf)), kIniPath);
+			}
 			std::wstring value = buf;
 			for (std::size_t i = 0; i < value.size(); ++i) {
 				if (value[i] == L';' && (i == 0 || value[i - 1] == L' ' || value[i - 1] == L'\t')) {

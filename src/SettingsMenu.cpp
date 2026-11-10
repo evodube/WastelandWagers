@@ -14,7 +14,8 @@ namespace fr::SettingsMenu
 	{
 		using namespace ImGuiMCP;
 
-		constexpr auto kIniPath = L"Data\\F4SE\\Plugins\\fo4roulette.ini";
+		// (what you change here goes to its own file, read before fo4roulette.ini: a new version's INI doesn't undo it)
+		constexpr auto kIniPath = L"Data\\F4SE\\Plugins\\fo4roulette_user.ini";
 
 		enum class Kind
 		{
@@ -377,7 +378,7 @@ namespace fr::SettingsMenu
 				}
 			}
 			(void)rackNote;
-			TextDisabled("Saved to Data\\F4SE\\Plugins\\fo4roulette.ini as you change them.");
+			TextDisabled("Saved to Data\\F4SE\\Plugins\\fo4roulette_user.ini as you change them (kept over updates).");
 		}
 
 		template <std::size_t... I>
