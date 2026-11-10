@@ -1142,8 +1142,7 @@ namespace fr
 				continue;
 			}
 			// where it is, back in table space
-			const auto d = ref->data.location - frame.origin;
-			const auto local = frame.rot * d;
+			const auto local = frame.rot * ((ref->data.location - frame.origin) * (1.0f / frame.scale));
 			PkChipMove m;
 			m.ref = h;
 			m.from = { local.x, local.y, local.z - kFeltZ };
