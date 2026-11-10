@@ -136,6 +136,15 @@ namespace fr
 
 		// where a player's stack of one colour stands: four in a square by their cards, the hundreds and twenty-fives
 		// further in, the fives and ones nearer them
+		// how far a point (table space) is inside the felt's edge
+		float InsideFelt(const RE::NiPoint3& a_p)
+		{
+			if (std::abs(a_p.y) <= kFeltC) {
+				return kFeltR - std::abs(a_p.x);
+			}
+			return kFeltR - std::hypot(a_p.x, std::abs(a_p.y) - kFeltC);
+		}
+
 		RE::NiPoint3 ColumnSpot(int a_seat, int a_d)
 		{
 			RE::NiPoint3 e, n;
@@ -143,7 +152,22 @@ namespace fr
 			const RE::NiPoint3 side{ n.y, -n.x, 0.0f };
 			const RE::NiPoint3 base = e - n * 5.0f - side * (kCardW + 4.5f);
 			const float        a = kChipR * 1.2f;  // (clear of each other)
-			const RE::NiPoint3 p = base + n * (a_d >= 2 ? -a : a) + side * (a_d == 1 || a_d == 3 ? a : -a);
+			float in = 0.0f;  // (how far all four are moved in)
+			auto  spot = [&](int d) { return base - n * in + n * (d >= 2 ? -a : a) + side * (d == 1 || d == 3 ? a : -a); };
+			// all four moved in together, as far as it takes for every chip to be clear of the edge (round the ends,
+			// where the felt curves away, it does)
+			const float need = kChipR + 0.8f;
+			for (int tries = 0; tries < 12; ++tries) {
+				float least = 1e9f;
+				for (int d = 0; d < 4; ++d) {
+					least = std::min(least, InsideFelt(spot(d)));
+				}
+				if (least >= need) {
+					break;
+				}
+				in += need - least + 0.2f;
+			}
+			const RE::NiPoint3 p = spot(a_d);
 			return { p.x, p.y, kFeltZ };
 		}
 

@@ -400,8 +400,8 @@ namespace fr::Hud
 			return w;
 		}
 		float PokerStatusH(const Game::HudState& a_st) { return 100.0f + kPkRow * static_cast<float>(a_st.pkRows.size()); }
-		float PokerBoardW() { return 300.0f; }
-		float PokerBoardH() { return 96.0f; }
+		float PokerBoardW() { return 130.0f; }
+		float PokerBoardH() { return 58.0f; }
 		float PokerHoleW() { return 300.0f; }
 		float PokerHoleH() { return 40.0f; }
 		float PokerLogH(const Game::HudState& a_st) { return a_st.log.empty() ? 0.0f : 22.0f * static_cast<float>(a_st.log.size()) + 20.0f; }
@@ -477,13 +477,9 @@ namespace fr::Hud
 			const float w = PokerBoardW(), x = a_v.w - kPkMargin - w, y = kPkMargin;
 			Chamfer(a_v, x, y, w, PokerBoardH(), 12.0f, kPanel, kEdge);
 			const float mid = x + w * 0.5f;
-			Print(a_v, Mono(), "POT", mid, y + 12, 12, kDim, 0, 2.0f, Align::kCentre);
-			Print(a_v, Title(), Commas(a_st.pkPot), mid, y + 28, 30, a_st.pkPot > 0 ? kBright : kDim, a_st.pkPot > 0 ? kGlow : 0, 2.0f, Align::kCentre);
-			if (!a_st.pkHelp.empty()) {
-				// (shrunk to fit the panel when it's long)
-				const float size = std::min(11.0f, 11.0f * (w - 24.0f) / std::max(1.0f, TextWidth(Mono(), a_st.pkHelp, 11, 1.0f)));
-				Print(a_v, Mono(), a_st.pkHelp, mid, y + 74, size, kText, 0, 1.0f, Align::kCentre);
-			}
+			// just the pot: the word, the number under it
+			Print(a_v, Mono(), "POT", mid, y + 8, 11, kDim, 0, 2.0f, Align::kCentre);
+			Print(a_v, Title(), Commas(a_st.pkPot), mid, y + 23, 24, a_st.pkPot > 0 ? kBright : kDim, a_st.pkPot > 0 ? kGlow : 0, 1.5f, Align::kCentre);
 		}
 
 		// your hand's name and your turn, top middle
