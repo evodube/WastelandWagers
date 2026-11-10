@@ -34,6 +34,10 @@ namespace fr
 		constexpr float kChipH = static_cast<float>(rl::table::kChipHeight);
 		constexpr float kChipR = static_cast<float>(rl::table::kChipRadius);
 		constexpr int   kMaxStack = 8;
+		// chips sit a hair off the felt and off each other: face on face (exactly the felt's height, exactly a chip's
+		// thickness apart), the two surfaces fight over which is drawn and the chips flicker
+		constexpr float kLift = 0.08f;
+		constexpr float kStep = kChipH * 1.04f;
 		constexpr float kArrived = 30.0f;
 		constexpr float kSnap = 12.0f;
 		constexpr float kPersonalSpace = 50.0f;
@@ -62,9 +66,10 @@ namespace fr
 		} };
 
 		// from the dealer's side (+X, the chip tray) in: the deck, the board, then the pot
-		const RE::NiPoint3 kDeck{ 15.0f, 0.0f, kFeltZ };  // where cards come from (by the tray)
-		const RE::NiPoint3 kMuck{ 15.0f, 13.0f, kFeltZ }; // where folded hands go
-		const RE::NiPoint3 kPot{ 0.8f, 0.0f, kFeltZ };  // (just under the board, clear of the players' chips)
+		const RE::NiPoint3 kDeck{ 15.5f, -17.0f, kFeltZ };  // where cards come from (by the tray, to one side of the board)
+		const RE::NiPoint3 kMuck{ 15.5f, 17.0f, kFeltZ };   // where folded hands go (the other side)
+		const RE::NiPoint3 kPot{ 8.0f, -21.5f, kFeltZ };    // the pot: beside the board, by the dealer (not in front of the
+		                                                   // board, where it hid the cards from the players)
 
 		// the stadium of half-width a_r with straight sides to +-a_c: the nearest point on its edge to (x, y), and the
 		// outward normal there
@@ -176,10 +181,14 @@ namespace fr
 		// beside it)
 		RE::NiPoint3 PotSpot(int a_d, int a_n)
 		{
+			// four stacks in a square (ones and fives nearer the board, twenty-fives and hundreds further off); a stack
+			// past 16 starts another, further from the board
 			constexpr int kPotStack = 16;
 			const float   gap = kChipR * 2.3f;
 			const int     col = a_n / kPotStack, row = a_n % kPotStack;
-			return { kPot.x - static_cast<float>(col) * gap, kPot.y + (static_cast<float>(a_d) - 1.5f) * gap, 0.02f + static_cast<float>(row) * kChipH };
+			const float   x = kPot.x + (a_d % 2 == 0 ? -0.5f : 0.5f) * gap;
+			const float   y = kPot.y + (a_d < 2 ? 0.5f : -0.5f) * gap - static_cast<float>(col) * gap * 2.0f;
+			return { x, y, kLift + static_cast<float>(row) * kStep };
 		}
 
 		int ChipIndex(const RE::TESObjectREFR* a_ref)
@@ -246,7 +255,7 @@ namespace fr
 
 		RE::NiPoint3 BoardSpot(int a_k)
 		{
-			return { 7.0f, (static_cast<float>(a_k) - 2.0f) * 5.0f, kFeltZ };
+			return { 10.5f, (static_cast<float>(a_k) - 2.0f) * 5.0f, kFeltZ };  // (by the chip tray)
 		}
 
 		float Distance2D(const RE::NiPoint3& a, const RE::NiPoint3& b) { return std::hypot(a.x - b.x, a.y - b.y); }
@@ -1434,7 +1443,7 @@ namespace fr
 			PkChipMove m;
 			m.ref = h;
 			m.from = { local.x, local.y, local.z - kFeltZ };
-			m.to = { to.x, to.y, 0.02f + static_cast<float>(on[d]++) * kChipH };
+			m.to = { to.x, to.y, kLift + static_cast<float>(on[d]++) * kStep };
 			m.delay = a_delay + 0.025f * static_cast<float>(k);
 			m.dur = 0.55f;
 			m.yaw = ref->data.angle.z;
@@ -1547,7 +1556,7 @@ namespace fr
 			}
 			const auto spot = ColumnSpot(a_seat, a_d);
 			col.push_back(Spawn(Forms::Chip(a_d),
-				ToWorld(a_frame, spot.x + slop(_rng), spot.y + slop(_rng), kFeltZ + 0.02f + static_cast<float>(col.size()) * kChipH),
+				ToWorld(a_frame, spot.x + slop(_rng), spot.y + slop(_rng), kFeltZ + kLift + static_cast<float>(col.size()) * kStep),
 				a_frame.yaw + spin(_rng)));
 		};
 		auto remake = [&](int a_seat, int a_have) {
@@ -1688,7 +1697,7 @@ namespace fr
                 const float l = std::max(1.0f, std::hypot(b.x, b.y));
                 const float in = static_cast<float>(col) * kChipR * 2.3f;
                 return RE::NiPoint3{ b.x - b.x / l * in + slop(_rng) * 2.0f, b.y - b.y / l * in + slop(_rng) * 2.0f,
-                    0.02f + static_cast<float>(row) * kChipH };
+                    kLift + static_cast<float>(row) * kStep };
 			};
 			if (bet == _pk.betShown[i]) {
 				for (auto& h : paid[i]) {
@@ -1733,7 +1742,7 @@ namespace fr
 			for (int d = 0; d < 4; ++d) {
 				for (int c = 0; c < left[d]; ++c) {
 					const auto  spot = ColumnSpot(i, d);
-					const float z = 0.02f + static_cast<float>(_pk.stackChips[i][d].size()) * kChipH;
+					const float z = kLift + static_cast<float>(_pk.stackChips[i][d].size()) * kStep;
 					out.emplace_back(Spawn(Forms::Chip(d), ToWorld(a_frame, spot.x, spot.y, kFeltZ + z), a_frame.yaw + spin(_rng)),
 						RE::NiPoint3{ spot.x, spot.y, z });
 				}
