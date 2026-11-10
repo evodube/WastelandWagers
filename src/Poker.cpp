@@ -418,8 +418,17 @@ namespace fr
 			const auto& cs = Settings::Get();
 			// a push in for the river or an all in (in over a moment, held, back out); at the showdown, a drift
 			// towards the winner
-			const float pa = _pk.pushAge;
-			const float push = pa < 0.5f ? pa / 0.5f : pa < 2.2f ? 1.0f : pa < 3.0f ? 1.0f - (pa - 2.2f) / 0.8f : 0.0f;
+			// (in once the river's out or someone's all in, and held there through the showdown until the hand's
+			// cleared away: no going in and out)
+			bool allIn = false;
+			if (_pk.inHand) {
+				for (const auto& p : _pk.hand.players) {
+					allIn |= p.allIn && !p.folded;
+				}
+			}
+			const bool  pushIn = _pk.inHand && (_pk.boardShown >= 5 || allIn || _pk.phase == PkPhase::kShowdown);
+			_pk.pushLevel += ((pushIn ? 1.0f : 0.0f) - _pk.pushLevel) * std::min(1.0f, a_dt * (pushIn ? 2.2f : 1.2f));
+			const float push = std::clamp(_pk.pushLevel, 0.0f, 1.0f);
 			const float pe = push * push * (3.0f - 2.0f * push);
 			const float back = cs.pkSeatBack * (1.0f - 0.25f * pe), up = cs.pkSeatHeight * (1.0f - 0.15f * pe);
 			{
@@ -952,7 +961,7 @@ namespace fr
 					double eq = 0.0;
 					_pk.pending = pk::Decide(_pk.hand, hi, _rng, &eq);
 					const double sure = pk::Confidence(_pk.hand, hi, _pk.pending, eq);
-					_pk.think = s.pkThink * static_cast<float>(0.5 + (1.0 - sure) * 2.2) * std::uniform_real_distribution<float>(0.8f, 1.25f)(_rng);
+					_pk.think = s.pkThink * static_cast<float>(1.3 + (1.0 - sure) * 3.2) * std::uniform_real_distribution<float>(0.85f, 1.2f)(_rng);
 					_pk.thinkTotal = std::max(0.1f, _pk.think);
 					if (_pk.think > 1.8f) {
 						PkIdle(seat, 1);  // a long think: they look it over

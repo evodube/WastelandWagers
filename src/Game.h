@@ -395,6 +395,7 @@ namespace fr
 			std::vector<PkChipMove>                                moves;
 			float                                                  potHold{ 0.0f };
 			float                                                  pushAge{ 99.0f };  // the camera's push in: seconds since
+			float                                                  pushLevel{ 0.0f }; // ...and how far in it is now (0..1)
 			float                                                  driftYaw{ 0.0f };  // the view turned towards the winner
 			float                                                  thinkTotal{ 1.0f };
 			float                                                  seatedAge{ 99.0f };

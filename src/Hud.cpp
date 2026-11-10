@@ -387,14 +387,14 @@ namespace fr::Hud
 		// the poker HUD's pieces, sized first so they can be laid out without overlapping (and the whole HUD shrunk when
 		// the screen, or the HUD scale, leaves too little room)
 		constexpr float kPkMargin = 20.0f;
-		constexpr float kPkRow = 32.0f;
+		constexpr float kPkRow = 46.0f;
 		constexpr float kPkBottom = 66.0f;  // the button row's room along the bottom
 		constexpr float kPkSideW = 170.0f;  // the column of buttons on the right
 		constexpr float kPkSideH = 5 * 34.0f;
 
 		float PokerStatusW(const Game::HudState& a_st)
 		{
-			float w = 280.0f;
+			float w = 320.0f;
 			w = std::max(w, TextWidth(Mono(), a_st.pkInfo, 12, 1.0f) + 36.0f);
 			w = std::max(w, TextWidth(Mono(), "POKER · NO LIMIT HOLD'EM", 13, 2.0f) + 36.0f);
 			return w;
@@ -414,28 +414,58 @@ namespace fr::Hud
 			Print(a_v, Title(), Commas(a_st.caps), x + 18, y + 28, 30, kBright, kGlow, 2.0f);
 			Print(a_v, Mono(), "CAPS", x + 22 + TextWidth(Title(), Commas(a_st.caps), 30, 2.0f), y + 44, 12, kDim, 0, 2.0f);
 			Print(a_v, Mono(), a_st.pkInfo, x + 18, y + 72, 12, kText, 0, 1.0f);
-			const float stackX = x + w - 18.0f;  // the stacks' right edge
-			float       row = y + 96;
+			// the players: a disc with their initial (a ring round it running down while they think), their name, what they
+			// did as a tag, their caps and their bet
+			const float stackX = x + w - 16.0f;
+			float       row = y + 100;
 			for (const auto& r : a_st.pkRows) {
+				const float a = r.folded ? 0.45f : 1.0f;
+				DL::AddLine(a_v.dl, a_v.P(x + 14, row - 4), a_v.P(x + w - 14, row - 4), Rgba(80, 200, 100, 0.15f), std::max(1.0f, a_v.s));
 				if (r.toAct) {
-					Chamfer(a_v, x + 8, row - 3, w - 16, kPkRow - 3, 6.0f, Rgba(60, 200, 90, 0.18f), kEdge);
+					Chamfer(a_v, x + 8, row - 2, w - 16, kPkRow - 6, 6.0f, Rgba(40, 160, 70, 0.16f), Rgba(120, 255, 140, 0.45f));
 				}
-				const ImU32 col = r.folded ? kOff : r.you ? kBright : kText;
+				const ImU32 col = Fade(r.you ? kBright : kText, a);
+				// the disc
+				const float cx = x + 30, cy = row + 19, rad = 14.0f;
+				DL::AddCircleFilled(a_v.dl, a_v.P(cx, cy), rad * a_v.s, Fade(r.you ? Rgba(30, 90, 40) : Rgba(14, 44, 20), a), 32);
+				DL::AddCircle(a_v.dl, a_v.P(cx, cy), rad * a_v.s, Fade(kEdge, a), 32, std::max(1.0f, 1.2f * a_v.s));
+				const std::string initial = r.name.empty() ? std::string("?") : r.name.substr(0, 1);
+				PrintInkCentred(a_v, Title(), initial, cx, cy, 15, col);
+				if (r.think >= 0.0f || r.toAct) {
+					// a ring: the time left to think, or (your turn) a full one
+					const float  f = r.think >= 0.0f ? r.think : 1.0f;
+					const int    n = 40;
+					std::array<ImVec2, 41> pts{};
+					int          k = 0;
+					for (int i = 0; i <= n; ++i) {
+						const float ang = -1.5708f + 6.2832f * f * static_cast<float>(i) / n;
+						pts[k++] = a_v.P(cx + std::cos(ang) * (rad + 4.0f), cy + std::sin(ang) * (rad + 4.0f));
+					}
+					DL::AddPolyline(a_v.dl, pts.data(), k, kBright, 0, std::max(1.5f, 2.5f * a_v.s));
+				}
 				if (r.dealer) {
-					DL::AddCircleFilled(a_v.dl, a_v.P(x + 24, row + 11), 8.0f * a_v.s, Rgba(236, 232, 222), 20);
-					Print(a_v, Mono(), "D", x + 24, row + 4, 11, Rgba(20, 20, 20), 0, 0.0f, Align::kCentre);
+					DL::AddCircleFilled(a_v.dl, a_v.P(cx + 11, cy + 11), 7.0f * a_v.s, Rgba(236, 232, 222), 20);
+					PrintInkCentred(a_v, Mono(), "D", cx + 11, cy + 11, 9, Rgba(20, 20, 20));
 				}
-				Print(a_v, Mono(), r.name, x + 40, row, 13, col, 0, 1.0f);
-				Print(a_v, Mono(), r.status, x + 40, row + 15, 10, r.toAct ? kBright : kDim, 0, 1.0f);
-				if (r.think >= 0.0f) {
-					// how long they've got left to think, running down
-					const float bx = x + 40, bw = 120.0f, by = row + kPkRow - 9.0f;
-					DL::AddRectFilled(a_v.dl, a_v.P(bx, by), a_v.P(bx + bw, by + 3.0f), Rgba(80, 200, 100, 0.25f), 0.0f, 0);
-					DL::AddRectFilled(a_v.dl, a_v.P(bx, by), a_v.P(bx + bw * r.think, by + 3.0f), kBright, 0.0f, 0);
+				// the name, and what they did as a tag under it
+				Print(a_v, Mono(), r.name, x + 56, row + 4, 14, col, 0, 1.0f);
+				if (!r.status.empty()) {
+					const bool  allIn = r.status.starts_with("ALL IN");
+					const bool  thinking = r.status == "THINKING";
+					const ImU32 tagFill = allIn ? Rgba(120, 40, 20, 0.85f) : thinking ? Rgba(30, 110, 50, 0.85f) : Rgba(14, 44, 20, 0.85f);
+					const ImU32 tagText = allIn ? Rgba(255, 190, 150) : thinking ? kBright : kDim;
+					const float tw = TextWidth(Mono(), r.status, 10, 1.0f) + 12.0f;
+					DL::AddRectFilled(a_v.dl, a_v.P(x + 56, row + 22), a_v.P(x + 56 + tw, row + 36), Fade(tagFill, a), 4.0f * a_v.s, 0);
+					Print(a_v, Mono(), r.status, x + 62, row + 24, 10, Fade(tagText, a), 0, 1.0f);
 				}
-				Print(a_v, Mono(), Commas(r.stack), stackX, row, 13, col, 0, 1.0f, Align::kRight);
+				// the caps, and the bet in front of them (a little chip)
+				Print(a_v, Mono(), Commas(r.stack), stackX, row + 4, 14, col, 0, 1.0f, Align::kRight);
 				if (r.bet > 0) {
-					Print(a_v, Mono(), std::format("BET {}", Commas(r.bet)), stackX, row + 15, 10, kText, 0, 1.0f, Align::kRight);
+					const std::string b = Commas(r.bet);
+					const float       bw = TextWidth(Mono(), b, 11, 1.0f);
+					DL::AddCircleFilled(a_v.dl, a_v.P(stackX - bw - 10, row + 29), 5.0f * a_v.s, Fade(kRedChip, a), 16);
+					DL::AddCircle(a_v.dl, a_v.P(stackX - bw - 10, row + 29), 3.2f * a_v.s, Fade(Rgba(236, 232, 222), a), 16, std::max(1.0f, a_v.s));
+					Print(a_v, Mono(), b, stackX, row + 23, 11, Fade(kBright, a), 0, 1.0f, Align::kRight);
 				}
 				row += kPkRow;
 			}
