@@ -42,6 +42,7 @@ WIDE = 0.9
 HIGH = 1.05
 WHEEL_R = 7.2 * SCALE  # (the bowl reaches 7.1 from the axis; the table round it starts at 7.0 below the felt, 9.4 above)
 BLEND = 2.0 * SCALE
+WOOD_TILE = 48.0  # game units a tile of the walnut (make_poker_table.py's, as on the poker table)
 ORIGIN = Vector((12.005, 3.755, -8.22))   # model units: footprint centre, floor
 BALL_R = 0.16 * SCALE
 TEX = "textures\\fo4roulette\\"
@@ -347,13 +348,33 @@ def add_envmap(path, shape_names):
     return done
 
 
+def box_map(o, tile):
+    """UVs from where each face is (table space, a tile every tile units), projected the way it looks: from above
+    the grain runs along the table's length (X)"""
+    me = o.data
+    uv = me.uv_layers.active or me.uv_layers.new(name="UVMap")
+    for p in me.polygons:
+        n = p.normal
+        ax = max(range(3), key=lambda k: abs(n[k]))
+        for li in p.loop_indices:
+            c = me.vertices[me.loops[li].vertex_index].co
+            if ax == 2:
+                uv.data[li].uv = (c.x / tile, c.y / tile)
+            elif ax == 0:
+                uv.data[li].uv = (c.y / tile, c.z / tile)
+            else:
+                uv.data[li].uv = (c.x / tile, c.z / tile)
+
+
 def main():
     clear()
     tmpl = template_material()
     objs = import_model()
     by = lambda key: [o for o in objs if key in o.name]  # noqa: E731
 
-    m_wood = make_material(tmpl, "Wood", "table_d", "table_n", "table_s")
+    # the wood: the poker table's walnut, tiling (make_poker_table.py), box-mapped (box_map): sharp everywhere, where
+    # the model's own atlas (table_d) spread a little texture over a lot of table
+    m_wood = make_material(tmpl, "Wood", "pokerwood_d", "pokerwood_n", "pokerwood_s")
     m_eu = make_material(tmpl, "WheelEU", "wheel_eu_d", "flat_n", "wheel_s", 1.2)
     m_us = make_material(tmpl, "WheelUS", "wheel_us_d", "flat_n", "wheel_s", 1.2)
     m_metal = make_material(tmpl, "Metal", "metal_d", "flat_n", "metal_s", 1.4)
@@ -380,6 +401,7 @@ def main():
     bsx.pyn_bsxflags.value = "HAVOC | ARTICULATED"
 
     body = join(body_parts, "TableBody", m_wood)
+    box_map(body, WOOD_TILE)
     parent_keep(body, root)
     deco = join(diamonds, "Diamonds", m_metal)
     parent_keep(deco, root)
