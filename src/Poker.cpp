@@ -311,9 +311,21 @@ namespace fr
 			float yaw, pitch;
 			{
 				std::scoped_lock lock(_camMutex);
-				const double k = Settings::Get().cursorSpeed * 0.012;
-				_pkLookYaw = std::clamp(_pkLookYaw + static_cast<float>(_mouseDX * k) + turn * 1.6f * a_dt, -1.4f, 1.4f);
-				_pkLookPitch = std::clamp(_pkLookPitch - static_cast<float>(_mouseDY * k), -0.45f, 0.75f);
+				// the mouse moves the pointer for the buttons; Q and E turn the view
+				float sw, sh;
+				{
+					std::scoped_lock blk(_btnMutex);
+					sw = _scrW;
+					sh = _scrH;
+				}
+				const double k = sh / 1080.0 * Settings::Get().cursorSpeed / 0.07;
+				if (_pkPtrX < 0.0) {
+					_pkPtrX = sw * 0.5;
+					_pkPtrY = sh * 0.75;
+				}
+				_pkPtrX = std::clamp(_pkPtrX + _mouseDX * k, 0.0, static_cast<double>(sw - 1.0f));
+				_pkPtrY = std::clamp(_pkPtrY + _mouseDY * k, 0.0, static_cast<double>(sh - 1.0f));
+				_pkLookYaw = std::clamp(_pkLookYaw + turn * 1.6f * a_dt, -1.4f, 1.4f);
 				_mouseDX = _mouseDY = 0.0;
 				yaw = baseYaw + _pkLookYaw;
 				pitch = basePitch + _pkLookPitch;
@@ -330,8 +342,8 @@ namespace fr
 			}
 			// where the middle of the view meets the felt: on your cards, they're up for you (put back down when you
 			// look away); not at a showdown, when they're up for everyone anyway
-			// (or the right mouse button held, in either view)
-			bool over = focus && (::GetAsyncKeyState(VK_RBUTTON) & 0x8000);
+			// (or the SHOW MY CARDS button, or the right mouse button held, in either view)
+			bool over = _pkShowCards || (focus && (::GetAsyncKeyState(VK_RBUTTON) & 0x8000));
 			if (!over && !_pkTopView && pitch > 0.05f) {
 				const float  reach = 36.0f / std::tan(pitch);
 				const auto   at = eye + RE::NiPoint3{ std::sin(yaw) * reach, std::cos(yaw) * reach, -36.0f };
@@ -1087,6 +1099,8 @@ namespace fr
 			_mouseDX = _mouseDY = 0.0;
 		}
 		_pkTopView = Settings::Get().pkTopDown;
+		_pkShowCards = false;
+		_pkPtrX = _pkPtrY = -1.0;
 		_pkSeated = true;
 		BlockControls(true);
 		QuietNpcs(true);
@@ -1161,6 +1175,10 @@ namespace fr
 		}
 		if (a_key == 9) {
 			_pkTopView = !_pkTopView;  // the view from your seat <-> from above
+			return;
+		}
+		if (a_key == 10) {
+			_pkShowCards = !_pkShowCards;
 			return;
 		}
 		if (a_key == 6 || a_key == 8) {
@@ -1287,6 +1305,21 @@ namespace fr
 			a_h.pkHelp = "YOUR TURN · LOOK DOWN AT YOUR CARDS (OR HOLD RIGHT MOUSE) TO SEE THEM";
 		}
 		a_h.log = _pk.log;
+		{
+			std::scoped_lock lock(_camMutex);
+			a_h.pkPtrX = static_cast<float>(_pkPtrX);
+			a_h.pkPtrY = static_cast<float>(_pkPtrY);
+		}
+		a_h.pkPeek = _pk.peeking || _pkShowCards;
+		a_h.pkTop = _pkTopView;
+		if (auto table = _pk.table.get()) {
+			a_h.pkKit = IsKitTable(table.get());
+		}
+		if (a_h.pkYourTurn) {
+			a_h.pkToCall = h.ToCall(hi);
+			a_h.pkRaiseTo = std::max(_pk.raiseTo, h.MinRaiseTo(hi));
+			a_h.pkAllIn = h.players[hi].stack + h.players[hi].bet;
+		}
 		if (_pk.bannerAge < 5.0f && !_pk.bannerTitle.empty()) {
 			a_h.banner = 2;
 			a_h.bannerTitle = _pk.bannerTitle;
@@ -1343,5 +1376,13 @@ namespace fr
 			_pk.lifted = 0;
 		}
 		// (the cards and chips come back on the next tick, the settlers are held again)
+	}
+
+	void Game::SetPkButtons(std::vector<PkButton> a_buttons, float a_screenW, float a_screenH)
+	{
+		std::scoped_lock lock(_btnMutex);
+		_pkButtons = std::move(a_buttons);
+		_scrW = a_screenW;
+		_scrH = a_screenH;
 	}
 }

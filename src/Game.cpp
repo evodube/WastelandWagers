@@ -67,6 +67,35 @@ namespace fr
 		const std::array<int, 15> keys{ spin, s.keyLeave, s.keyView, s.keyRebet, s.keyClear, s.keyChip[0], s.keyChip[1], s.keyChip[2],
 			s.keyChip[3], s.keyPackUp, VK_LEFT, VK_RIGHT, _activateVk.load(), VK_UP, VK_DOWN };
 		auto* tasks = F4SE::GetTaskInterface();
+		// at the poker table: a left click on one of the buttons
+		{
+			const bool down = focus && poker && (::GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
+			if (down && !_lmbWasDown && tasks) {
+				double px, py;
+				{
+					std::scoped_lock lock(_camMutex);
+					px = _pkPtrX;
+					py = _pkPtrY;
+				}
+				int id = -1;
+				{
+					std::scoped_lock lock(_btnMutex);
+					for (const auto& b : _pkButtons) {
+						if (b.on && px >= b.x0 && px <= b.x1 && py >= b.y0 && py <= b.y1) {
+							id = b.id;
+						}
+					}
+				}
+				if (id >= 0) {
+					tasks->AddTask([this, id]() {
+						if (!IsGamePaused()) {
+							PkKey(id);
+						}
+					});
+				}
+			}
+			_lmbWasDown = down;
+		}
 		for (std::size_t i = 0; i < keys.size(); ++i) {
 			const bool down = focus && keys[i] > 0 && (::GetAsyncKeyState(keys[i]) & 0x8000) != 0;
 			const bool pressed = down && !_keyWasDown[i];
