@@ -589,15 +589,20 @@ namespace fr::Hud
 			return id;
 		}
 
-		// a card on the HUD (40 x 64: a card's 5:8): the table's own face (its back with a_card 52); a_in false:
+		// a card on the HUD (44 x 70: a card's 5:8 with a margin): the table's own face (its back with a_card 52); a_in false:
 		// dimmed; a_mark: outlined
 		void HudCard(const View& a_v, int a_card, float a_x, float a_y, bool a_in = true, bool a_mark = false)
 		{
-			constexpr float cw = 40.0f, ch = 64.0f;
+			constexpr float cw = 44.0f, ch = 70.0f;
 			if (auto tex = CardsTexture()) {
 				const float u = static_cast<float>(a_card % 10) / 10.0f, v = static_cast<float>(a_card / 10) / 6.0f;
-				DL::AddImageRounded(a_v.dl, tex, a_v.P(a_x, a_y), a_v.P(a_x + cw, a_y + ch), { u + 0.002f, v + 0.002f },
-					{ u + 0.1f - 0.002f, v + 1.0f / 6.0f - 0.002f }, a_in ? Rgba(255, 255, 255) : Rgba(255, 255, 255, 0.4f), 4.0f * a_v.s, 0);
+				// (on a card of its own a little bigger: the faces in the atlas are cut close, their corners' numbers at the
+				// very edge)
+				constexpr float m = 3.0f;
+				DL::AddRectFilled(a_v.dl, a_v.P(a_x, a_y), a_v.P(a_x + cw, a_y + ch), a_in ? Rgba(250, 250, 248) : Rgba(250, 250, 248, 0.4f),
+					4.0f * a_v.s, 0);
+				DL::AddImage(a_v.dl, tex, a_v.P(a_x + m, a_y + m), a_v.P(a_x + cw - m, a_y + ch - m), { u + 0.001f, v + 0.001f },
+					{ u + 0.1f - 0.001f, v + 1.0f / 6.0f - 0.001f }, a_in ? Rgba(255, 255, 255) : Rgba(255, 255, 255, 0.4f));
 				DL::AddRect(a_v.dl, a_v.P(a_x, a_y), a_v.P(a_x + cw, a_y + ch), a_in ? Rgba(0, 0, 0, 0.35f) : Rgba(0, 0, 0, 0.15f), 4.0f * a_v.s, 0,
 					std::max(1.0f, a_v.s));
 				if (a_mark) {
@@ -629,7 +634,7 @@ namespace fr::Hud
 			if (a_st.pkHole[0] < 0) {
 				return;
 			}
-			constexpr float cw = 40.0f, ch = 64.0f, gap = 7.0f, pad = 8.0f;
+			constexpr float cw = 44.0f, ch = 70.0f, gap = 7.0f, pad = 8.0f;
 			const float     w = cw * 2.0f + gap + pad * 2.0f, h = ch + pad * 2.0f;
 			const float     x = a_v.w * 0.5f - w * 0.5f, y = a_v.h - kPkBottom - h - 6.0f;
 			Chamfer(a_v, x, y, w, h, 10.0f, kPanel, kEdge);
@@ -644,7 +649,7 @@ namespace fr::Hud
 			if (!a_st.pkDealer || a_st.pkBoard.empty()) {
 				return;
 			}
-			constexpr float cw = 40.0f, ch = 64.0f, gap = 7.0f, pad = 8.0f, split = 22.0f;
+			constexpr float cw = 44.0f, ch = 70.0f, gap = 7.0f, pad = 8.0f, split = 22.0f;
 			// at the showdown: the winning five lifted and outlined (the rest dimmed), the winner's own two beside the board
 			const bool  won = !a_st.pkWinFive.empty();
 			const float boardW = cw * 5.0f + gap * 4.0f;
