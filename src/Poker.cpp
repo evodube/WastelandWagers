@@ -797,8 +797,13 @@ namespace fr
 				}
 				st.last = "THINKING";
 				if (_pk.think <= 0.0f) {
-					_pk.think = s.pkThink * std::uniform_real_distribution<float>(0.8f, 2.4f)(_rng);
-					if (_pk.think > 1.6f) {
+					// what they'll do is settled at once; how long they take over it gives it away a little: an easy
+					// decision is quick, a close call slow (a tell)
+					double eq = 0.0;
+					_pk.pending = pk::Decide(_pk.hand, hi, _rng, &eq);
+					const double sure = pk::Confidence(_pk.hand, hi, _pk.pending, eq);
+					_pk.think = s.pkThink * static_cast<float>(0.5 + (1.0 - sure) * 2.2) * std::uniform_real_distribution<float>(0.8f, 1.25f)(_rng);
+					if (_pk.think > 1.8f) {
 						PkIdle(seat, 1);  // a long think: they look it over
 					}
 				}
@@ -806,8 +811,7 @@ namespace fr
 				if (_pk.think > 0.0f) {
 					return;
 				}
-				const auto action = pk::Decide(_pk.hand, hi, _rng);
-				PkAct(action);
+				PkAct(_pk.pending);
 				_pk.timer = 0.35f;
 				return;
 			}

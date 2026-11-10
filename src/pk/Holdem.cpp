@@ -86,6 +86,7 @@ namespace pk
 		bigBlind = a_big;
 		showdown = false;
 		lastAggressor = -1;
+		preflopRaiser = -1;
 		for (auto& p : players) {
 			p.bet = p.committed = 0;
 			p.folded = p.stack <= 0;  // (no chips: sitting this one out)
@@ -195,6 +196,10 @@ namespace pk
 					}
 					_currentBet = p.bet;
 					lastAggressor = _toAct;
+					++raises;
+					if (street == Street::kPreflop) {
+						preflopRaiser = _toAct;
+					}
 				}
 				break;
 			}
@@ -268,6 +273,7 @@ namespace pk
 
 	void Hand::BeginStreet()
 	{
+		raises = 0;
 		if (CanBet() <= 1) {
 			EndStreet();  // nobody left to bet against: the rest of the board, straight to the showdown
 			return;
@@ -385,22 +391,57 @@ namespace pk
 		}
 	}
 
+	double ChenScore(Card a_a, Card a_b)
+	{
+		const int hi = std::max(Rank(a_a), Rank(a_b)), lo = std::min(Rank(a_a), Rank(a_b));
+		// the high card: ace 10, king 8, queen 7, jack 6, then half its face value
+		static constexpr std::array<double, 13> kHigh{ 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 6, 7, 8, 10 };
+		double s = kHigh[hi];
+		if (hi == lo) {
+			return std::max(5.0, s * 2);  // a pair: double, at least 5
+		}
+		if (Suit(a_a) == Suit(a_b)) {
+			s += 2;
+		}
+		const int gap = hi - lo - 1;
+		s -= gap == 0 ? 0 : gap == 1 ? 1 : gap == 2 ? 2 : gap == 3 ? 4 : 5;
+		if (gap <= 1 && hi < 10) {
+			s += 1;  // connected, below a queen: straights
+		}
+		return std::ceil(s);
+	}
+
+	namespace
+	{
+		// where a seat sits relative to the button among the players dealt in: 0 first to act .. 1 the button
+		double Position(const Hand& a_hand, int a_seat)
+		{
+			const int n = static_cast<int>(a_hand.players.size());
+			int       order = 0, of = 0;
+			for (int k = 1; k <= n; ++k) {
+				const int s = (a_hand.button + k) % n;
+				if (a_hand.players[s].stack + a_hand.players[s].committed <= 0) {
+					continue;
+				}
+				++of;
+				if (s == a_seat) {
+					order = of;
+				}
+			}
+			return of <= 1 ? 1.0 : static_cast<double>(order - 1) / (of - 1);
+		}
+	}
+
 	Action Decide(const Hand& a_hand, int a_seat, std::mt19937& a_rng, double* a_equity)
 	{
 		const auto&                            p = a_hand.players[a_seat];
 		const auto&                            st = p.style;
 		std::uniform_real_distribution<double> u(0.0, 1.0);
 		const int                              opponents = std::max(1, a_hand.Live() - 1);
-		const int                              trials = a_hand.board.empty() ? 250 : 350;
-		const double                           equity = Equity(p.hole, a_hand.board, opponents, trials, a_rng);
-		if (a_equity) {
-			*a_equity = equity;
-		}
-		const int    toCall = a_hand.ToCall(a_seat);
-		const int    pot = a_hand.PotTotal();
-		const double rel = equity * (opponents + 1);  // 1 = an average hand against this many
-		const double odds = toCall > 0 ? static_cast<double>(toCall) / (pot + toCall) : 0.0;
-		const bool   preflop = a_hand.street == Street::kPreflop;
+		const int                              toCall = a_hand.ToCall(a_seat);
+		const int                              pot = a_hand.PotTotal();
+		const bool                             preflop = a_hand.street == Street::kPreflop;
+		const double                           pos = Position(a_hand, a_seat);
 		auto raiseTo = [&](double a_potShare) {
 			const int bet = static_cast<int>(std::round(std::max<double>(a_hand.bigBlind, (pot + toCall) * a_potShare)));
 			const int to = p.bet + toCall + bet;
@@ -410,27 +451,90 @@ namespace pk
 			}
 			return a;
 		};
-		const double strong = 1.75 - 0.45 * st.aggression - (preflop ? 0.0 : 0.1);
-		if (toCall == 0) {
-			if (rel > strong && u(a_rng) < 0.55 + 0.4 * st.aggression) {
-				return raiseTo(0.45 + 0.45 * u(a_rng));  // value
+		const Action check{ toCall == 0 ? Action::Kind::kCheck : Action::Kind::kFold };
+
+		if (preflop) {
+			// before the flop: the starting hand (Chen), where they sit and what's happened so far
+			const double chen = ChenScore(p.hole[0], p.hole[1]);
+			const double loose = st.looseness * 3.0 + pos * 2.5;  // looser players and the late seats play more hands
+			const bool   unraised = a_hand.raises == 0;
+			const bool   foldedTo = unraised && a_hand.Live() == static_cast<int>(a_hand.players.size()) &&
+			                      toCall <= a_hand.bigBlind && pos >= 0.6;  // (nobody's come in: a chance to steal the blinds)
+			if (a_equity) {
+				*a_equity = chen / 20.0;
 			}
-			if (!preflop && u(a_rng) < st.bluffing && opponents <= 2) {
-				return raiseTo(0.4 + 0.3 * u(a_rng));  // a bluff
+			if (chen >= 12 - st.aggression * 2 || (unraised && chen >= 9.5 - loose * 0.5)) {
+				// a strong hand, or a good one nobody's raised yet: raise (three times the big blind, more over a raise)
+				if (a_hand.raises >= 2 && chen < 14) {
+					return toCall <= p.stack / 3 ? Action{ Action::Kind::kCall } : check;
+				}
+				const double size = unraised ? 2.0 + u(a_rng) : 2.2 + u(a_rng) * 0.8;
+				return raiseTo(size * a_hand.bigBlind / std::max(1, pot + toCall) * (unraised ? 1.0 : 1.4));
+			}
+			if (foldedTo && chen >= 7 - loose * 0.6 && u(a_rng) < 0.35 + 0.5 * st.aggression) {
+				return raiseTo(2.5 * a_hand.bigBlind / std::max(1, pot + toCall));  // a steal: raise to take the blinds
+			}
+			// calling: cheap and a playable hand (more of them for loose players, in late seats, and in the big blind)
+			const double price = static_cast<double>(toCall) / std::max(1, a_hand.bigBlind);
+			const double need = 6.5 - loose * 0.7 + std::min(price, 8.0) * 0.6 + (a_hand.raises >= 1 ? 1.5 : 0.0);
+			if (toCall == 0 || chen >= need) {
+				return toCall == 0 ? Action{ Action::Kind::kCheck } : Action{ Action::Kind::kCall };
+			}
+			return check;
+		}
+
+		// after the flop: how often the hand wins against the players still in, the price, who has the betting lead
+		const int    trials = 350;
+		const double equity = Equity(p.hole, a_hand.board, opponents, trials, a_rng);
+		if (a_equity) {
+			*a_equity = equity;
+		}
+		const double rel = equity * (opponents + 1);  // 1 = an average hand against this many
+		const double odds = toCall > 0 ? static_cast<double>(toCall) / (pot + toCall) : 0.0;
+		const double strong = 1.45 - 0.35 * st.aggression;
+		if (toCall == 0) {
+			if (rel > strong && u(a_rng) < 0.6 + 0.35 * st.aggression) {
+				// value: bigger the stronger (a third of the pot up to the whole of it)
+				return raiseTo(std::clamp(0.33 + (rel - strong) * 0.5 + 0.2 * u(a_rng), 0.33, 1.0));
+			}
+			// the continuation bet: they raised before the flop, so they keep betting (now and then, into few players)
+			if (a_hand.street == Street::kFlop && a_hand.preflopRaiser == a_seat && opponents <= 2 && u(a_rng) < 0.45 + 0.35 * st.aggression) {
+				return raiseTo(0.4 + 0.2 * u(a_rng));
+			}
+			if (u(a_rng) < (st.bluffing + 0.08 * st.aggression) * (opponents <= 1 ? 2.0 : 0.8) && pos > 0.5) {
+				return raiseTo(0.4 + 0.25 * u(a_rng));  // a stab at it (a bluff, or a weak made hand), from a late seat
 			}
 			return { Action::Kind::kCheck };
 		}
-		if (rel > strong + 0.35 && u(a_rng) < 0.4 + 0.45 * st.aggression) {
-			return raiseTo(0.6 + 0.5 * u(a_rng));
+		// facing a bet: they believe big bets more (a bigger bet means a stronger hand), tight players most
+		const double betShare = static_cast<double>(toCall) / std::max(1, pot);
+		const double doubt = 1.0 - std::min(0.5, (0.15 + betShare * 0.35) * (1.2 - st.looseness));
+		const double eq = equity * doubt;
+		if (rel * doubt > strong + 0.4 && u(a_rng) < 0.35 + 0.45 * st.aggression) {
+			return raiseTo(0.6 + 0.4 * u(a_rng));  // a raise for value
 		}
-		// calling: the hand's chances against the price, looser players taking worse prices
-		const double need = odds * (1.15 - 0.45 * st.looseness);
-		if (equity >= need) {
+		const double need = odds * (1.25 - 0.35 * st.looseness) + 0.1 * (1.2 - st.looseness);  // (a bet usually means something)
+		if (eq >= need) {
 			return { Action::Kind::kCall };
 		}
-		if (!preflop && u(a_rng) < st.bluffing * 0.5 && toCall * 3 < pot && opponents <= 2) {
-			return raiseTo(0.7);  // a bluff raise
+		if (u(a_rng) < st.bluffing * 0.4 && toCall * 3 < pot && opponents <= 1) {
+			return raiseTo(0.8);  // a bluff raise
 		}
-		return { toCall == 0 ? Action::Kind::kCheck : Action::Kind::kFold };  // (a settler never folds when checking is free)
+		return check;
+	}
+
+	double Confidence(const Hand& a_hand, int a_seat, const Action& a_action, double a_equity)
+	{
+		// an easy fold or a strong hand: quick; a call or a fold that was close: slow
+		const int    toCall = a_hand.ToCall(a_seat);
+		const int    pot = a_hand.PotTotal();
+		const double odds = toCall > 0 ? static_cast<double>(toCall) / (pot + toCall) : 0.0;
+		const double margin = std::abs(a_equity - odds);
+		switch (a_action.kind) {
+		case Action::Kind::kCheck: return toCall == 0 ? 0.7 : 0.5;
+		case Action::Kind::kFold: return std::clamp(margin * 3.0, 0.2, 1.0);
+		case Action::Kind::kCall: return std::clamp(margin * 2.0, 0.0, 0.6);
+		default: return std::clamp(0.4 + a_equity, 0.3, 1.0);
+		}
 	}
 }

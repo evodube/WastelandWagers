@@ -96,6 +96,8 @@ namespace pk
 		int                 smallBlind{ 0 };
 		int                 bigBlind{ 0 };
 		int                 lastAggressor{ -1 };
+		int                 preflopRaiser{ -1 };  // who raised last before the flop (they're the one to bet the flop)
+		int                 raises{ 0 };          // raises this street
 		bool                showdown{ false };  // ended with cards shown (not everyone else folding)
 		std::vector<Pot>    pots;               // after the hand: each pot and who took it
 		std::vector<int>    paid;               // after the hand: what each seat got back
@@ -120,4 +122,10 @@ namespace pk
 	// What a settler does at their turn: from how likely their hand is to win (Monte Carlo against the players still
 	// in), the price, the pot and their style.
 	Action Decide(const Hand& a_hand, int a_seat, std::mt19937& a_rng, double* a_equity = nullptr);
+
+	// how sure a settler is of what they're doing (0 a hard choice .. 1 obvious): how long they take over it
+	double Confidence(const Hand& a_hand, int a_seat, const Action& a_action, double a_equity);
+
+	// a starting hand's strength (Bill Chen's formula: about -1 for 7-2 off suit .. 20 for aces)
+	double ChenScore(Card a_a, Card a_b);
 }
