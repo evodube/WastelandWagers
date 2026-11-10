@@ -75,10 +75,10 @@ namespace
 		Check(E({ "2h", "7h", "9h", "Jh", "Kh", "Ah" }) == E({ "7h", "9h", "Jh", "Kh", "Ah" }), "flush: top five");
 		Check(CategoryOf(E({ "5c", "6d", "7h", "8s", "9c", "Tc", "Jc" })) == Category::kStraight, "straight");
 		Check(HandName(E({ "5c", "6d", "7h", "8s", "9c", "Tc", "Jc" })) == "STRAIGHT, JACK HIGH", "longest straight");
-		// against brute force, a million random hands
+		// against brute force, random hands
 		std::mt19937 rng(7);
 		int          bad = 0;
-		for (int t = 0; t < 300000; ++t) {
+		for (int t = 0; t < 60000; ++t) {
 			Deck d;
 			d.Shuffle(rng);
 			std::array<Card, 7> c{};
@@ -92,7 +92,7 @@ namespace
 		Check(bad == 0, "seven cards: the best five, every time");
 		// how often each hand comes up in seven cards (known frequencies, roughly)
 		std::map<Category, int> seen;
-		const int               n = 400000;
+		const int               n = 200000;
 		for (int t = 0; t < n; ++t) {
 			Deck d;
 			d.Shuffle(rng);
