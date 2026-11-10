@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build and run the wheel, layout and poker tests
+      - name: Build and run the wheel, layout, poker and blackjack tests
         run: |
           g++ -std=c++20 -O2 -Wall -Wextra -Isrc tests/wheel_test.cpp src/rl/Wheel.cpp -o wheel_test
           ./wheel_test
@@ -20,6 +20,8 @@ jobs:
           ./layout_test
           g++ -std=c++20 -O2 -Wall -Wextra -Isrc tests/poker_test.cpp src/pk/Cards.cpp src/pk/Holdem.cpp -o poker_test
           ./poker_test
+          g++ -std=c++20 -O2 -Wall -Wextra -Isrc tests/blackjack_test.cpp src/bj/Blackjack.cpp -o blackjack_test
+          ./blackjack_test
 
   build:
     runs-on: windows-latest
