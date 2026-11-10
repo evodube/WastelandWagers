@@ -50,8 +50,9 @@ their own style: some tight, some loose, some who bluff. The dealer deals the ca
 the bets and into the pot, and the board comes out street by street. There's no dealer to wait for: the table
 deals itself as soon as you and at least one settler are seated.
 
+- Your cards are dealt face down: look down at them (mouse) to see them. The mouse looks about, **Q / E** turn.
 - **1** fold, **2** check / call, **3** raise (**Up / Down** change the raise by a big blind), **4** all in.
-- **X** gets up (folding a hand you're in). **P** packs a kit table up between hands.
+- **X** steps away (your seat and chips kept), **C** cashes out. **P** packs a kit table up between hands.
 - Blinds, buy-ins, how many settlers play and how long they think are on the Poker settings page.
 
 Winning bets are paid at the usual odds (35 to 1 down to even money). The result is drawn fairly first, and the ball

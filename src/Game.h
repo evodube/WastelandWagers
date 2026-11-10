@@ -347,14 +347,15 @@ namespace fr
 			std::string                                            bannerSub;
 			float                                                  bannerAge{ 99.0f };
 			int                                                    lifted{ 0 };  // your stack, back in your pocket over a save
-			RE::ObjectRefHandle                                    pointer;      // the chip under your mouse
-			bool                                                   peeking{ false };  // the pointer's on your cards: they're turned up
+			bool                                                   peeking{ false };  // you're looking at your cards: they're turned up
 		};
 		PokerState        _pk;
 		std::atomic<bool> _pkSeated{ false };
 		int               _pkYou{ -1 };       // your seat (sitting there, or away with it kept)
 		float             _camPitch{ -1.0f };  // the view's pitch at a poker table (below 0: straight down, the roulette layout)
-		double            _pkCurX{ 0.0 }, _pkCurY{ 0.0 };  // your mouse pointer on the poker felt (table space; under _camMutex)
+		float             _pkLookYaw{ 0.0f }, _pkLookPitch{ 0.0f };  // looking about from your poker seat (under _camMutex)
+		bool              _pkMenusHeld{ false };
+		RE::BSTSmartPointer<RE::BSInputEnableLayer> _pkMenuLayer;
 
 		bool         PkFrame(Frame& a_out) const;
 		RE::NiPoint3 PkStand(const Frame& a_frame, int a_seat, float& a_heading) const;  // where someone at a seat stands
@@ -377,6 +378,7 @@ namespace fr
 		void         PkSay(const std::string& a_text, int a_tone = 0);
 		void         PkSitDown(RE::TESObjectREFR* a_table);
 		void         PkIdle(int a_seat, int a_kind);  // a settler's idle: 0 looking on, 1 thinking, 2 chips in, 3 won, 4 folded or lost
+		void         PkHoldMenuKeys(bool a_hold);
 		void         PkStandUp(bool a_cashOut = false);  // up from the table: your seat kept (or cashed out)
 		void         PkCashOut();                        // away from it: your seat given up, your stack back to you
 		void         PkKey(int a_key);  // 0 fold, 1 check/call, 2 raise, 3 all in, 4 raise up, 5 raise down, 6 leave, 7 pack up

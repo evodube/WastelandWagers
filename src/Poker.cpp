@@ -245,7 +245,6 @@ namespace fr
 			}
 		}
 		PkClearTable();
-		Remove(_pk.pointer);
 		log::info("poker table no longer in play: {}", a_why);
 		_pk = PokerState{};
 	}
@@ -298,34 +297,39 @@ namespace fr
 		PkTickCards(frame, a_dt);
 		PkMakeChips(frame);
 		if (_pkSeated && _pkYou >= 0) {
-			// the view from your seat: from behind it, over the table, looking at the middle of the felt
+			// the view from your seat: from just behind your cards, straight across the table. The mouse looks about
+			// (Q and E turn too); looking down at your cards turns them up for you
 			const auto  n = SeatNormal(_pkYou);
-			const auto  eye = ToWorld(frame, kHolders[_pkYou].first + n.x * 30.0f, kHolders[_pkYou].second + n.y * 30.0f, kFeltZ + 42.0f);
-			const auto  look = ToWorld(frame, -2.0f, 0.0f, kFeltZ);
-			const auto  d = look - eye;
-			double      cx, cy;
+			const auto  a = HoleSpot(_pkYou, 0), b = HoleSpot(_pkYou, 1);
+			const auto  mid = (a + b) * 0.5f;
+			const float baseYaw = HeadingOf(frame, -n.x, -n.y);
+			const auto  eye = ToWorld(frame, mid.x + n.x * 22.0f, mid.y + n.y * 22.0f, kFeltZ + 36.0f);
+			const float basePitch = std::atan2(36.0f, 22.0f + 34.0f);  // (down onto the felt 34 in front of your cards)
+			const bool  focus = util::GameHasFocus();
+			const int   turn = (focus && (::GetAsyncKeyState('E') & 0x8000) ? 1 : 0) - (focus && (::GetAsyncKeyState('Q') & 0x8000) ? 1 : 0);
+			PkHoldMenuKeys(focus && ((::GetAsyncKeyState('Q') | ::GetAsyncKeyState('E')) & 0x8000));
+			float yaw, pitch;
 			{
 				std::scoped_lock lock(_camMutex);
-				_camWant = eye;
-				_camYaw = std::atan2(d.x, d.y);
-				_camPitch = std::atan2(-d.z, std::hypot(d.x, d.y));
-				// the pointer: mouse right is the view's right, mouse forward away from you, over the felt
-				const double k = Settings::Get().cursorSpeed;
-				const double fx = -n.x, fy = -n.y;  // into the table
-				const double rx = fy, ry = -fx;     // the view's right
-				_pkCurX += (rx * _mouseDX - fx * _mouseDY) * k;
-				_pkCurY += (ry * _mouseDX - fy * _mouseDY) * k;
+				const double k = Settings::Get().cursorSpeed * 0.012;
+				_pkLookYaw = std::clamp(_pkLookYaw + static_cast<float>(_mouseDX * k) + turn * 1.6f * a_dt, -1.4f, 1.4f);
+				_pkLookPitch = std::clamp(_pkLookPitch - static_cast<float>(_mouseDY * k), -0.45f, 0.75f);
 				_mouseDX = _mouseDY = 0.0;
-				_pkCurX = std::clamp(_pkCurX, -static_cast<double>(kRailR) + 4.0, static_cast<double>(kRailR) - 4.0);
-				_pkCurY = std::clamp(_pkCurY, -static_cast<double>(kRailC + kRailR) + 4.0, static_cast<double>(kRailC + kRailR) - 4.0);
-				cx = _pkCurX;
-				cy = _pkCurY;
+				yaw = baseYaw + _pkLookYaw;
+				pitch = basePitch + _pkLookPitch;
+				_camWant = eye;
+				_camYaw = yaw;
+				_camPitch = pitch;
 			}
-			// over your cards: turned up for you (put back down when the pointer leaves); not at a showdown, when
-			// they're up for everyone anyway
-			const auto a = HoleSpot(_pkYou, 0), b = HoleSpot(_pkYou, 1);
-			const auto mid = (a + b) * 0.5f;
-			const bool over = std::hypot(cx - mid.x, cy - mid.y) < kCardW * 1.4f;
+			// where the middle of the view meets the felt: on your cards, they're up for you (put back down when you
+			// look away); not at a showdown, when they're up for everyone anyway
+			bool over = false;
+			if (pitch > 0.05f) {
+				const float  reach = 36.0f / std::tan(pitch);
+				const auto   at = eye + RE::NiPoint3{ std::sin(yaw) * reach, std::cos(yaw) * reach, -36.0f };
+				const auto   cards = ToWorld(frame, mid.x, mid.y, kFeltZ);
+				over = std::hypot(at.x - cards.x, at.y - cards.y) < kCardW * 1.6f;
+			}
 			const bool peek = over && _pk.inHand && _pk.phase != PkPhase::kShowdown;
 			if (peek != _pk.peeking) {
 				_pk.peeking = peek;
@@ -335,17 +339,28 @@ namespace fr
 					}
 				}
 			}
-			// the pointer itself: a 1-cap chip hovering over the felt
-			const auto pos = ToWorld(frame, cx, cy, kFeltZ + (over ? 3.5 : 2.0));
-			if (!_pk.pointer) {
-				_pk.pointer = Spawn(Forms::Chip(0), pos, frame.yaw);
-			}
-			if (auto p = _pk.pointer.get()) {
-				PlaceNode(p.get(), pos, frame.yaw, false);
-			}
-		} else if (_pk.pointer) {
-			Remove(_pk.pointer);
+		} else {
+			PkHoldMenuKeys(false);
 		}
+	}
+
+	void Game::PkHoldMenuKeys(bool a_hold)
+	{
+		// Q and E turn the view at the poker table: while either's down, the game's menus (the workshop's among them)
+		// don't open
+		if (a_hold == _pkMenusHeld) {
+			return;
+		}
+		auto* manager = RE::BSInputEnableManager::GetSingleton();
+		if (!manager) {
+			return;
+		}
+		if (!_pkMenuLayer && !manager->AllocateNewLayer(_pkMenuLayer, "fo4roulette poker turning")) {
+			return;
+		}
+		using Flag = RE::UserEvents::USER_EVENT_FLAG;
+		manager->EnableUserEvent(_pkMenuLayer->layerID, Flag::kMenu, !a_hold, RE::UserEvents::SENDER_ID::kGameplay);
+		_pkMenusHeld = a_hold;
 	}
 
 	// ---------------------------------------------------------------- settlers
@@ -1059,11 +1074,8 @@ namespace fr
 			_haveCamPos = false;
 		}
 		{
-			// the pointer starts where your bets go
 			std::scoped_lock lock(_camMutex);
-			const auto       at = BetSpot(best);
-			_pkCurX = at.x;
-			_pkCurY = at.y;
+			_pkLookYaw = _pkLookPitch = 0.0f;
 			_mouseDX = _mouseDY = 0.0;
 		}
 		_pkSeated = true;
@@ -1113,6 +1125,7 @@ namespace fr
 		st.away = true;
 		st.last.clear();
 		_pkSeated = false;
+		PkHoldMenuKeys(false);
 		_pk.peeking = false;
 		if (a_cashOut) {
 			PkCashOut();
@@ -1255,10 +1268,10 @@ namespace fr
 			             : coming > 0 ? std::string("WAITING FOR PLAYERS TO GET TO THE TABLE")
 			                          : std::string("WAITING FOR SETTLERS TO JOIN · THE TABLE DEALS ONCE TWO ARE SEATED");
 		} else if (!a_h.pkYourTurn) {
-			a_h.pkHelp = hi >= 0 && !h.players[hi].folded ? "WAIT FOR YOUR TURN · MOUSE OVER YOUR CARDS TO LOOK AT THEM"
+			a_h.pkHelp = hi >= 0 && !h.players[hi].folded ? "WAIT FOR YOUR TURN · LOOK DOWN AT YOUR CARDS TO SEE THEM"
 			                                               : "YOU'RE OUT OF THIS HAND · THE NEXT ONE DEALS YOU IN";
 		} else if (!_pk.peeking) {
-			a_h.pkHelp = "YOUR TURN · MOUSE OVER YOUR CARDS TO LOOK AT THEM";
+			a_h.pkHelp = "YOUR TURN · LOOK DOWN AT YOUR CARDS TO SEE THEM";
 		}
 		a_h.log = _pk.log;
 		if (_pk.bannerAge < 5.0f && !_pk.bannerTitle.empty()) {
@@ -1297,7 +1310,6 @@ namespace fr
 		}
 		_pk.potChips.clear();
 		_pk.potShown = -1;
-		Remove(_pk.pointer);
 		_pk.peeking = false;
 		for (auto& st : _pk.seats) {
 			if (st.used && !st.you && st.held) {
