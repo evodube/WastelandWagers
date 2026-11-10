@@ -303,8 +303,9 @@ namespace fr
 			const auto  a = HoleSpot(_pkYou, 0), b = HoleSpot(_pkYou, 1);
 			const auto  mid = (a + b) * 0.5f;
 			const float baseYaw = HeadingOf(frame, -n.x, -n.y);
-			const auto  eye = ToWorld(frame, mid.x + n.x * 22.0f, mid.y + n.y * 22.0f, kFeltZ + 36.0f);
-			const float basePitch = std::atan2(36.0f, 22.0f + 34.0f);  // (down onto the felt 34 in front of your cards)
+			// (back far enough to see the rail in front of you)
+			const auto  eye = ToWorld(frame, mid.x + n.x * 42.0f, mid.y + n.y * 42.0f, kFeltZ + 46.0f);
+			const float basePitch = std::atan2(46.0f, 42.0f + 30.0f);  // (down onto the felt 30 in front of your cards)
 			const bool  focus = util::GameHasFocus();
 			const int   turn = (focus && (::GetAsyncKeyState('E') & 0x8000) ? 1 : 0) - (focus && (::GetAsyncKeyState('Q') & 0x8000) ? 1 : 0);
 			PkHoldMenuKeys(focus && ((::GetAsyncKeyState('Q') | ::GetAsyncKeyState('E')) & 0x8000));
@@ -345,8 +346,8 @@ namespace fr
 			// (or the SHOW MY CARDS button, or the right mouse button held, in either view)
 			bool over = _pkShowCards || (focus && (::GetAsyncKeyState(VK_RBUTTON) & 0x8000));
 			if (!over && !_pkTopView && pitch > 0.05f) {
-				const float  reach = 36.0f / std::tan(pitch);
-				const auto   at = eye + RE::NiPoint3{ std::sin(yaw) * reach, std::cos(yaw) * reach, -36.0f };
+				const float  reach = 46.0f / std::tan(pitch);
+				const auto   at = eye + RE::NiPoint3{ std::sin(yaw) * reach, std::cos(yaw) * reach, -46.0f };
 				const auto   cards = ToWorld(frame, mid.x, mid.y, kFeltZ);
 				over = std::hypot(at.x - cards.x, at.y - cards.y) < kCardW * 1.6f;
 			}
@@ -1405,5 +1406,24 @@ namespace fr
 			to = top;
 		}
 		_pk.raiseTo = std::clamp(to, lo, std::max(lo, top));
+	}
+
+	bool Game::SwallowButton(const RE::ButtonEvent* a_event)
+	{
+		if (!_pkSeated || !a_event) {
+			return false;
+		}
+		const auto& id = a_event->QUserEvent();
+		const char* name = id.c_str() ? id.c_str() : "";
+		const auto  code = a_event->QIDCode();
+		const bool  key = a_event->device.get() == RE::INPUT_DEVICE::kKeyboard && (code == 'Q' || code == 'E');
+		if (key || std::string_view(name) == "Workshop") {
+			static std::set<std::string> logged;
+			if (logged.insert(name).second) {
+				log::info("poker: the {} key ({}) kept from the game's menus while you're at the table", name, code);
+			}
+			return true;
+		}
+		return false;
 	}
 }

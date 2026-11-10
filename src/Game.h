@@ -55,6 +55,7 @@ namespace fr
 		static void Revert(const F4SE::SerializationInterface* a_intfc);
 
 		// camera hooks (CameraHook.cpp)
+		bool SwallowButton(const RE::ButtonEvent* a_event);  // a menu key that's ours at the poker table (Q, E, the workshop's)
 		bool OnLookMouse(const RE::MouseMoveEvent* a_event);
 		void BeforeFreeCameraUpdate(RE::FreeCameraState* a_free);
 		void OnFreeCameraLook(RE::FreeCameraState* a_free, const RE::BSTPoint2<float>& a_before);

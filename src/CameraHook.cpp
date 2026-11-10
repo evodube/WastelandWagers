@@ -61,6 +61,19 @@ namespace fr::CameraHook
 				g_getTranslation(a_this, a_out);
 			}
 		}
+
+		// The menu-opening keys (the Pip-Boy, the workshop...): at the poker table Q and E turn the view, so they don't
+		// get here (nor does the workshop's key, whatever it is)
+		using MenuButton_t = void (*)(RE::BSInputEventUser*, const RE::ButtonEvent*);
+		MenuButton_t g_menuButton{ nullptr };
+
+		void HookedMenuButton(RE::BSInputEventUser* a_this, const RE::ButtonEvent* a_event)
+		{
+			if (Game::Get().SwallowButton(a_event)) {
+				return;
+			}
+			g_menuButton(a_this, a_event);
+		}
 	}
 
 	namespace
@@ -92,6 +105,8 @@ namespace fr::CameraHook
 			g_getTranslation = reinterpret_cast<GetTranslation_t>(vtable.write_vfunc(0x0D, &HookedGetTranslation));
 			REL::Relocation<std::uintptr_t> look{ RE::VTABLE::LookHandler[0] };
 			g_lookMouse = reinterpret_cast<LookMouse_t>(look.write_vfunc(0x06, &HookedLookMouse));
+			REL::Relocation<std::uintptr_t> menuOpen{ RE::VTABLE::MenuOpenHandler[0] };
+			g_menuButton = reinterpret_cast<MenuButton_t>(menuOpen.write_vfunc(0x08, &HookedMenuButton));
 		} else {
 			// next-gen / Anniversary: the library only has the old game's vtable IDs, so the vtables are read off the
 			// live objects instead (the player camera's free camera state, the player's look handler)
