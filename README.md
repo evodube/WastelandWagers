@@ -6,6 +6,7 @@ diamonds and frets and drops into a pocket. The wheel spins itself 15 seconds af
 wander over and bet with their own caps, cheering or shaking their heads at the result.
 
 Since 0.4.0 there's a **poker table** too: no-limit Texas Hold'em against settlers who sit in with their own caps.
+Since 0.7.0, a **blackjack table**: you and up to six settlers against the dealer.
 
 **Status: 0.6.8.**
 
@@ -61,6 +62,22 @@ deals itself as soon as you and at least one settler are seated.
 - **Settlers sit (chairs)** (off by default): chairs round the table and settlers sit at it; seated they cheer and laugh,
   but there are no seated animations for betting.
 - Blinds, buy-ins, how many settlers play and how long they think are on the Poker settings page.
+
+### Blackjack
+
+Build a **Blackjack Table** (Furniture > Tables) or use a **Blackjack Table Kit** (Vadim, or a chem station). Activate
+it to take the place nearest you; settlers take the others with their own caps, and one stands behind the chip rack
+and deals (with nobody free, the table deals itself). Put a bet down on your circle, and the cards come out of the shoe
+onto the card boxes once you press DEAL or the betting time runs out.
+
+- The house rules, as the felt says: six decks in the shoe, reshuffled at the cut card; the dealer draws to 16 and
+  stands on every 17; blackjack pays 3 to 2; insurance (half your bet, when the dealer shows an ace) pays 2 to 1; the
+  dealer checks for blackjack under an ace or a ten; double down on any first two cards (after a split too); split a
+  pair once (split aces get one card each); no surrender. Settlers play by the book.
+- Buttons: the chips (+1, +5, +25, +100), take back, same bet, deal; on your turn hit, stand, double, split; insurance
+  or not. Keys: **1-4** the chips while bets are open, and hit / stand / double / split on your turn (insurance: **1**
+  yes, **2** no); the spin key deals; **X** leaves; **V** the view from above. Controller: **A B X Y** as 1-4, **Back**
+  leaves, **Start** the view.
 
 Winning bets are paid at the usual odds (35 to 1 down to even money). The result is drawn fairly first, and the ball
 is then thrown until it lands there, so every number is exactly as likely as it should be.
