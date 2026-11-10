@@ -63,7 +63,7 @@ namespace fr
 		// the seats, clockwise from the dealer's place (+X), table space: six (the table's cup holders, but for the one
 		// in the middle of the long side, whose neighbours sit in closer to the middle instead)
 		constexpr std::array<std::pair<float, float>, 6> kHolders{ {
-			{ 27.9f, -47.1f }, { 1.1f, -71.2f }, { -25.8f, -24.0f }, { -25.8f, 24.0f }, { 1.1f, 70.8f }, { 27.9f, 46.7f },
+			{ 27.9f, -47.1f }, { 1.1f, -71.2f }, { -25.8f, -33.0f }, { -25.8f, 33.0f }, { 1.1f, 70.8f }, { 27.9f, 46.7f },
 		} };
 
 		// from the dealer's side (+X, the chip tray) in: the deck, the board, then the pot
@@ -160,8 +160,8 @@ namespace fr
 				constexpr std::array<Fit, 6> kFit{ {
 					{ -1.0f, 11.0f, 7.0f, 14.0f, -4.0f },
 					{ 1.0f, 10.0f, 11.0f, 16.0f, 2.0f },
-					{ -1.0f, 11.0f, 5.5f, 14.0f, -4.0f },
 					{ 1.0f, 11.0f, 5.5f, 14.0f, -4.0f },
+					{ -1.0f, 11.0f, 5.5f, 14.0f, -4.0f },
 					{ -1.0f, 10.0f, 11.0f, 14.0f, -4.0f },
 					{ 1.0f, 11.0f, 7.0f, 14.0f, 4.0f },
 				} };
@@ -1162,11 +1162,19 @@ namespace fr
 					// sat in their chair: the chair holds them (and turns them to the table); now and then, if they've
 					// got up, back down
 					st.sitCheck -= a_dt;
+					// (sitting, or on the way down into it: left alone. The furniture the process says they're in
+					// came back empty while they sat, the log showed: told to sit again every three seconds, they got
+					// up out of the chair and were put back in it, over and over)
 					auto chair = _pk.chairs[i].get();
-					auto* proc = actor->currentProcess;
-					if (chair && st.sitCheck <= 0.0f && !(proc && proc->GetOccupiedFurniture())) {
-						Npc::SitOn(actor, chair.get());
+					if (chair && st.sitCheck <= 0.0f) {
 						st.sitCheck = 3.0f;
+						const auto sit = actor->DoGetSitSleepState();
+						const bool down = sit == RE::SIT_SLEEP_STATE::kWantToSit || sit == RE::SIT_SLEEP_STATE::kWaitingForSitAnim ||
+						                  sit == RE::SIT_SLEEP_STATE::kIsSitting;
+						if (!down) {
+							log::info("poker: {} isn't in their chair (sit state {}): sat down again", st.name, static_cast<int>(sit));
+							Npc::SitOn(actor, chair.get());
+						}
 					}
 					st.held = true;  // (for the idles: they're where they should be)
 					st.atSpot += a_dt;

@@ -208,13 +208,13 @@ namespace fr::Audio
 		Play(a_bank, ear, a_gain);
 	}
 
-	void Play(Bank a_bank, const RE::NiPoint3& a_pos, float a_gain, float a_seconds)
+	void Play(Bank a_bank, const RE::NiPoint3& a_pos, float a_gain, float a_seconds, float a_range)
 	{
 		PlayShaped(a_bank, a_pos, a_gain, a_seconds > 0.0f ? std::vector<std::pair<float, float>>{ { 0.0f, 1.0f }, { std::max(0.0f, a_seconds - 0.4f), 1.0f }, { a_seconds, 0.0f } } :
-		                                                      std::vector<std::pair<float, float>>{});
+		                                                      std::vector<std::pair<float, float>>{}, a_range);
 	}
 
-	void PlayShaped(Bank a_bank, const RE::NiPoint3& a_pos, float a_gain, const std::vector<std::pair<float, float>>& a_keys)
+	void PlayShaped(Bank a_bank, const RE::NiPoint3& a_pos, float a_gain, const std::vector<std::pair<float, float>>& a_keys, float a_range)
 	{
 		const auto& s = Settings::Get();
 		if (!s.sound || a_gain <= 0.001f) {
@@ -240,7 +240,7 @@ namespace fr::Audio
 
 		const RE::NiPoint3 to = a_pos - ear;
 		const float        distance = std::sqrt(to.x * to.x + to.y * to.y + to.z * to.z);
-		constexpr float kFull = 120.0f, kMax = 350.0f;  // full volume within, silent beyond (about five metres)
+		const float kMax = std::max(1.0f, a_range), kFull = kMax * (120.0f / 350.0f);  // full volume within, silent beyond
 		if (distance >= kMax) {
 			return;
 		}

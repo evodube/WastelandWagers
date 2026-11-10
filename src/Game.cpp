@@ -774,7 +774,7 @@ namespace fr
 					}
 				}
 				if (swept) {
-					Audio::Play(Audio::Bank::kChip, ToWorld(frame, rl::LayoutCentre().x, rl::LayoutCentre().y, rl::table::kFeltZ), 0.6f);
+					Audio::Play(Audio::Bank::kChip, ToWorld(frame, rl::LayoutCentre().x, rl::LayoutCentre().y, rl::table::kFeltZ), 0.6f, 0.0f, Audio::kFar);
 				}
 			}
 			if (_t.phaseTime >= kResultSeconds) {
@@ -920,7 +920,7 @@ namespace fr
 		std::uniform_real_distribution<double> U(0.0, 1.0);
 		if (_t.rotorSpeed < 1.4) {
 			_t.rotorSpeed = 1.6 + 0.6 * U(_rng);
-			Audio::Play(Audio::Bank::kSpin, ToWorld(frame, rl::table::kWheelX, rl::table::kWheelY, rl::table::kFeltZ), 0.8f);
+			Audio::Play(Audio::Bank::kSpin, ToWorld(frame, rl::table::kWheelX, rl::table::kWheelY, rl::table::kFeltZ), 0.8f, 0.0f, Audio::kFar);
 		}
 		// the throw is worked out on another thread (finding one that lands in the drawn pocket and bounces about
 		// properly can take a while), for where the rotor will be a moment from now, when the ball goes in
@@ -986,7 +986,7 @@ namespace fr
 				keys.front().second = 0.0f;
 				keys.insert(keys.begin() + 1, { 0.08f, keys.size() > 1 ? keys[1].second : 1.0f });
 				keys.emplace_back(_t.plan.rotorTime + 0.12f, 0.0f);
-				Audio::PlayShaped(Audio::Bank::kRoll, ToWorld(frame, rl::table::kWheelX, rl::table::kWheelY, rl::table::kTrackZ), 0.75f, keys);
+				Audio::PlayShaped(Audio::Bank::kRoll, ToWorld(frame, rl::table::kWheelX, rl::table::kWheelY, rl::table::kTrackZ), 0.75f, keys, Audio::kFar);
 			}
 		}
 		_t.eventIdx = 0;
@@ -1032,23 +1032,23 @@ namespace fr
 			}
 			switch (ev.kind) {
 			case Kind::kDiamond:
-				Audio::Play(Audio::Bank::kRattle, wheel, 0.5f + 0.5f * s);
+				Audio::Play(Audio::Bank::kRattle, wheel, 0.5f + 0.5f * s, 0.0f, Audio::kFar);
 				break;
 			case Kind::kFret:
 				if (s > 0.45f) {
-					Audio::Play(Audio::Bank::kRattle, wheel, 0.3f + 0.5f * s);
+					Audio::Play(Audio::Bank::kRattle, wheel, 0.3f + 0.5f * s, 0.0f, Audio::kFar);
 				} else {
-					Audio::Play(Audio::Bank::kTick, wheel, 0.25f + 0.75f * s);
+					Audio::Play(Audio::Bank::kTick, wheel, 0.25f + 0.75f * s, 0.0f, Audio::kFar);
 				}
 				break;
 			case Kind::kLand:
 				if (s < 0.07f) {
 					continue;
 				}
-				Audio::Play(Audio::Bank::kTick, wheel, std::min(1.0f, 0.15f + 0.85f * s));
+				Audio::Play(Audio::Bank::kTick, wheel, std::min(1.0f, 0.15f + 0.85f * s), 0.0f, Audio::kFar);
 				break;
 			case Kind::kSettle:
-				Audio::Play(Audio::Bank::kSettle, wheel, 0.45f);
+				Audio::Play(Audio::Bank::kSettle, wheel, 0.45f, 0.0f, Audio::kFar);
 				break;
 			}
 			_t.lastKnock = ev.t;
@@ -1256,7 +1256,7 @@ namespace fr
 		if (auto table = _t.table.get()) {
 			Frame frame;
 			if (FrameOf(table.get(), frame)) {
-				Audio::Play(Audio::Bank::kChip, ToWorld(frame, a_bet.spot.x, a_bet.spot.y, rl::table::kFeltZ), 0.7f);
+				Audio::Play(Audio::Bank::kChip, ToWorld(frame, a_bet.spot.x, a_bet.spot.y, rl::table::kFeltZ), 0.7f, 0.0f, Audio::kFar);
 			}
 		}
 		return true;

@@ -21,14 +21,19 @@ namespace fr::Audio
 	// than once.
 	void Init();
 
-	// Plays one of the bank's sounds at a_pos in the world, quieter with distance from the camera (silent past about five
-	// metres). a_gain 0..1.
+	// how far a table's sounds carry (game units, about 70 a metre): the poker table's five metres, roulette's ten
+	inline constexpr float kNear = 350.0f;
+	inline constexpr float kFar = 700.0f;
+
+	// Plays one of the bank's sounds at a_pos in the world, quieter with distance from the camera (silent past a_range:
+	// about five metres unless said). a_gain 0..1.
 	// a_seconds > 0 plays only that much of it, fading out at the end.
-	void Play(Bank a_bank, const RE::NiPoint3& a_pos, float a_gain, float a_seconds = 0.0f);
+	void Play(Bank a_bank, const RE::NiPoint3& a_pos, float a_gain, float a_seconds = 0.0f, float a_range = kNear);
 
 	// As Play, with the loudness following a_keys over time: (seconds from the start, gain 0..1) pairs, in order,
 	// joined by straight lines; the sound stops at the last one.
-	void PlayShaped(Bank a_bank, const RE::NiPoint3& a_pos, float a_gain, const std::vector<std::pair<float, float>>& a_keys);
+	void PlayShaped(Bank a_bank, const RE::NiPoint3& a_pos, float a_gain, const std::vector<std::pair<float, float>>& a_keys,
+		float a_range = kNear);
 
 	// At the listener: no position.
 	void PlayUI(Bank a_bank, float a_gain);
