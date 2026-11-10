@@ -24,7 +24,8 @@ namespace fr
 		constexpr float kPersonalSpace = 55.0f;  // a spot with someone (anyone) standing this close isn't free
 
 		// vanilla idles (Fallout4.esm IDLE)
-		constexpr std::array<RE::TESFormID, 4> kWaitIdles{ 0x0001F86C, 0x0001FA11, 0x0001FA12, 0x001E81AC };  // shopping looks A-C, thinking
+		// (just the thinking idle: the shopping looks turn them about, as if browsing a shop's shelves)
+		constexpr std::array<RE::TESFormID, 1> kWaitIdles{ 0x001E81AC };  // thinking
 		constexpr RE::TESFormID                kPlaceIdle = 0x001A8A0D;  // IdlePlaceEnvelopeOnTable
 		constexpr std::array<RE::TESFormID, 2> kWinIdles{ 0x0010BA3A, 0x0010F9C0 };  // cheering, fight winner
 		constexpr RE::TESFormID                kLoseIdle = 0x00038C7A;               // HeadShakeNo
@@ -91,7 +92,9 @@ namespace fr
 
 	void Game::FaceTowards(RE::Actor* a_actor, float a_heading)
 	{
-		if (a_actor && std::abs(util::AngleDiff(a_actor->data.angle.z, a_heading)) > 0.03f) {
+		// (only when they've turned well away: put back every frame, an idle that moves them a little fights it and they
+		// twitch round)
+		if (a_actor && std::abs(util::AngleDiff(a_actor->data.angle.z, a_heading)) > 0.35f) {
 			a_actor->SetHeading(a_heading);
 		}
 	}

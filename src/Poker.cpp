@@ -40,7 +40,7 @@ namespace fr
 		constexpr float kSettleIn = 2.0f;
 
 		// settlers' idles at the table (vanilla Fallout4.esm, as at the roulette table)
-		constexpr std::array<RE::TESFormID, 3> kLookIdles{ 0x0001F86C, 0x0001FA11, 0x0001FA12 };  // shopping looks A-C: eyeing the table
+		constexpr std::array<RE::TESFormID, 1> kLookIdles{ 0x001E81AC };  // thinking (the shopping looks turned them about)
 		constexpr RE::TESFormID                kThinkIdle = 0x001E81AC;                          // thinking: weighing up their hand
 		constexpr RE::TESFormID                kChipsIdle = 0x001A8A0D;                          // IdlePlaceEnvelopeOnTable: chips in
 		constexpr std::array<RE::TESFormID, 2> kWinIdles{ 0x0010BA3A, 0x0010F9C0 };              // cheering, fight winner
@@ -249,12 +249,16 @@ namespace fr
 		_pk = PokerState{};
 	}
 
-	void Game::PkClearTable()
+	void Game::PkClearTable(bool a_cards)
 	{
 		for (auto& c : _pk.cards) {
-			Remove(c.ref);
+			if (a_cards) {
+				Remove(c.ref);
+			}
 		}
-		_pk.cards.clear();
+		if (a_cards) {
+			_pk.cards.clear();
+		}
 		for (auto& v : _pk.betChips) {
 			for (auto& h : v) {
 				Remove(h);
@@ -808,9 +812,10 @@ namespace fr
 					st.last.clear();
 				}
 				_pk.inHand = false;
-				PkClearTable();
+				PkMuck(-2);                 // the cards back to the dealer...
+				PkClearTable(false);        // ...the chips off
 				_pk.phase = PkPhase::kWaiting;
-				_pk.timer = 2.0f;
+				_pk.timer = 2.5f;
 			}
 			return;
 		}
@@ -889,15 +894,17 @@ namespace fr
 
 	void Game::PkMuck(int a_seat)
 	{
+		float delay = 0.0f;
 		for (auto& c : _pk.cards) {
-			if (c.seat != a_seat || c.mucked) {
+			if ((a_seat != -2 && c.seat != a_seat) || c.mucked || !c.ref) {
 				continue;
 			}
 			const float e = 1.0f - (1.0f - c.t) * (1.0f - c.t);
 			c.from = c.from + (c.to - c.from) * e;  // from wherever it is now
 			c.to = kMuck;
 			c.t = 0.0f;
-			c.delay = 0.0f;
+			c.delay = a_seat == -2 ? delay : 0.0f;  // (the whole table: one after another)
+			delay += 0.05f;
 			c.faceUp = false;
 			c.mucked = true;
 		}

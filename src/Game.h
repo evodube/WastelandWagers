@@ -400,9 +400,9 @@ namespace fr
 		void         PkTickHand(const Frame& a_frame, float a_dt);
 		void         PkAct(pk::Action a_action);  // whoever's to act does this
 		void         PkEndHand();
-		void         PkClearTable();
+		void         PkClearTable(bool a_cards = true);
 		void         PkDeal(int a_card, const RE::NiPoint3& a_to, float a_yaw, bool a_faceUp, float a_delay, int a_seat = -1);
-		void         PkMuck(int a_seat);  // a fold: their cards slide back to the dealer
+		void         PkMuck(int a_seat);  // a fold: their cards slide back to the dealer (-2: every card on the table)
 		void         PkTickCards(const Frame& a_frame, float a_dt);
 		void         PkMakeChips(const Frame& a_frame);
 		void         PkSay(const std::string& a_text, int a_tone = 0);
