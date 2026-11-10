@@ -180,6 +180,19 @@ namespace fr
 			return camera && free && camera->currentState.get() == free;
 		}
 
+		// a new object's 3D fades in over a moment (the game's way with things that load in): chips and cards on the table
+		// are there at once, so they move rather than fade from place to place
+		void NoFade(const RE::ObjectRefHandle& a_handle)
+		{
+			if (auto ref = a_handle.get()) {
+				if (auto* root = ref->Get3D()) {
+					if (auto* fade = root->IsFadeNode()) {
+						fade->currentFade = 1.0f;
+					}
+				}
+			}
+		}
+
 		bool Usable(RE::Actor* a_actor)
 		{
 			return a_actor && !a_actor->IsDisabled() && !a_actor->IsDead(false) && a_actor->Get3D();
@@ -407,6 +420,22 @@ namespace fr
 		PkTickCards(frame, a_dt);
 		PkMakeChips(frame);
 		PkTickMoves(frame, a_dt);
+		for (const auto& v : _pk.stackChips) {
+			for (const auto& h : v) {
+				NoFade(h);
+			}
+		}
+		for (const auto& v : _pk.betChips) {
+			for (const auto& h : v) {
+				NoFade(h);
+			}
+		}
+		for (const auto& h : _pk.potChips) {
+			NoFade(h);
+		}
+		for (const auto& c : _pk.cards) {
+			NoFade(c.ref);
+		}
 		if (_pkSeated && _pkYou >= 0) {
 			// the view from your seat: from just behind your cards, straight across the table. The mouse looks about
 			// (the turn keys, Q and E, turn too); looking down at your cards turns them up for you
@@ -1222,7 +1251,8 @@ namespace fr
 			m.ref = h;
 			m.from = { local.x, local.y, local.z - kFeltZ };
 			m.to = { a_to.x, a_to.y, 0.02f + static_cast<float>(k % kMaxStack) * kChipH };
-			m.delay = a_delay + 0.015f * static_cast<float>(k);
+			m.delay = a_delay + 0.025f * static_cast<float>(k);
+			m.dur = 0.55f;
 			m.yaw = ref->data.angle.z;
 			_pk.moves.push_back(m);
 			++k;
@@ -1241,10 +1271,13 @@ namespace fr
 				continue;
 			}
 			m.t = std::min(1.0f, m.t + a_dt / m.dur);
+			// picked up, carried over and set down: up quickly, across, down onto the stack
 			const float e = m.t * m.t * (3.0f - 2.0f * m.t);
 			const auto  p = m.from + (m.to - m.from) * e;
+			const float up = m.t < 0.25f ? m.t / 0.25f : m.t > 0.8f ? (1.0f - m.t) / 0.2f : 1.0f;
+			NoFade(m.ref);
 			if (auto ref = m.ref.get()) {
-				PlaceNode(ref.get(), ToWorld(a_frame, p.x, p.y, kFeltZ + p.z + std::sin(m.t * 3.14159265f) * 0.6f), m.yaw, false);
+				PlaceNode(ref.get(), ToWorld(a_frame, p.x, p.y, kFeltZ + p.z + up * 2.2f), m.yaw, false);
 			}
 			if (m.t >= 1.0f && m.remove) {
 				Remove(m.ref);
@@ -1257,9 +1290,10 @@ namespace fr
 	{
 		std::uniform_real_distribution<float> spin(0.0f, 6.283f);
 		// a_amount in chips at (a_x, a_y), up to three columns; a_fromX/Y: where they come from (they slide over), or NaN
-		auto stack = [&](int a_amount, float a_x, float a_y, std::vector<RE::ObjectRefHandle>& a_out, const RE::NiPoint3* a_from = nullptr) {
+		auto stack = [&](int a_amount, float a_x, float a_y, std::vector<RE::ObjectRefHandle>& a_out, const RE::NiPoint3* a_from = nullptr,
+						 std::size_t a_start = 0) {
 			auto chips = rl::ChipsFor(a_amount);
-			for (std::size_t i = 0; i < chips.size() && i < kMaxStack * 3; ++i) {
+			for (std::size_t i = a_start; i < chips.size() && i < kMaxStack * 3; ++i) {
 				const int   idx = static_cast<int>(std::ranges::find(rl::kChipValues, chips[i]) - std::begin(rl::kChipValues));
 				const int   col = static_cast<int>(i) / kMaxStack, row = static_cast<int>(i) % kMaxStack;
 				const float x = a_x, y = a_y + (col - 1) * kChipR * 2.2f * (chips.size() > kMaxStack ? 1.0f : 0.0f);
@@ -1273,14 +1307,31 @@ namespace fr
 					m.ref = h;
 					m.from = { a_from->x, a_from->y, z };
 					m.to = { x, y, z };
-					m.delay = 0.02f * static_cast<float>(i);
-					m.dur = 0.3f;
+					m.delay = 0.03f * static_cast<float>(i);
+					m.dur = 0.4f;
 					m.yaw = yaw;
 					m.remove = false;
 					_pk.moves.push_back(m);
 				} else {
 					a_out.push_back(Spawn(Forms::Chip(idx), ToWorld(a_frame, x, y, kFeltZ + z), yaw));
 				}
+			}
+		};
+		// a stack from a_old caps to a_new: the chips both have in common (from the bottom) stay put, only the rest change
+		auto restack = [&](std::vector<RE::ObjectRefHandle>& a_chips, int a_old, int a_new, float a_x, float a_y) {
+			const auto  was = a_old > 0 ? rl::ChipsFor(a_old) : std::vector<int>{};
+			const auto  now = a_new > 0 ? rl::ChipsFor(a_new) : std::vector<int>{};
+			std::size_t keep = 0;
+			while (keep < was.size() && keep < now.size() && keep < a_chips.size() && was[keep] == now[keep] && keep < kMaxStack * 3 &&
+				   (was.size() > kMaxStack) == (now.size() > kMaxStack)) {  // (one column or several: the same layout)
+				++keep;
+			}
+			for (std::size_t i = keep; i < a_chips.size(); ++i) {
+				Remove(a_chips[i]);
+			}
+			a_chips.resize(std::min(keep, a_chips.size()));
+			if (a_new > 0) {
+				stack(a_new, a_x, a_y, a_chips, nullptr, a_chips.size());
 			}
 		};
 		// each player's caps in front of them
@@ -1296,15 +1347,9 @@ namespace fr
 			if (have == _pk.stackShown[i]) {
 				continue;
 			}
-			for (auto& h : _pk.stackChips[i]) {
-				Remove(h);
-			}
-			_pk.stackChips[i].clear();
+			const auto sp = StackSpot(i);
+			restack(_pk.stackChips[i], std::max(0, _pk.stackShown[i]), have, sp.x, sp.y);
 			_pk.stackShown[i] = have;
-			if (have > 0) {
-				const auto sp = StackSpot(i);
-				stack(have, sp.x, sp.y, _pk.stackChips[i]);
-			}
 		}
 		if (!_pk.inHand || _pk.phase == PkPhase::kShowdown) {
 			return;
@@ -1343,14 +1388,8 @@ namespace fr
 			return;
 		}
 		if (pot != _pk.potShown) {
-			for (auto& h : _pk.potChips) {
-				Remove(h);
-			}
-			_pk.potChips.clear();
+			restack(_pk.potChips, std::max(0, _pk.potShown), pot, kPot.x, kPot.y);
 			_pk.potShown = pot;
-			if (pot > 0) {
-				stack(pot, kPot.x, kPot.y, _pk.potChips);
-			}
 		}
 	}
 
