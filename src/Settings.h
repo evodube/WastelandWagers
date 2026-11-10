@@ -55,6 +55,7 @@ namespace fr
 		int   pkMaxPlayers{ 5 };           // settlers at the table at once (up to 6)
 		int   pkNpcBuyIn{ 300 };           // the most a settler sits down with
 		float pkThink{ 1.0f };             // how long settlers think (x)
+		int   pkHouse{ 3 };                // house players to make up the table when there aren't settlers (0 none)
 
 		// [HUD]
 		float hudScale{ 1.4f };

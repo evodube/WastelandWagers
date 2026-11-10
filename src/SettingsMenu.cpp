@@ -102,6 +102,8 @@ namespace fr::SettingsMenu
 						{ L"Poker", L"iMaxSettlers", "Most settlers at the table", Kind::kInt, &s.pkMaxPlayers, 0, 6, nullptr },
 						{ L"Poker", L"iSettlerBuyIn", "A settler's buy-in (most)", Kind::kInt, &s.pkNpcBuyIn, 20, 20000, nullptr },
 						{ L"Poker", L"fThinkTime", "Settlers' thinking time", Kind::kFloat, &s.pkThink, 0.2f, 5.0f, "%.1fx" },
+						{ L"Poker", L"iHousePlayers", "House players", Kind::kInt, &s.pkHouse, 0, 6, nullptr,
+							"with too few settlers about, the house fills this many seats so you can always play (0: only settlers)" },
 					} },
 				{ "HUD & sound", "The HUD sizes itself to your screen height; the scale makes it bigger or smaller on top of that.",
 					{

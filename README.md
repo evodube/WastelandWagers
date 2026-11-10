@@ -7,7 +7,7 @@ wander over and bet with their own caps, cheering or shaking their heads at the 
 
 Since 0.4.0 there's a **poker table** too: no-limit Texas Hold'em against settlers who sit in with their own caps.
 
-**Status: 0.4.1.**
+**Status: 0.4.2.**
 
 ## Requirements
 
@@ -47,7 +47,10 @@ Build a **Poker Table** (Furniture > Tables) or use a **Poker Table Kit** (Vadim
 roulette kit. Activate the table to sit in: your buy-in (500 caps by default) comes out of your pocket and goes back
 when you get up. Settlers nearby take the other seats (up to five, 300 caps each from their own purse) and play by
 their own style: some tight, some loose, some who bluff. The dealer deals the cards onto the felt, chips go out for
-the bets and into the pot, and the board comes out street by street.
+the bets and into the pot, and the board comes out street by street. There's no dealer to wait for: the table
+deals itself as soon as two or more players are seated. With too few settlers about, **house players** fill seats
+(3 by default, `iHousePlayers`) so you can always play; a settler who turns up takes a house player's seat between
+hands.
 
 - **1** fold, **2** check / call, **3** raise (**Up / Down** change the raise by a big blind), **4** all in.
 - **X** gets up (folding a hand you're in). **P** packs a kit table up between hands.

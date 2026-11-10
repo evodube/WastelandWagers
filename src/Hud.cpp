@@ -442,79 +442,102 @@ namespace fr::Hud
 			SuitShape(a_v, suit, a_x + a_w * 0.56f, a_y + h * 0.64f, a_w * 0.56f, col);
 		}
 
+		// the poker HUD's pieces, sized first so they can be laid out without overlapping (and the whole HUD shrunk when
+		// the screen, or the HUD scale, leaves too little room)
+		constexpr float kPkMargin = 20.0f;
+		constexpr float kPkRow = 32.0f;
+		constexpr float kBoardCard = 50.0f;
+		constexpr float kHoleCard = 62.0f;
+
+		float PokerStatusW(const Game::HudState& a_st)
+		{
+			float w = 330.0f;
+			w = std::max(w, TextWidth(Mono(), a_st.pkInfo, 12, 1.0f) + 36.0f);
+			w = std::max(w, TextWidth(Mono(), "POKER · NO LIMIT HOLD'EM", 13, 2.0f) + 36.0f);
+			return w;
+		}
+		float PokerStatusH(const Game::HudState& a_st) { return 100.0f + kPkRow * static_cast<float>(a_st.pkRows.size()); }
+		float PokerBoardW() { return kBoardCard * 5 + 8.0f * 4 + 32.0f; }
+		float PokerBoardH() { return kBoardCard * 1.4f + 76.0f; }
+		float PokerHoleW() { return kHoleCard * 2 + 10.0f + 40.0f; }
+		float PokerHoleH() { return kHoleCard * 1.4f + 50.0f; }
+		float PokerLogH(const Game::HudState& a_st) { return a_st.log.empty() ? 0.0f : 22.0f * static_cast<float>(a_st.log.size()) + 20.0f; }
+
 		void PokerStatus(const View& a_v, const Game::HudState& a_st)
 		{
-			const float x = 24.0f, y = 24.0f, w = 360.0f;
-			const float rowH = 34.0f;
-			const float h = 108.0f + rowH * static_cast<float>(a_st.pkRows.size());
-			Chamfer(a_v, x, y, w, h, 12.0f, kPanel, kEdge);
+			const float x = kPkMargin, y = kPkMargin, w = PokerStatusW(a_st);
+			Chamfer(a_v, x, y, w, PokerStatusH(a_st), 12.0f, kPanel, kEdge);
 			Print(a_v, Mono(), "POKER · NO LIMIT HOLD'EM", x + 18, y + 12, 13, kDim, 0, 2.0f);
-			Print(a_v, Title(), Commas(a_st.caps), x + 18, y + 30, 34, kBright, kGlow, 2.0f);
-			Print(a_v, Mono(), "CAPS", x + 22 + TextWidth(Title(), Commas(a_st.caps), 34, 2.0f), y + 48, 13, kDim, 0, 2.0f);
-			Print(a_v, Mono(), a_st.pkInfo, x + 18, y + 78, 12, kText, 0, 1.0f);
-			float row = y + 104;
+			Print(a_v, Title(), Commas(a_st.caps), x + 18, y + 28, 30, kBright, kGlow, 2.0f);
+			Print(a_v, Mono(), "CAPS", x + 22 + TextWidth(Title(), Commas(a_st.caps), 30, 2.0f), y + 44, 12, kDim, 0, 2.0f);
+			Print(a_v, Mono(), a_st.pkInfo, x + 18, y + 72, 12, kText, 0, 1.0f);
+			const float stackX = x + w - 80.0f;  // the stacks' right edge; the shown cards after them
+			float       row = y + 96;
 			for (const auto& r : a_st.pkRows) {
 				if (r.toAct) {
-					Chamfer(a_v, x + 8, row - 3, w - 16, rowH - 4, 6.0f, Rgba(60, 200, 90, 0.18f), kEdge);
+					Chamfer(a_v, x + 8, row - 3, w - 16, kPkRow - 3, 6.0f, Rgba(60, 200, 90, 0.18f), kEdge);
 				}
 				const ImU32 col = r.folded ? kOff : r.you ? kBright : kText;
 				if (r.dealer) {
-					DL::AddCircleFilled(a_v.dl, a_v.P(x + 24, row + 12), 8.0f * a_v.s, Rgba(236, 232, 222), 20);
-					Print(a_v, Mono(), "D", x + 24, row + 5, 11, Rgba(20, 20, 20), 0, 0.0f, Align::kCentre);
+					DL::AddCircleFilled(a_v.dl, a_v.P(x + 24, row + 11), 8.0f * a_v.s, Rgba(236, 232, 222), 20);
+					Print(a_v, Mono(), "D", x + 24, row + 4, 11, Rgba(20, 20, 20), 0, 0.0f, Align::kCentre);
 				}
-				Print(a_v, Mono(), r.name, x + 40, row, 14, col, 0, 1.0f);
-				Print(a_v, Mono(), r.status, x + 40, row + 16, 10, r.toAct ? kBright : kDim, 0, 1.0f);
-				Print(a_v, Mono(), Commas(r.stack), x + 250, row, 14, col, 0, 1.0f, Align::kRight);
+				Print(a_v, Mono(), r.name, x + 40, row, 13, col, 0, 1.0f);
+				Print(a_v, Mono(), r.status, x + 40, row + 15, 10, r.toAct ? kBright : kDim, 0, 1.0f);
+				Print(a_v, Mono(), Commas(r.stack), stackX, row, 13, col, 0, 1.0f, Align::kRight);
 				if (r.bet > 0) {
-					Print(a_v, Mono(), std::format("BET {}", Commas(r.bet)), x + 250, row + 16, 10, kText, 0, 1.0f, Align::kRight);
+					Print(a_v, Mono(), std::format("BET {}", Commas(r.bet)), stackX, row + 15, 10, kText, 0, 1.0f, Align::kRight);
 				}
 				if (r.shown[0] >= 0) {
-					PlayingCard(a_v, r.shown[0], x + 268, row - 2, 21);
-					PlayingCard(a_v, r.shown[1], x + 293, row - 2, 21);
+					PlayingCard(a_v, r.shown[0], stackX + 12, row - 2, 19);
+					PlayingCard(a_v, r.shown[1], stackX + 35, row - 2, 19);
 				}
-				row += rowH;
+				row += kPkRow;
 			}
 		}
 
-		// the board, top centre, with the pot under it
+		// the board, top right, with the pot and what's going on under it
 		void PokerBoard(const View& a_v, const Game::HudState& a_st)
 		{
-			constexpr float cw = 54.0f, gap = 10.0f;
-			const float     row = cw * 5 + gap * 4;
-			const float     x0 = a_v.w * 0.5f - row * 0.5f, y = 24.0f;
-			Chamfer(a_v, x0 - 16, y, row + 32, cw * 1.4f + 64, 12.0f, kPanel, kEdge);
+			const float w = PokerBoardW(), x = a_v.w - kPkMargin - w, y = kPkMargin;
+			Chamfer(a_v, x, y, w, PokerBoardH(), 12.0f, kPanel, kEdge);
+			const float x0 = x + 16.0f;
 			for (int k = 0; k < 5; ++k) {
-				const float x = x0 + k * (cw + gap);
+				const float cx = x0 + k * (kBoardCard + 8.0f);
 				if (k < static_cast<int>(a_st.pkBoard.size())) {
-					PlayingCard(a_v, a_st.pkBoard[k], x, y + 14, cw);
+					PlayingCard(a_v, a_st.pkBoard[k], cx, y + 14, kBoardCard);
 				} else {
-					DL::AddRect(a_v.dl, a_v.P(x, y + 14), a_v.P(x + cw, y + 14 + cw * 1.4f), Rgba(80, 200, 100, 0.25f), 5.0f * a_v.s, 0,
-						std::max(1.0f, 1.0f * a_v.s));
+					DL::AddRect(a_v.dl, a_v.P(cx, y + 14), a_v.P(cx + kBoardCard, y + 14 + kBoardCard * 1.4f), Rgba(80, 200, 100, 0.25f), 5.0f * a_v.s,
+						0, std::max(1.0f, 1.0f * a_v.s));
 				}
 			}
-			Print(a_v, Mono(), a_st.pkPot > 0 ? std::format("POT {}", Commas(a_st.pkPot)) : std::string("NO POT"), a_v.w * 0.5f, y + 24 + cw * 1.4f, 15,
+			const float mid = x + w * 0.5f, ty = y + 22 + kBoardCard * 1.4f;
+			Print(a_v, Mono(), a_st.pkPot > 0 ? std::format("POT {}", Commas(a_st.pkPot)) : std::string("NO POT"), mid, ty, 14,
 				a_st.pkPot > 0 ? kBright : kDim, 0, 2.0f, Align::kCentre);
+			if (!a_st.pkHelp.empty()) {
+				// (shrunk to fit the panel when it's long)
+				const float size = std::min(11.0f, 11.0f * (w - 24.0f) / std::max(1.0f, TextWidth(Mono(), a_st.pkHelp, 11, 1.0f)));
+				Print(a_v, Mono(), a_st.pkHelp, mid, ty + 24, size, kText, 0, 1.0f, Align::kCentre);
+			}
 		}
 
-		// your two cards, bottom centre above the keys
+		// your two cards, bottom right above the keys
 		void PokerHole(const View& a_v, const Game::HudState& a_st)
 		{
 			if (a_st.pkHole[0] < 0) {
 				return;
 			}
-			constexpr float cw = 70.0f, gap = 10.0f;
-			const float     w = cw * 2 + gap + 40.0f;
-			const float     cx = a_v.w * 0.5f, y = a_v.h - 66.0f - cw * 1.4f - 52.0f;
-			Chamfer(a_v, cx - w * 0.5f, y, w, cw * 1.4f + 48.0f, 12.0f, kPanel, a_st.pkYourTurn ? kBright : kEdge);
-			PlayingCard(a_v, a_st.pkHole[0], cx - cw - gap * 0.5f, y + 12, cw);
-			PlayingCard(a_v, a_st.pkHole[1], cx + gap * 0.5f, y + 12, cw);
+			const float w = PokerHoleW(), h = PokerHoleH();
+			const float x = a_v.w - kPkMargin - w, y = a_v.h - 56.0f - h;
+			Chamfer(a_v, x, y, w, h, 12.0f, kPanel, a_st.pkYourTurn ? kBright : kEdge);
+			const float cx = x + w * 0.5f;
+			PlayingCard(a_v, a_st.pkHole[0], cx - kHoleCard - 5.0f, y + 12, kHoleCard);
+			PlayingCard(a_v, a_st.pkHole[1], cx + 5.0f, y + 12, kHoleCard);
 			const std::string label = a_st.pkYourTurn ? (a_st.pkHand.empty() ? std::string("YOUR TURN") : "YOUR TURN · " + a_st.pkHand) : a_st.pkHand;
 			if (!label.empty()) {
-				const float lw = TextWidth(Mono(), label, 13, 1.5f);
-				if (lw + 24 > w) {
-					Chamfer(a_v, cx - lw * 0.5f - 12, y + cw * 1.4f + 22, lw + 24, 22, 6.0f, kPanel, 0);
-				}
-				Print(a_v, Mono(), label, cx, y + cw * 1.4f + 24, 13, a_st.pkYourTurn ? kBright : kText, a_st.pkYourTurn ? kGlow : 0, 1.5f, Align::kCentre);
+				const float size = std::min(12.0f, 12.0f * (w - 16.0f) / std::max(1.0f, TextWidth(Mono(), label, 12, 1.0f)));
+				Print(a_v, Mono(), label, cx, y + kHoleCard * 1.4f + 22, size, a_st.pkYourTurn ? kBright : kText, a_st.pkYourTurn ? kGlow : 0, 1.0f,
+					Align::kCentre);
 			}
 		}
 
@@ -524,23 +547,70 @@ namespace fr::Hud
 				return;
 			}
 			const float alpha = std::min(1.0f, a_st.bannerAge * 4.0f) * std::clamp((5.0f - a_st.bannerAge) / 0.6f, 0.0f, 1.0f);
-			const float w = std::max({ 420.0f, TextWidth(Title(), a_st.bannerTitle, 30, 3.0f) + 60.0f, TextWidth(Mono(), a_st.bannerSub, 15, 2.0f) + 60.0f });
-			const float cx = a_v.w * 0.5f, y = 190.0f;
-			Chamfer(a_v, cx - w * 0.5f, y, w, 96, 16, Fade(kPanel, alpha), Fade(kEdge, alpha));
-			Print(a_v, Title(), a_st.bannerTitle, cx, y + 12, 30, Fade(kBright, alpha), Fade(kGlow, alpha), 3.0f, Align::kCentre);
+			const float w = std::max({ 380.0f, TextWidth(Title(), a_st.bannerTitle, 28, 3.0f) + 60.0f, TextWidth(Mono(), a_st.bannerSub, 14, 2.0f) + 60.0f });
+			const float cx = a_v.w * 0.5f, y = a_v.h * 0.42f - 46.0f;
+			Chamfer(a_v, cx - w * 0.5f, y, w, 92, 16, Fade(kPanel, alpha), Fade(kEdge, alpha));
+			Print(a_v, Title(), a_st.bannerTitle, cx, y + 12, 28, Fade(kBright, alpha), Fade(kGlow, alpha), 3.0f, Align::kCentre);
 			if (!a_st.bannerSub.empty()) {
-				Print(a_v, Mono(), a_st.bannerSub, cx, y + 60, 15, Fade(kText, alpha), 0, 2.0f, Align::kCentre);
+				Print(a_v, Mono(), a_st.bannerSub, cx, y + 58, 14, Fade(kText, alpha), 0, 2.0f, Align::kCentre);
 			}
 		}
 
-		void DrawPoker(const View& a_v, const Game::HudState& a_st)
+		// the log, bottom left: as wide as the room left of your cards
+		void PokerLog(const View& a_v, const Game::HudState& a_st)
 		{
+			if (a_st.log.empty()) {
+				return;
+			}
+			constexpr float kLine = 22.0f;
+			const float     maxW = a_v.w - PokerHoleW() - kPkMargin * 3.0f;
+			float           w = 0.0f;
+			for (const auto& line : a_st.log) {
+				w = std::max(w, TextWidth(Mono(), "> " + line.text, 14, 1.0f));
+			}
+			const float size = w + 32.0f > maxW ? 14.0f * (maxW - 32.0f) / w : 14.0f;
+			w = std::min(w + 32.0f, maxW);
+			const float h = PokerLogH(a_st);
+			const float x = kPkMargin, y0 = a_v.h - 56.0f - h;
+			Chamfer(a_v, x, y0, w, h, 10.0f, kPanel, kEdge);
+			float y = y0 + 10.0f;
+			for (const auto& line : a_st.log) {
+				const ImU32 col = line.tone == 1 ? kBright : line.tone == 2 ? kRedText : kText;
+				Print(a_v, Mono(), "> " + line.text, x + 14, y, size, col, 0, 1.0f);
+				y += kLine;
+			}
+		}
+
+		void PokerKeys(const View& a_v, const Game::HudState& a_st)
+		{
+			const float maxW = a_v.w - kPkMargin * 2.0f;
+			const float tw = TextWidth(Mono(), a_st.keys, 13, 1.0f);
+			const float size = tw + 40.0f > maxW ? 13.0f * (maxW - 40.0f) / tw : 13.0f;
+			const float w = std::min(tw + 40.0f, maxW);
+			const float y = a_v.h - 46.0f;
+			Chamfer(a_v, a_v.w * 0.5f - w * 0.5f, y, w, 30.0f, 8.0f, kPanel, kEdge);
+			Print(a_v, Mono(), a_st.keys, a_v.w * 0.5f, y + 7.0f + (13.0f - size) * 0.5f, size, a_st.pkYourTurn ? kBright : kText, 0, 1.0f,
+				Align::kCentre);
+		}
+
+		void DrawPoker(View a_v, const Game::HudState& a_st)
+		{
+			// room for it all: the status and the board side by side along the top, the log and your cards along the
+			// bottom; too little, and everything's drawn smaller
+			const float needW = std::max(PokerStatusW(a_st) + PokerBoardW() + kPkMargin * 3.0f, 520.0f + PokerHoleW());
+			const float needH = kPkMargin + std::max(PokerStatusH(a_st), PokerBoardH()) + 16.0f + std::max(PokerLogH(a_st), PokerHoleH()) + 56.0f;
+			const float f = std::min({ 1.0f, a_v.w / needW, a_v.h / needH });
+			if (f < 1.0f) {
+				a_v.s *= f;
+				a_v.w /= f;
+				a_v.h /= f;
+			}
 			PokerStatus(a_v, a_st);
 			PokerBoard(a_v, a_st);
+			PokerLog(a_v, a_st);
 			PokerHole(a_v, a_st);
+			PokerKeys(a_v, a_st);
 			PokerBanner(a_v, a_st);
-			Keys(a_v, a_st);
-			Log(a_v, a_st, a_v.h - 66.0f);
 		}
 
 		// ------------------------------------------------------------ plain fallback (the art didn't load)
