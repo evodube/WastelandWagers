@@ -94,7 +94,7 @@ Function Leave(Int aiActor, Int aiLink)
 	endif
 	Dealers.RemoveRef(akActor)
 	Bettors.RemoveRef(akActor)
-	akActor.EnableAI(true)  ; (held at a table: their AI was off)
+	akActor.EnableAI(true)  ; (0.5.2 turned it off at the tables: on again for anyone it was left off for)
 	akActor.SetHeadTracking(true)
 	if akLink
 		akActor.SetLinkedRef(None, akLink)
@@ -135,14 +135,7 @@ Bool Function PlayIdleOn(Int aiActor, Int aiIdle)
 	if akActor == None || akIdle == None
 		return false
 	endif
-	if akActor.IsAIEnabled()
-		return akActor.PlayIdle(akIdle)
-	endif
-	; held at a table, their AI off: on just long enough to start the idle
-	akActor.EnableAI(true)
-	Bool played = akActor.PlayIdle(akIdle)
-	akActor.EnableAI(false)
-	return played
+	return akActor.PlayIdle(akIdle)
 EndFunction
 
 ; sat down in a chair (a poker table's)

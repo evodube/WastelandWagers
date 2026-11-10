@@ -226,12 +226,11 @@ namespace fr::Npc
 
 	bool SetRestrained(RE::Actor* a_actor, bool a_on)
 	{
-		// held where they stand: not moving, and (the patch for the slow turning on the spot while they're held: their
-		// AI kept trying to walk off or look about, and turned them in place) their AI and head tracking off too. All
-		// back on when they're let go (and for anyone in the quest's collections when a save loads)
+		// held where they stand: not moving, and (for the slow turning on the spot while they're held: following what
+		// they look at round) head tracking off. Back on when they're let go (and for anyone in the quest's collections
+		// when a save loads). (Their AI stays on: off, they stood frozen, not even breathing)
 		const bool ok = CallActor(a_actor, "SetRestrained", a_on);
 		CallActor(a_actor, "SetHeadTracking", !a_on);
-		CallActor(a_actor, "EnableAI", !a_on, false);
 		return ok;
 	}
 
