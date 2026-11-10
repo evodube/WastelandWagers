@@ -381,7 +381,7 @@ namespace fr
 		mutable std::mutex     _btnMutex;
 		std::vector<PkButton>  _pkButtons;
 		float                  _scrW{ 1920.0f }, _scrH{ 1080.0f };
-		bool                   _lmbWasDown{ false };
+		bool                   _pkLmbWasDown{ false };
 		bool                   _pkDragging{ false };  // the raise slider held
 		RE::BSTSmartPointer<RE::BSInputEnableLayer> _pkMenuLayer;
 

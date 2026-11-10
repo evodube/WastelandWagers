@@ -70,7 +70,7 @@ namespace fr
 		// at the poker table: a left click on one of the buttons
 		{
 			const bool down = focus && poker && (::GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
-			if (down && !_lmbWasDown && tasks) {
+			if (down && !_pkLmbWasDown && tasks) {
 				double px, py;
 				{
 					std::scoped_lock lock(_camMutex);
@@ -117,7 +117,7 @@ namespace fr
 			if (!down) {
 				_pkDragging = false;
 			}
-			_lmbWasDown = down;
+			_pkLmbWasDown = down;
 		}
 		for (std::size_t i = 0; i < keys.size(); ++i) {
 			const bool down = focus && keys[i] > 0 && (::GetAsyncKeyState(keys[i]) & 0x8000) != 0;
