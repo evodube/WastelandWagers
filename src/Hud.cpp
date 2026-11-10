@@ -939,16 +939,16 @@ namespace fr::Hud
 
 		// ------------------------------------------------------------ blackjack (Blackjack.cpp): poker's panels, its own cards and buttons
 
-		// the dealer's cards and what they come to, top middle under the turn panel
+		// the dealer's cards and what they come to, top middle: the SHOW / HIDE DEALER button
 		void BjDealer(const View& a_v, const Game::HudState& a_st)
 		{
-			if (a_st.bjDealer.empty()) {
+			if (a_st.bjDealer.empty() || !a_st.bjShowDealer) {
 				return;
 			}
 			constexpr float cw = 44.0f, ch = 70.0f, gap = 7.0f, pad = 8.0f;
 			const float     n = static_cast<float>(std::max<std::size_t>(a_st.bjDealer.size(), 2));
 			const float     w = std::max(cw * n + gap * (n - 1.0f) + pad * 2.0f, 200.0f), h = ch + pad * 2.0f + 22.0f;
-			const float     x = a_v.w * 0.5f - w * 0.5f, y = kPkMargin + PokerHoleH() + 8.0f;
+			const float     x = a_v.w * 0.5f - w * 0.5f, y = kPkMargin;
 			Chamfer(a_v, x, y, w, h, 10.0f, kPanel, kEdge);
 			Print(a_v, Mono(), "DEALER · " + a_st.bjDealerValue, x + w * 0.5f, y + 6.0f, 12, kBright, 0, 1.5f, Align::kCentre);
 			const float rowW = cw * static_cast<float>(a_st.bjDealer.size()) + gap * static_cast<float>(a_st.bjDealer.size() - 1);
@@ -962,7 +962,7 @@ namespace fr::Hud
 		// your hand (or two, split), bottom middle above the buttons: the cards, what they come to, the bet, the result
 		void BjMine(const View& a_v, const Game::HudState& a_st)
 		{
-			if (a_st.bjHands.empty()) {
+			if (a_st.bjHands.empty() || !a_st.bjShowHand) {
 				return;
 			}
 			constexpr float cw = 44.0f, ch = 70.0f, gap = 5.0f, pad = 8.0f, between = 16.0f;
@@ -1047,13 +1047,15 @@ namespace fr::Hud
 				x += (bw + gap) * k;
 			}
 			// the table's own, bottom right
-			const int   nSide = a_st.pkKit ? 3 : 2;
+			const int   nSide = a_st.pkKit ? 5 : 4;
 			const float sx = a_v.w - kPkMargin - kPkSideW;
 			float       sy = a_v.h - kPkBottom - 8.0f - (34.0f * static_cast<float>(nSide) - 6.0f);
 			auto side = [&](int a_id, const std::string& a_label, bool a_on) {
 				Button(a_v, a_st, out, a_id, a_label, sx, sy, kPkSideW, 28.0f, a_on, false, 12.0f);
 				sy += 34.0f;
 			};
+			side(69, tag("(RS)", a_st.bjShowHand ? "HIDE MY HAND" : "SHOW MY HAND"), true);
+			side(70, a_st.bjShowDealer ? "HIDE DEALER" : "SHOW DEALER", true);
 			side(66, tag("(START)", a_st.pkTop ? "VIEW: MY PLACE" : "VIEW: FROM ABOVE"), true);
 			side(67, tag("(BACK)", "LEAVE THE TABLE"), true);
 			if (a_st.pkKit) {
@@ -1089,8 +1091,7 @@ namespace fr::Hud
 			PokerStatus(slid(0.0f, -1.0f), a_st);
 			PokerBoard(slid(0.08f, 1.0f), a_st);
 			PokerLog(slid(0.16f, -1.0f), a_st);
-			PokerHole(a_v, a_st);
-			BjDealer(a_v, a_st);
+			BjDealer(a_v, a_st);  // (no turn panel up top, as at poker: the buttons show when it's yours)
 			BjMine(a_v, a_st);
 			PokerBanner(a_v, a_st);
 			BlackjackButtons(a_v, a_st, a_viewport);

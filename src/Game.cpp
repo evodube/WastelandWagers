@@ -114,9 +114,9 @@ namespace fr
 		}
 		static constexpr std::array<std::pair<WORD, int>, 10> kMap{ { { 0x1000, 1 }, { 0x2000, 0 }, { 0x4000, 2 }, { 0x8000, 3 },
 			{ 0x0001, 4 }, { 0x0002, 5 }, { 0x0020, 6 }, { 0x0010, 9 }, { 0x0080, 10 }, { 0x0040, 8 } } };
-		// (blackjack: A, B, X, Y as the 1-4 keys; Back leave; Start the view)
-		static constexpr std::array<std::pair<WORD, int>, 6> kBjMap{ { { 0x1000, 80 }, { 0x2000, 81 }, { 0x4000, 82 }, { 0x8000, 83 },
-			{ 0x0020, 67 }, { 0x0010, 66 } } };
+		// (blackjack: A, B, X, Y as the 1-4 keys; Back leave; Start the view; right stick your hand on the HUD)
+		static constexpr std::array<std::pair<WORD, int>, 7> kBjMap{ { { 0x1000, 80 }, { 0x2000, 81 }, { 0x4000, 82 }, { 0x8000, 83 },
+			{ 0x0020, 67 }, { 0x0010, 66 }, { 0x0080, 69 } } };
 		if (_bjSeated) {
 			for (const auto& [mask, key] : kBjMap) {
 				if (pressed & mask) {

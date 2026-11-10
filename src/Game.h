@@ -191,6 +191,8 @@ namespace fr
 			bool                  bjCanSplit{ false };
 			int                   bjInsurance{ 0 };   // what insurance would cost you
 			float                 bjDealIn{ -1.0f };  // seconds before the cards come out (-1: waiting for a bet)
+			bool                  bjShowHand{ true };   // the SHOW / HIDE HAND button: your hand's panel
+			bool                  bjShowDealer{ true }; // the SHOW / HIDE DEALER button: the dealer's panel
 		};
 		HudState Hud() const;
 
@@ -641,6 +643,8 @@ namespace fr
 		int               _bjYou{ -1 };
 		bool              _bjTopView{ false };
 		float             _bjLookYaw{ 0.0f };
+		bool              _bjShowHand{ true };    // your hand on the HUD (the SHOW / HIDE HAND button)
+		bool              _bjShowDealer{ true };  // the dealer's cards on the HUD (SHOW / HIDE DEALER)
 		std::chrono::steady_clock::time_point _bjAnimLast{}, _bjAnimAt{};
 		bool              _bjAnimHave{ false };
 		bool         BjFrame(Frame& a_out) const;

@@ -153,8 +153,14 @@ namespace fr
 		// pair's two hands side by side)
 		RE::NiPoint3 CardAt(int a_seat, int a_hand, int a_hands, int a_k)
 		{
-			const float side = a_hands > 1 ? (a_hand == 0 ? -3.0f : 3.0f) : 0.0f;
-			return AtR(a_seat, kCardBoxR + 1.2f - static_cast<float>(a_k) * 1.3f) + Along(a_seat) * (side + static_cast<float>(a_k) * 0.85f);
+			// (each one on top of the one before, a card's thickness up, so they lie on each other instead of through each
+			// other; far enough in and along that the corner of every card under it shows)
+			const float k = static_cast<float>(a_k);
+			const float side = a_hands > 1 ? (a_hand == 0 ? -3.4f : 3.4f) : 0.0f;
+			const float fan = a_hands > 1 && a_hand == 0 ? -1.0f : 1.0f;  // (a split pair's two away from each other)
+			auto        p = AtR(a_seat, kCardBoxR + 1.6f - k * 1.6f) + Along(a_seat) * (side + fan * k * 1.25f);
+			p.z = k * (kCardT + 0.04f);
+			return p;
 		}
 
 		RE::NiPoint3 DealerCardAt(int a_k) { return { -6.9f + static_cast<float>(a_k) * 4.6f, kDealerRowY, 0.0f }; }
@@ -805,7 +811,7 @@ namespace fr
 			const float  arc = c.t < 1.0f ? std::sin(c.t * 3.14159265f) * (c.mucked ? 0.8f : 2.2f) : 0.0f;
 			const float  lift = std::sin(c.flip * 3.14159265f) * 2.5f + (c.flip < 0.5f ? kCardT : 0.0f) + 0.02f + arc + c.lift;
 			const float  yaw = c.yaw + c.spin * (1.0f - e);
-			PlaceRoot(ref.get(), ToWorld(a_frame, p.x, p.y, kFeltZ + lift), Lying(yaw, flipAngle) * a_frame.rot);
+			PlaceRoot(ref.get(), ToWorld(a_frame, p.x, p.y, kFeltZ + p.z + lift), Lying(yaw, flipAngle) * a_frame.rot);
 		}
 	}
 
@@ -1523,6 +1529,8 @@ namespace fr
 			}
 			return;
 		case 66: _bjTopView = !_bjTopView; return;
+		case 69: _bjShowHand = !_bjShowHand; return;
+		case 70: _bjShowDealer = !_bjShowDealer; return;
 		case 67: BjStandUp(); return;
 		case 68:
 			if (auto table = _bj.table.get(); table && IsKitTable(table.get()) && _bj.phase == BjPhase::kBetting) {
@@ -1632,6 +1640,8 @@ namespace fr
 	void Game::BjHud(HudState& a_h) const
 	{
 		a_h.blackjack = true;
+		a_h.bjShowHand = _bjShowHand;
+		a_h.bjShowDealer = _bjShowDealer;
 		a_h.poker = false;
 		a_h.seated = true;
 		a_h.pkTitle = "BLACKJACK · PAYS 3 TO 2";
