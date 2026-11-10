@@ -540,22 +540,30 @@ namespace fr::Hud
 			const float x = kPkMargin, y0 = a_v.h - kPkBottom - h;
 			Chamfer(a_v, x, y0, w, h, 10.0f, kPanel, kEdge);
 			float y = y0 + 10.0f;
+			int idx = 0;
+			const int n = static_cast<int>(a_st.log.size());
 			for (const auto& line : a_st.log) {
 				const ImU32 col = line.tone == 1 ? kBright : line.tone == 2 ? kRedText : kText;
-				Print(a_v, Mono(), "> " + line.text, x + 14, y, size, col, 0, 1.0f);
+				const float age = static_cast<float>(n - 1 - idx++);  // (the older, the fainter)
+				Print(a_v, Mono(), "> " + line.text, x + 14, y, size, Fade(col, std::max(0.35f, 1.0f - age * 0.16f)), 0, 1.0f);
 				y += kLine;
 			}
 		}
 
 		// a button: drawn, and noted (in screen pixels) for Game to click; true when the pointer's over it
 		bool Button(const View& a_v, const Game::HudState& a_st, std::vector<Game::PkButton>& a_out, int a_id, std::string_view a_label,
-			float a_x, float a_y, float a_w, float a_h, bool a_on, bool a_strong = false, float a_size = 14.0f)
+			float a_x, float a_y, float a_w, float a_h, bool a_on, bool a_strong = false, float a_size = 14.0f, ImU32 a_accent = 0)
 		{
 			const ImVec2 p0 = a_v.P(a_x, a_y), p1 = a_v.P(a_x + a_w, a_y + a_h);
 			const float  ox = a_v.origin.x, oy = a_v.origin.y;
 			const bool   hover = a_on && a_st.pkPtrX >= p0.x - ox && a_st.pkPtrX <= p1.x - ox && a_st.pkPtrY >= p0.y - oy && a_st.pkPtrY <= p1.y - oy;
-			const ImU32  fill = !a_on ? Rgba(6, 20, 9, 0.5f) : hover ? Rgba(40, 140, 60, 0.85f) : a_strong ? Rgba(16, 70, 28, 0.85f) : kPanel;
-			Chamfer(a_v, a_x, a_y, a_w, a_h, 6.0f, fill, a_on ? (hover || a_strong ? kBright : kEdge) : Rgba(80, 200, 100, 0.2f));
+			ImU32 fill = !a_on ? Rgba(6, 20, 9, 0.5f) : hover ? Rgba(40, 140, 60, 0.85f) : a_strong ? Rgba(16, 70, 28, 0.85f) : kPanel;
+			ImU32 edge = a_on ? (hover || a_strong ? kBright : kEdge) : Rgba(80, 200, 100, 0.2f);
+			if (a_on && a_accent) {
+				fill = hover ? Fade(a_accent, 0.95f) : Fade(a_accent, 0.6f);  // (fold red, all in amber)
+				edge = Fade(a_accent | 0xFF000000u, hover ? 1.0f : 0.8f);
+			}
+			Chamfer(a_v, a_x, a_y, a_w, a_h, 6.0f, fill, edge);
 			const float size = std::min(a_size, a_size * (a_w - 12.0f) / std::max(1.0f, TextWidth(Mono(), a_label, a_size, 1.0f)));
 			Print(a_v, Mono(), a_label, a_x + a_w * 0.5f, a_y + (a_h - size) * 0.5f - 1.0f, size, !a_on ? kOff : hover ? Rgba(230, 255, 230) : kBright,
 				0, 1.0f, Align::kCentre);
@@ -577,14 +585,32 @@ namespace fr::Hud
 			const float k = std::min(1.0f, (a_v.w - kPkMargin * 2.0f) / w);
 			float       x = a_v.w * 0.5f - w * k * 0.5f;
 			const float y = a_v.h - 52.0f;
-			auto next = [&](int a_id, const std::string& a_label, float a_w, bool a_strong = false) {
-				Button(a_v, a_st, out, a_id, a_label, x, y, a_w * k, h, turn, a_strong);
+			auto next = [&](int a_id, const std::string& a_label, float a_w, bool a_strong = false, ImU32 a_accent = 0) {
+				Button(a_v, a_st, out, a_id, a_label, x, y, a_w * k, h, turn, a_strong, 14.0f, a_accent);
 				x += (a_w + gap) * k;
 			};
+			if (!turn) {
+				// not your turn: no buttons, just who's to act
+				std::string who;
+				for (const auto& r : a_st.pkRows) {
+					if (r.toAct && !r.you) {
+						who = r.name;
+					}
+				}
+				const std::string msg = !who.empty() ? std::format("{} IS THINKING", who) : a_st.pkHelp;
+				if (!msg.empty()) {
+					const float mw = std::min(a_v.w - kPkMargin * 2.0f, TextWidth(Mono(), msg, 14, 2.0f) + 60.0f);
+					Chamfer(a_v, a_v.w * 0.5f - mw * 0.5f, y + 4.0f, mw, h - 8.0f, 8.0f, kPanel, kEdge);
+					const float size = std::min(14.0f, 14.0f * (mw - 30.0f) / std::max(1.0f, TextWidth(Mono(), msg, 14, 2.0f)));
+					Print(a_v, Mono(), msg, a_v.w * 0.5f, y + (h - size) * 0.5f - 1.0f, size, kText, 0, 2.0f, Align::kCentre);
+				}
+				x = a_v.w;  // (the side buttons still drawn below)
+			}
 			const bool pad = a_st.pkPad;  // (a controller: its button on each)
 			auto       tag = [&](const char* a_b, const std::string& a_s) { return pad ? std::format("{} {}", a_b, a_s) : a_s; };
+			if (turn) {
 			next(1, tag("(A)", call), wCall, turn);
-			next(0, tag("(B)", "FOLD"), wFold);
+			next(0, tag("(B)", "FOLD"), wFold, false, Rgba(150, 30, 30));
 			{
 				// the slider: from the smallest raise to all in
 				const bool  on = turn && a_st.pkMaxRaise > a_st.pkMinRaise;
@@ -605,7 +631,8 @@ namespace fr::Hud
 				x += (wSlider + gap) * k;
 			}
 			next(2, tag("(X)", raise), wRaise, turn);
-			next(3, tag("(Y)", allIn), wAll);
+			next(3, tag("(Y)", allIn), wAll, false, Rgba(170, 100, 20));
+			}
 			// the table, down the right
 			const float sx = a_v.w - kPkMargin - kPkSideW;
 			float       sy = kPkMargin + PokerBoardH() + 10.0f;
