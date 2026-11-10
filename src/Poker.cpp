@@ -813,7 +813,7 @@ namespace fr
 		_pk.timer = delay + 0.4f;
 		_pk.think = 0.0f;
 		PkSay(std::format("NEW HAND · BLINDS {}/{}", s.pkSmallBlind, s.pkBigBlind));
-		Audio::PlayUI(Audio::Bank::kShuffle, 0.6f);
+
 	}
 
 	void Game::PkAct(pk::Action a_action)
