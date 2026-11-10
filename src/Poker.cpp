@@ -1270,7 +1270,7 @@ namespace fr
 					for (std::size_t k = 0; k < std::min(_pk.boardShown, h.board.size()); ++k) {
 						mine.push_back(h.board[k]);
 					}
-					if (!_pk.peeking && _pk.phase != PkPhase::kShowdown) {
+					if (!_pk.peeking && !(_pk.phase == PkPhase::kShowdown && h.showdown)) {
 						// (what you hold only shows while you're looking at your cards)
 					} else if (mine.size() >= 5) {
 						a_h.pkHand = pk::HandName(pk::Evaluate(mine));
