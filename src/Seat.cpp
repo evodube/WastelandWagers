@@ -47,7 +47,7 @@ namespace fr
 			{
 				auto* player = RE::PlayerCharacter::GetSingleton();
 				if (a_event.objectActivated && a_event.actionRef && a_event.actionRef.get() == player &&
-					Forms::IsTable(a_event.objectActivated.get())) {
+					(Forms::IsTable(a_event.objectActivated.get()) || Forms::IsPokerTable(a_event.objectActivated.get()))) {
 					auto handle = a_event.objectActivated->GetHandle();
 					if (auto* tasks = F4SE::GetTaskInterface()) {
 						tasks->AddTask([handle]() {
@@ -371,6 +371,9 @@ namespace fr
 
 	bool Game::OnLookMouse(const RE::MouseMoveEvent* a_event)
 	{
+		if (_pkSeated && a_event) {
+			return true;  // at the poker table the view's fixed: the mouse does nothing
+		}
 		if (!_seated || !a_event) {
 			return false;
 		}
