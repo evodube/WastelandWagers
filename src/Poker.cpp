@@ -2222,7 +2222,7 @@ namespace fr
 		}
 		_pkTopView = Settings::Get().pkTopDown;
 		_pk.seatedAge = 0.0f;
-		_pkShowCards = false;
+		_pkShowCards = !Settings::Get().pkCardsDown;  // (your cards on the HUD face up, unless they're to start face down)
 		_padUsed = false;
 		_pkPtrX = _pkPtrY = -1.0;
 		_pkSeated = true;

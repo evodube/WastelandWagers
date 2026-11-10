@@ -569,10 +569,47 @@ namespace fr::Hud
 			}
 		}
 
-		// a card face on the HUD (46 x 64): its rank in the corner, its suit in the middle; a_in false: dimmed; a_mark: outlined
+		// the table's own card faces (hud\cards.png: cards_d's atlas, 10 across and 6 down, the back in cell 52): not
+		// having it isn't the HUD's art missing, the cards are drawn instead
+		ImTextureID CardsTexture()
+		{
+			static ImTextureID id = nullptr;
+			static bool        tried = false;
+			if (!tried) {
+				tried = true;
+				for (const char* dir : { "Data\\F4SE\\Plugins\\fo4roulette\\hud\\", "F4SE\\Plugins\\fo4roulette\\hud\\" }) {
+					if ((id = F4SEMenuFramework::LoadTexture(std::string(dir) + "cards.png"))) {
+						break;
+					}
+				}
+				if (!id) {
+					log::warn("HUD: cards.png didn't load; the HUD's cards are drawn instead");
+				}
+			}
+			return id;
+		}
+
+		// a card on the HUD (40 x 64: a card's 5:8): the table's own face (its back with a_card 52); a_in false:
+		// dimmed; a_mark: outlined
 		void HudCard(const View& a_v, int a_card, float a_x, float a_y, bool a_in = true, bool a_mark = false)
 		{
-			constexpr float cw = 46.0f, ch = 64.0f;
+			constexpr float cw = 40.0f, ch = 64.0f;
+			if (auto tex = CardsTexture()) {
+				const float u = static_cast<float>(a_card % 10) / 10.0f, v = static_cast<float>(a_card / 10) / 6.0f;
+				DL::AddImageRounded(a_v.dl, tex, a_v.P(a_x, a_y), a_v.P(a_x + cw, a_y + ch), { u + 0.002f, v + 0.002f },
+					{ u + 0.1f - 0.002f, v + 1.0f / 6.0f - 0.002f }, a_in ? Rgba(255, 255, 255) : Rgba(255, 255, 255, 0.4f), 4.0f * a_v.s, 0);
+				DL::AddRect(a_v.dl, a_v.P(a_x, a_y), a_v.P(a_x + cw, a_y + ch), a_in ? Rgba(0, 0, 0, 0.35f) : Rgba(0, 0, 0, 0.15f), 4.0f * a_v.s, 0,
+					std::max(1.0f, a_v.s));
+				if (a_mark) {
+					DL::AddRect(a_v.dl, a_v.P(a_x - 1.5f, a_y - 1.5f), a_v.P(a_x + cw + 1.5f, a_y + ch + 1.5f), kBright, 6.0f * a_v.s, 0,
+						std::max(1.0f, 2.0f * a_v.s));
+				}
+				return;
+			}
+			if (a_card >= 52) {
+				DL::AddRectFilled(a_v.dl, a_v.P(a_x, a_y), a_v.P(a_x + cw, a_y + ch), Rgba(150, 30, 35), 5.0f * a_v.s, 0);
+				return;
+			}
 			static constexpr std::array<const char*, 13> kRanks{ "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A" };
 			const int   rank = a_card % 13, suit = a_card / 13;
 			const bool  red = suit == 1 || suit == 2;
@@ -586,18 +623,18 @@ namespace fr::Hud
 			SuitShape(a_v, suit, a_x + cw * 0.5f, a_y + ch * 0.6f, 11.0f, ink);
 		}
 
-		// your two cards, bottom middle above the buttons: the SHOW / HIDE MY CARDS button
+		// your two cards, bottom middle above the buttons: face up, or face down till you SHOW MY CARDS (the setting)
 		void PokerMine(const View& a_v, const Game::HudState& a_st)
 		{
-			if (!a_st.pkPeek || a_st.pkHole[0] < 0) {
+			if (a_st.pkHole[0] < 0) {
 				return;
 			}
-			constexpr float cw = 46.0f, ch = 64.0f, gap = 7.0f, pad = 8.0f;
+			constexpr float cw = 40.0f, ch = 64.0f, gap = 7.0f, pad = 8.0f;
 			const float     w = cw * 2.0f + gap + pad * 2.0f, h = ch + pad * 2.0f;
 			const float     x = a_v.w * 0.5f - w * 0.5f, y = a_v.h - kPkBottom - h - 6.0f;
 			Chamfer(a_v, x, y, w, h, 10.0f, kPanel, kEdge);
 			for (int k = 0; k < 2; ++k) {
-				HudCard(a_v, a_st.pkHole[k], x + pad + static_cast<float>(k) * (cw + gap), y + pad);
+				HudCard(a_v, a_st.pkPeek ? a_st.pkHole[k] : 52, x + pad + static_cast<float>(k) * (cw + gap), y + pad);
 			}
 		}
 
@@ -607,7 +644,7 @@ namespace fr::Hud
 			if (!a_st.pkDealer || a_st.pkBoard.empty()) {
 				return;
 			}
-			constexpr float cw = 46.0f, ch = 64.0f, gap = 7.0f, pad = 8.0f, split = 22.0f;
+			constexpr float cw = 40.0f, ch = 64.0f, gap = 7.0f, pad = 8.0f, split = 22.0f;
 			// at the showdown: the winning five lifted and outlined (the rest dimmed), the winner's own two beside the board
 			const bool  won = !a_st.pkWinFive.empty();
 			const float boardW = cw * 5.0f + gap * 4.0f;
