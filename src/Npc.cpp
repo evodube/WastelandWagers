@@ -1,6 +1,12 @@
 #include "Npc.h"
 
 #include "Forms.h"
+#include "Settings.h"
+
+#include "RE/B/BGSRefAliasInstanceData.h"
+#include "RE/E/ExtraAliasInstanceArray.h"
+#include "RE/T/TESFile.h"
+#include "RE/T/TESQuest.h"
 
 // The base class's destructor is declared in CommonLibF4 but not defined there; our functors need one to link.
 RE::BSScript::IStackCallbackFunctor::~IStackCallbackFunctor() = default;
@@ -229,6 +235,35 @@ namespace fr::Npc
 	bool ClearLookAt(RE::Actor* a_actor)
 	{
 		return CallActor(a_actor, "ClearLookAt");
+	}
+
+	bool Busy(RE::Actor* a_actor)
+	{
+		if (!a_actor) {
+			return true;
+		}
+		if (auto* proc = a_actor->currentProcess; proc && proc->GetOccupiedFurniture()) {
+			return true;
+		}
+		auto* extra = a_actor->extraList.get();
+		auto* aliases = extra ? extra->GetByType<RE::ExtraAliasInstanceArray>() : nullptr;
+		if (!aliases) {
+			return false;
+		}
+		const auto& plugin = Settings::Get().plugin;
+		for (const auto& a : aliases->aliasArray) {
+			auto* file = a.quest ? a.quest->GetFile(0) : nullptr;
+			if (file && _stricmp(std::string(file->GetFilename()).c_str(), plugin.c_str()) == 0) {
+				continue;  // (ours)
+			}
+			if (file && _stricmp(std::string(file->GetFilename()).c_str(), "fo4pool.esl") == 0) {
+				return true;  // playing or watching pool
+			}
+			if (a.instancedPackages && !a.instancedPackages->empty()) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	void PlayIdle(RE::Actor* a_actor, RE::TESFormID a_idle)

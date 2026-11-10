@@ -175,7 +175,7 @@ namespace fr
 		util::ForEachLoadedCell([&](RE::TESObjectCELL* a_cell) {
 			a_cell->ForEachReferenceInRange(a_frame.origin, s.bettorRange, [&](RE::TESObjectREFR* a_ref) {
 				auto* actor = a_ref ? a_ref->As<RE::Actor>() : nullptr;
-				if (!Usable(actor) || actor == player || actor->IsChild() || actor->IsInCombat() || (player && actor->GetHostileToActor(player)) ||
+				if (!Usable(actor) || actor == player || actor->IsChild() || actor->IsInCombat() || Npc::Busy(actor) || (player && actor->GetHostileToActor(player)) ||
 					(npcType && !actor->HasKeywordHelper(npcType, nullptr)) ||
 					std::ranges::any_of(_t.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); }) ||
 					std::ranges::any_of(_other.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); }) ||  // (at the other table)

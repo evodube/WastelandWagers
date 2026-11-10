@@ -33,6 +33,11 @@ namespace fr::Npc
 	// a vanilla idle (Fallout4.esm IDLE form ID) through the quest's PlayIdleOn
 	void PlayIdle(RE::Actor* a_actor, RE::TESFormID a_idle);
 
+	// Busy with something else, so not to be called over to a table: in furniture (a chair, a workstation, a guard
+	// post), or held by another quest's alias that gives them packages of its own (a pool game, a companion, a mod's
+	// scene). Our own quest's aliases don't count.
+	bool Busy(RE::Actor* a_actor);
+
 	// The AI package they're on, for the log.
 	std::string PackageName(RE::Actor* a_actor);
 }
