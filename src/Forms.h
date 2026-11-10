@@ -13,6 +13,9 @@ namespace fr::Forms
 	inline constexpr std::uint32_t kPackageID = 0x807;   // PACK fo4rouletteWalkToSpot
 	inline constexpr std::uint32_t kQuestID = 0x808;     // QUST fo4rouletteQuest
 	inline constexpr std::uint32_t kKitID = 0x80A;       // ALCH fo4rouletteTableKit
+	inline constexpr std::uint32_t kCardID = 0x810;      // STAT fo4rouletteCard_2c .. _As: 0x810 + suit * 13 + rank
+	inline constexpr std::uint32_t kPokerTableID = 0x844;  // ACTI fo4roulettePokerTable: Meshes\fo4roulette\PokerTable.nif
+	inline constexpr std::uint32_t kPokerKitID = 0x846;  // ALCH fo4roulettePokerKit
 
 	inline constexpr RE::TESFormID kXMarkerHeading = 0x00000034;
 	inline constexpr RE::TESFormID kCaps = 0x0000000F;
@@ -53,6 +56,19 @@ namespace fr::Forms
 	{
 		auto* base = a_ref ? a_ref->GetObjectReference() : nullptr;
 		auto* table = Table();
+		return base && table && base == table;
+	}
+
+	inline RE::TESBoundObject* PokerTable()
+	{
+		auto* f = Own(kPokerTableID);
+		return f && f->IsBoundObject() ? static_cast<RE::TESBoundObject*>(f) : nullptr;
+	}
+	inline RE::TESBoundObject* Card(int a_card) { return util::ResolveForm(Settings::Get().plugin, kCardID + static_cast<std::uint32_t>(std::clamp(a_card, 0, 51))); }
+	inline bool IsPokerTable(const RE::TESObjectREFR* a_ref)
+	{
+		auto* base = a_ref ? a_ref->GetObjectReference() : nullptr;
+		auto* table = PokerTable();
 		return base && table && base == table;
 	}
 }

@@ -87,6 +87,13 @@ namespace fr
 		bettors = ReadBool(L"Bettors", L"bEnabled", bettors);
 		maxBettors = std::clamp(static_cast<int>(ReadInt(L"Bettors", L"iMax", maxBettors)), 0, 4);  // (Game::kSpots places to stand)
 		bettorIdles = ReadBool(L"Bettors", L"bIdles", bettorIdles);
+		pkSmallBlind = std::clamp(static_cast<int>(ReadInt(L"Poker", L"iSmallBlind", pkSmallBlind)), 1, 1000);
+		pkBigBlind = std::clamp(static_cast<int>(ReadInt(L"Poker", L"iBigBlind", pkBigBlind)), pkSmallBlind, 2000);
+		pkBuyIn = std::clamp(static_cast<int>(ReadInt(L"Poker", L"iBuyIn", pkBuyIn)), pkBigBlind * 2, 100000);
+		pkPlayers = ReadBool(L"Poker", L"bSettlers", pkPlayers);
+		pkMaxPlayers = std::clamp(static_cast<int>(ReadInt(L"Poker", L"iMaxSettlers", pkMaxPlayers)), 0, 6);
+		pkNpcBuyIn = std::clamp(static_cast<int>(ReadInt(L"Poker", L"iSettlerBuyIn", pkNpcBuyIn)), pkBigBlind * 2, 100000);
+		pkThink = std::clamp(ReadFloat(L"Poker", L"fThinkTime", pkThink), 0.2f, 5.0f);
 		bettorEvery = std::clamp(ReadFloat(L"Bettors", L"fEvery", bettorEvery), 2.0f, 600.0f);
 		bettorRange = std::clamp(ReadFloat(L"Bettors", L"fRange", bettorRange), 200.0f, 6000.0f);
 		bettorMinRounds = std::clamp(static_cast<int>(ReadInt(L"Bettors", L"iMinRounds", bettorMinRounds)), 1, 50);

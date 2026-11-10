@@ -63,8 +63,9 @@ namespace fr
 		const bool  seated = _seated.load();
 		const int   spin = s.keySpin > 0 ? s.keySpin : _activateVk.load();
 		const bool  placing = _kitPlacing.load();
-		const std::array<int, 13> keys{ spin, s.keyLeave, s.keyView, s.keyRebet, s.keyClear, s.keyChip[0], s.keyChip[1], s.keyChip[2],
-			s.keyChip[3], s.keyPackUp, VK_LEFT, VK_RIGHT, _activateVk.load() };
+		const bool  poker = _pkSeated.load();
+		const std::array<int, 15> keys{ spin, s.keyLeave, s.keyView, s.keyRebet, s.keyClear, s.keyChip[0], s.keyChip[1], s.keyChip[2],
+			s.keyChip[3], s.keyPackUp, VK_LEFT, VK_RIGHT, _activateVk.load(), VK_UP, VK_DOWN };
 		auto* tasks = F4SE::GetTaskInterface();
 		for (std::size_t i = 0; i < keys.size(); ++i) {
 			const bool down = focus && keys[i] > 0 && (::GetAsyncKeyState(keys[i]) & 0x8000) != 0;
@@ -100,6 +101,29 @@ namespace fr
 						case 1: CancelKit(true); break;
 						case 10: TurnKit(-1); break;
 						default: TurnKit(1); break;
+						}
+					});
+				}
+				continue;
+			}
+			if (poker) {
+				// at the poker table: 1-4 fold, check/call, raise, all in; up/down the raise; leave; pack up
+				int pk = -1;
+				switch (i) {
+				case 5: pk = 0; break;
+				case 6: pk = 1; break;
+				case 7: pk = 2; break;
+				case 8: pk = 3; break;
+				case 13: pk = 4; break;
+				case 14: pk = 5; break;
+				case 1: pk = 6; break;
+				case 9: pk = 7; break;
+				default: break;
+				}
+				if (pk >= 0) {
+					tasks->AddTask([this, pk]() {
+						if (!IsGamePaused()) {
+							PkKey(pk);
 						}
 					});
 				}
@@ -198,6 +222,13 @@ namespace fr
 				StandUp();
 			}
 		}
+		if (_pkSeated) {
+			static const RE::BSFixedString dialogue("DialogueMenu");
+			if (auto* ui = RE::UI::GetSingleton(); ui && ui->GetMenuOpen(dialogue)) {
+				log::info("a conversation started while you were at the poker table: getting up");
+				PkStandUp();
+			}
+		}
 		if (IsGamePaused()) {
 			return;  // (menus, the Pip-Boy, the workshop: everything holds still; a conversation doesn't)
 		}
@@ -219,7 +250,9 @@ namespace fr
 		if (_scanTimer <= 0.0f) {
 			_scanTimer = kScanEvery;
 			ScanTables();
+			PkScan();
 		}
+		TickPoker(dt);
 		if (_t.table) {
 			TickTable(dt);
 		}
@@ -490,6 +523,7 @@ namespace fr
 
 	void Game::OnLoadingStarts()
 	{
+		PkEnd("a loading screen");
 		if (_kitPlacing) {
 			CancelKit(true);  // travelling while setting a kit up: the kit back
 		}
@@ -1155,6 +1189,7 @@ namespace fr
 		if (_kitPlacing) {
 			CancelKit(true);  // a save mid-set-up: the kit back in your inventory, no half-made table saved
 		}
+		PkBeforeSave();
 		Remove(_ghost);
 		_ghostValue = -1;
 		BeforeSaveTable();
@@ -1191,6 +1226,7 @@ namespace fr
 
 	void Game::AfterSave()
 	{
+		PkAfterSave();
 		if (!_lifted) {
 			return;
 		}
@@ -1223,6 +1259,10 @@ namespace fr
 		_haveEntryView = false;
 		_t = Slot{};
 		_other = Slot{};
+		_pk = PokerState{};
+		_pkSeated = false;
+		_pkYou = -1;
+		_camPitch = -1.0f;
 		_kitPlacing = false;  // (the preview went with the old game)
 		_kitPreview = {};
 		_ghost = {};

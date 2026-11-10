@@ -92,6 +92,17 @@ namespace fr::SettingsMenu
 						{ L"Bettors", L"iMinRounds", "Rounds they stay (fewest)", Kind::kInt, &s.bettorMinRounds, 1, 50, nullptr },
 						{ L"Bettors", L"iMaxRounds", "Rounds they stay (most)", Kind::kInt, &s.bettorMaxRounds, 1, 100, nullptr },
 					} },
+				{ "Poker", "Texas Hold'em, no limit. Settlers sit in with their own caps; 1-4 fold, call, raise, all in at the table.",
+					{
+						{ L"Poker", L"iSmallBlind", "Small blind", Kind::kInt, &s.pkSmallBlind, 1, 500, nullptr },
+						{ L"Poker", L"iBigBlind", "Big blind", Kind::kInt, &s.pkBigBlind, 2, 1000, nullptr },
+						{ L"Poker", L"iBuyIn", "Your buy-in (most)", Kind::kInt, &s.pkBuyIn, 20, 20000, nullptr,
+							"the most of your caps you sit down with; the rest stay in your pocket" },
+						{ L"Poker", L"bSettlers", "Settlers sit in", Kind::kBool, &s.pkPlayers },
+						{ L"Poker", L"iMaxSettlers", "Most settlers at the table", Kind::kInt, &s.pkMaxPlayers, 0, 6, nullptr },
+						{ L"Poker", L"iSettlerBuyIn", "A settler's buy-in (most)", Kind::kInt, &s.pkNpcBuyIn, 20, 20000, nullptr },
+						{ L"Poker", L"fThinkTime", "Settlers' thinking time", Kind::kFloat, &s.pkThink, 0.2f, 5.0f, "%.1fx" },
+					} },
 				{ "HUD & sound", "The HUD sizes itself to your screen height; the scale makes it bigger or smaller on top of that.",
 					{
 						{ L"HUD", L"fScale", "HUD scale", Kind::kFloat, &s.hudScale, 0.3f, 3.0f, "%.2fx" },
@@ -398,7 +409,7 @@ namespace fr::SettingsMenu
 		installed = true;
 		Settings::Get().Load();  // the menu shows the INI's values from the start
 		F4SEMenuFramework::SetSection("Real Roulette");
-		AddPages(std::make_index_sequence<5>{});
+		AddPages(std::make_index_sequence<6>{});
 		log::info("settings pages registered in F4SE Menu Framework ({} pages)", Pages().size());
 	}
 }

@@ -103,7 +103,14 @@ namespace fr
 
 	void Game::OnActivated(RE::TESObjectREFR* a_ref)
 	{
-		if (!Forms::IsTable(a_ref) || _seated || _kitPlacing || IsKitPreview(a_ref) || IsGamePaused()) {
+		if (_seated || _pkSeated || _kitPlacing || IsKitPreview(a_ref) || IsGamePaused()) {
+			return;
+		}
+		if (Forms::IsPokerTable(a_ref)) {
+			PkSitDown(a_ref);
+			return;
+		}
+		if (!Forms::IsTable(a_ref)) {
 			return;
 		}
 		SitDown(a_ref);
@@ -380,7 +387,7 @@ namespace fr
 
 	void Game::BeforeFreeCameraUpdate(RE::FreeCameraState* a_free)
 	{
-		if (!_seated || !a_free) {
+		if ((!_seated && !_pkSeated) || !a_free) {
 			return;
 		}
 		if (auto* camera = a_free->camera) {
@@ -399,7 +406,7 @@ namespace fr
 
 	void Game::OnFreeCameraLook(RE::FreeCameraState* a_free, const RE::BSTPoint2<float>& a_before)
 	{
-		if (!_seated || !a_free) {
+		if ((!_seated && !_pkSeated) || !a_free) {
 			return;
 		}
 		std::scoped_lock lock(_camMutex);
@@ -408,12 +415,12 @@ namespace fr
 		}
 		(void)a_before;
 		Component(a_free, _yawIndex) = _camYaw;
-		Component(a_free, 1 - _yawIndex) = _pitchSign * kDownPitch;
+		Component(a_free, 1 - _yawIndex) = _pitchSign * (_camPitch >= 0.0f ? _camPitch : kDownPitch);
 	}
 
 	void Game::OnFreeCameraUpdate(RE::FreeCameraState* a_free)
 	{
-		if (!_seated || !a_free) {
+		if ((!_seated && !_pkSeated) || !a_free) {
 			return;
 		}
 		std::scoped_lock lock(_camMutex);
@@ -438,7 +445,7 @@ namespace fr
 			_camMapped = true;
 		}
 		Component(a_free, _yawIndex) = _camYaw;
-		Component(a_free, 1 - _yawIndex) = _pitchSign * kDownPitch;
+		Component(a_free, 1 - _yawIndex) = _pitchSign * (_camPitch >= 0.0f ? _camPitch : kDownPitch);
 		// glide to where the view should be (the layout, the wheel)
 		const auto  now = std::chrono::steady_clock::now();
 		const float dt = _haveCamPos ? std::min(0.1f, std::chrono::duration<float>(now - _lastCam).count()) : 0.0f;
@@ -455,7 +462,7 @@ namespace fr
 
 	bool Game::FreeCameraTranslation(const RE::FreeCameraState* a_free, RE::NiPoint3& a_out)
 	{
-		if (!_seated || !a_free) {
+		if ((!_seated && !_pkSeated) || !a_free) {
 			return false;
 		}
 		std::scoped_lock lock(_camMutex);
@@ -470,6 +477,13 @@ namespace fr
 
 	void Game::UpdateHud()
 	{
+		if (_pkSeated) {
+			HudState h;
+			PkHud(h);
+			std::scoped_lock lock(_hudMutex);
+			_hud = std::move(h);
+			return;
+		}
 		HudState h;
 		h.seated = _seated;
 		h.nearby = false;  // the HUD is only for when you're sitting at the table

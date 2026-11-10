@@ -2,6 +2,7 @@
 
 #include "rl/Layout.h"
 #include "rl/Wheel.h"
+#include "pk/Holdem.h"
 
 namespace fr
 {
@@ -39,7 +40,7 @@ namespace fr
 		// the Roulette Table Kit (Kit.cpp)
 		void        SetUpKit();           // game data ready: in Vadim's stock, and its use listened for
 		void        StockKit();           // a save loaded: one in his stock now if this save never had one
-		void        BeginKitPlacement();  // used from the Pip-Boy
+		void        BeginKitPlacement(int a_kind);  // used from the Pip-Boy: 0 the roulette kit, 1 the poker kit
 		static bool IsKitTable(const RE::TESObjectREFR* a_table);
 		static bool IsKitPreview(const RE::TESObjectREFR* a_ref);
 		static void SaveKit(const F4SE::SerializationInterface* a_intfc);
@@ -94,6 +95,28 @@ namespace fr
 			std::string          keys;                 // the key hints line
 			bool                 placing{ false };     // setting a kit table up: just the key hints
 			int                  lastWin{ 0 };
+
+			// at a poker table (Poker.cpp) instead
+			struct PokerRow
+			{
+				std::string        name;
+				int                stack{ 0 };
+				int                bet{ 0 };
+				std::string        status;          // their last action, "FOLDED", "ALL IN", "THINKING"
+				bool               toAct{ false };
+				bool               dealer{ false };
+				bool               you{ false };
+				bool               folded{ false };
+				std::array<int, 2> shown{ -1, -1 };  // their cards, at a showdown
+			};
+			bool                  poker{ false };
+			std::vector<PokerRow> pkRows;
+			std::vector<int>      pkBoard;
+			std::array<int, 2>    pkHole{ -1, -1 };   // yours
+			std::string           pkHand;             // what yours makes ("PAIR OF KINGS")
+			int                   pkPot{ 0 };
+			std::string           pkInfo;             // "BLINDS 5/10 · THE FLOP"
+			bool                  pkYourTurn{ false };
 		};
 		HudState Hud() const;
 
@@ -227,6 +250,8 @@ namespace fr
 		void                CancelKit(bool a_giveBack);
 		void                ConfirmKit();
 		void                PackUpTable();  // the kit table you're at, back into a kit
+		void                PackUpPokerTable(RE::TESObjectREFR* a_table);
+		int                 _kitKind{ 0 };
 		std::atomic<bool>   _kitPlacing{ false };
 		float               _kitTurn{ 0.0f };
 		bool                _kitReady{ false };
@@ -255,6 +280,100 @@ namespace fr
 		bool         WalkTo(RE::Actor* a_actor, Walker& a_walk, const Frame& a_frame, const RE::NiPoint3& a_spot, float a_heading, float a_dt,
 					bool a_dealer, float a_timeout);  // true: there
 		void         FaceTowards(RE::Actor* a_actor, float a_heading);
+
+		// ------------------------------------------------------------ poker (Poker.cpp)
+		static constexpr int kPkSeats = 7;
+		struct PkSeat
+		{
+			bool                used{ false };
+			bool                you{ false };
+			RE::ObjectRefHandle actor;
+			RE::TESFormID       id{ 0 };
+			std::string         name;
+			Walker              walk;
+			Seat::Step          step{ Seat::Step::kWalking };
+			bool                held{ false };
+			int                 stack{ 0 };
+			int                 hands{ 0 };      // hands left before they go
+			float               atSpot{ 0.0f };
+			pk::Style           style;
+			float               nextIdle{ 8.0f };
+			std::string         last;            // what they last did
+			int                 hi{ -1 };        // their place in the hand being played, or -1
+		};
+		struct PkCard
+		{
+			RE::ObjectRefHandle ref;
+			int                 card{ 0 };
+			RE::NiPoint3        from;            // table space
+			RE::NiPoint3        to;
+			float               yaw{ 0.0f };     // which way its top points, table space
+			float               delay{ 0.0f };   // seconds before it leaves the deck
+			float               t{ 0.0f };       // 0..1 on its way
+			float               flip{ 0.0f };    // 0 face down .. 1 face up, now
+			bool                faceUp{ false }; // ...where it's going
+		};
+		enum class PkPhase
+		{
+			kWaiting,
+			kDealing,
+			kBetting,
+			kShowdown,
+		};
+		struct PokerState
+		{
+			RE::ObjectRefHandle                                    table;
+			std::array<PkSeat, kPkSeats>                           seats;
+			pk::Hand                                               hand;
+			bool                                                   inHand{ false };
+			PkPhase                                                phase{ PkPhase::kWaiting };
+			float                                                  timer{ 0.0f };
+			float                                                  think{ 0.0f };
+			int                                                    button{ -1 };
+			std::size_t                                            boardShown{ 0 };
+			std::vector<PkCard>                                    cards;
+			std::array<std::vector<RE::ObjectRefHandle>, kPkSeats> betChips;
+			std::array<int, kPkSeats>                              betShown{};
+			std::vector<RE::ObjectRefHandle>                       potChips;
+			int                                                    potShown{ -1 };
+			float                                                  seatTimer{ 4.0f };
+			int                                                    raiseTo{ 0 };
+			std::deque<HudLine>                                    log;
+			std::string                                            bannerTitle;
+			std::string                                            bannerSub;
+			float                                                  bannerAge{ 99.0f };
+			int                                                    lifted{ 0 };  // your stack, back in your pocket over a save
+		};
+		PokerState        _pk;
+		std::atomic<bool> _pkSeated{ false };
+		int               _pkYou{ -1 };       // your seat
+		float             _camPitch{ -1.0f };  // the view's pitch at a poker table (below 0: straight down, the roulette layout)
+
+		bool         PkFrame(Frame& a_out) const;
+		RE::NiPoint3 PkStand(const Frame& a_frame, int a_seat, float& a_heading) const;  // where someone at a seat stands
+		void         PkScan();
+		void         PkStart(RE::TESObjectREFR* a_table);
+		void         PkEnd(const char* a_why);
+		void         TickPoker(float a_dt);
+		void         PkFindPlayer(const Frame& a_frame);
+		void         PkTickSeats(const Frame& a_frame, float a_dt);
+		void         PkRelease(int a_seat, const char* a_why);
+		void         PkStartHand();
+		void         PkTickHand(const Frame& a_frame, float a_dt);
+		void         PkAct(pk::Action a_action);  // whoever's to act does this
+		void         PkEndHand();
+		void         PkClearTable();
+		void         PkDeal(int a_card, const RE::NiPoint3& a_to, float a_yaw, bool a_faceUp, float a_delay);
+		void         PkTickCards(const Frame& a_frame, float a_dt);
+		void         PkMakeChips(const Frame& a_frame);
+		void         PkSay(const std::string& a_text, int a_tone = 0);
+		void         PkSitDown(RE::TESObjectREFR* a_table);
+		void         PkStandUp();
+		void         PkKey(int a_key);  // 0 fold, 1 check/call, 2 raise, 3 all in, 4 raise up, 5 raise down, 6 leave, 7 pack up
+		void         PkHud(HudState& a_h) const;
+		void         PkBeforeSave();
+		void         PkAfterSave();
+		bool         PkHasSeat(RE::TESFormID a_id) const;
 
 		// ------------------------------------------------------------ state (main thread)
 		// one table in play (up to two at once: Tick works on each in turn, with it in _t; the one you're at, or the

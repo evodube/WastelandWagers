@@ -47,6 +47,15 @@ namespace fr
 		int   bettorMinRounds{ 2 };
 		int   bettorMaxRounds{ 6 };
 
+		// [Poker]
+		int   pkSmallBlind{ 5 };
+		int   pkBigBlind{ 10 };
+		int   pkBuyIn{ 500 };              // the most of your caps you sit down with
+		bool  pkPlayers{ true };           // settlers come and sit in
+		int   pkMaxPlayers{ 5 };           // settlers at the table at once (up to 6)
+		int   pkNpcBuyIn{ 300 };           // the most a settler sits down with
+		float pkThink{ 1.0f };             // how long settlers think (x)
+
 		// [HUD]
 		float hudScale{ 1.4f };
 		bool  notifications{ false };      // results as the game's corner messages too

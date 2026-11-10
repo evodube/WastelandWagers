@@ -19,6 +19,11 @@ Form IDs (src/Forms.h expects these):
                                            you (sold by Vadim at the Dugout Inn: the plugin adds it to his stock)
     xx00080B  COBJ fo4rouletteco_TableKit  the kit at a chem station (Utility): wood 12, steel 6, cloth 4, screws 2,
                                            adhesive 2
+    xx000810+ STAT fo4rouletteCard_<rank><suit>  the 52 playing cards (0x810 + suit * 13 + rank; suits c d h s)
+    xx000844  ACTI fo4roulettePokerTable  Poker Table (Meshes/fo4roulette/PokerTable.nif)
+    xx000845  COBJ workshop_co_fo4roulettePokerTable  in the workshop menu, Furniture > Tables
+    xx000846  ALCH fo4roulettePokerKit     Poker Table Kit (sold by Vadim too)
+    xx000847  COBJ fo4rouletteco_PokerKit  the poker kit at a chem station (Utility)
 
 Record layouts follow Playable Pool's tools/make_esl.py (laid out as Fallout4.esm's own records).
 """
@@ -267,12 +272,32 @@ def build() -> bytes:
                           0x00102158,   # WorkbenchChemlab
                           0x0006980C))  # RecipeUtility
 
+    # ---- poker
+    # the 52 cards (xx000810 + suit * 13 + rank: 2c .. Ac, 2d .., 2h .., 2s .. As), each its own model
+    for s, suit in enumerate("cdhs"):
+        for r, rank in enumerate("23456789TJQKA"):
+            stats.append(stat(own | (FIRST_ID + 0x10 + s * 13 + r), f"fo4rouletteCard_{rank}{suit}",
+                              f"fo4roulette\\Cards\\Card_{rank}{suit}.nif", bound=4))
+    poker = own | (FIRST_ID + 0x44)
+    acti.append(activator(poker, "fo4roulettePokerTable", "Poker Table", "fo4roulette\\PokerTable.nif",
+                          (-47, -91, 0, 47, 91, 58), "Play", 0x001A03DD))
+    recipes.append(workshop_recipe(own | (FIRST_ID + 0x45), "workshop_co_fo4roulettePokerTable", poker,
+                                   [(0x0001FAC2, 10), (0x001223C7, 6), (0x0003D294, 2), (0x0001FAA5, 1)]))
+    pkit = own | (FIRST_ID + 0x46)
+    potions.append(potion(pkit, "fo4roulettePokerKit", "Poker Table Kit",
+                          "A folding poker table, cards and all. Use it to set the table up in front of you; sit at it "
+                          "and press P to pack it away again.",
+                          "", bytes(12), 300, 20.0))
+    recipes.append(recipe(own | (FIRST_ID + 0x47), "fo4rouletteco_PokerKit", pkit,
+                          [(0x0001FAC2, 10), (0x001223C7, 6), (0x0003D294, 2), (0x0001FAA5, 2)],
+                          0x00102158, 0x0006980C))
+
     count = len(acti) + len(stats) + len(keywords) + len(packages) + len(quests) + len(recipes) + len(potions)
     header = record(
         b"TES4",
         FLAG_MASTER | FLAG_LIGHT,
         0,
-        subrecord(b"HEDR", struct.pack("<fiI", 1.0, count, FIRST_ID + 12))
+        subrecord(b"HEDR", struct.pack("<fiI", 1.0, count, FIRST_ID + 0x48))
         + subrecord(b"CNAM", zstring("evodube"))
         + subrecord(b"SNAM", zstring("Real Roulette: a playable roulette table"))
         + subrecord(b"MAST", zstring("Fallout4.esm"))
