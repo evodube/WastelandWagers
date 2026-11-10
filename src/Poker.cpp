@@ -2023,7 +2023,10 @@ namespace fr
 			if (_pk.potHold > 0.0f && _pk.phase == PkPhase::kShowdown) {
 				continue;  // (the pot's on its way over: the winner's stacks take it in once it's there)
 			}
-			if (have == _pk.stackShown[i]) {
+			// (chips won waiting to be taken in count too: a hand won by everyone folding, its pot not taken in while
+			// the stack's number didn't change, and taken in at the next blind, came out again with the blind: the
+			// blind's 10 paid with the whole pot)
+			if (have == _pk.stackShown[i] && _pk.landed[i].empty()) {
 				continue;
 			}
 			auto& n = _pk.stackCols[i];  // how many of each colour they have (shown up to kColMax)
@@ -2162,6 +2165,7 @@ namespace fr
 				}
 				continue;
 			}
+			const int raised = bet - _pk.betShown[i];  // (what's going in now: no more than that slides out)
 			_pk.betShown[i] = bet;
 			// the chips they paid with, slid out off their stacks (any too high up a stack to be shown: made at its top)
 			std::vector<std::pair<RE::ObjectRefHandle, RE::NiPoint3>> out;
@@ -2184,8 +2188,19 @@ namespace fr
 				}
 			}
 			int k = 0;
+			int into = 0;
 			for (auto& [h, from] : out) {
-				auto       r = h.get();
+				auto r = h.get();
+				if (r) {
+					const int v = rl::kChipValues[ChipIndex(r.get())];
+					if (into + v > raised) {
+						// (more than the bet: the stacks were showing more than they had. Off the table, not into the bet)
+						log::warn("poker: seat {} paid {} more than its bet in chips: taken off", i, v);
+						Remove(h);
+						continue;
+					}
+					into += v;
+				}
 				const auto to = place(chips.size());
 				chips.push_back(h);
 				std::erase_if(_pk.moves, [&](const PkChipMove& a_m) { return a_m.ref == h; });
