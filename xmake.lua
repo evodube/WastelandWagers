@@ -15,6 +15,9 @@ set_defaultmode("releasedbg")
 
 add_rules("mode.debug", "mode.releasedbg")
 
+-- xmake's compile cache (works with cl.exe): CommonLibF4 rarely changes, so CI reuses its objects (see build.yml)
+set_policy("build.ccache", true)
+
 -- REL::ID / REL::Offset initializer slots are [OG, NG, AE].
 add_defines("COMMONLIB_RUNTIMECOUNT=3")
 
