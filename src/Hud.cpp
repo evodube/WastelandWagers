@@ -694,14 +694,11 @@ namespace fr::Hud
 			std::vector<Game::PkButton> out;
 			const bool turn = a_st.pkYourTurn;
 			// the actions, along the bottom: check / call, fold, the raise (a slider to set it, the button to make it), all in
-			// (a call says what it's for: the pot it's to win)
-			const std::string call = !turn ? std::string("CHECK / CALL")
-			                         : a_st.pkToCall == 0 ? std::string("CHECK")
-			                                              : std::format("CALL {} TO WIN {}", Commas(a_st.pkToCall), Commas(a_st.pkPot));
+			const std::string call = !turn ? std::string("CHECK / CALL") : a_st.pkToCall == 0 ? std::string("CHECK") : std::format("CALL {}", Commas(a_st.pkToCall));
 			const std::string raise = turn ? std::format("{} {}", a_st.pkToCall == 0 ? "BET" : "RAISE TO", Commas(a_st.pkRaiseTo)) : std::string("RAISE");
 			const std::string allIn = turn ? std::format("ALL IN {}", Commas(a_st.pkAllIn)) : std::string("ALL IN");
 			constexpr float h = 40.0f, gap = 8.0f;
-			const float wCall = 200.0f, wFold = 110.0f, wSlider = 200.0f, wRaise = 170.0f, wAll = 150.0f;
+			const float wCall = 150.0f, wFold = 110.0f, wSlider = 200.0f, wRaise = 170.0f, wAll = 150.0f;
 			const float w = wCall + wFold + wSlider + wRaise + wAll + gap * 4;
 			const float k = std::min(1.0f, (a_v.w - kPkMargin * 2.0f) / w);
 			float       x = a_v.w * 0.5f - w * k * 0.5f;
