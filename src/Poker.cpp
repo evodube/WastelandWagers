@@ -39,7 +39,7 @@ namespace fr
 		constexpr float kLift = 0.08f;
 		constexpr float kStep = kChipH + 0.05f;  // (the chip's 0.43 thick: 0.02 apart still flickered, stacked)
 		constexpr float kArrived = 30.0f;
-		constexpr float kSnap = 12.0f;
+		constexpr float kSnap = 6.0f;   // (well inside the walk package's 10: there, it's done)
 		constexpr float kPersonalSpace = 50.0f;
 		constexpr float kSettleIn = 2.0f;
 
@@ -912,7 +912,9 @@ namespace fr
 			case Seat::Step::kWalking:
 				if (WalkTo(actor, st.walk, a_frame, spot, heading, a_dt, false, 15.0f)) {
 					st.step = Seat::Step::kPlaying;
-					Npc::Arrived(actor);
+					// (their walk package stays on, linked to the spot they're now on: its travel done, it holds them there.
+					// Unlinked, as it was, it went on travelling with nowhere to go: stepping and turning on the spot, the
+					// turning log showed, procedure 0 at speed 15)
 					if (auto marker = st.walk.marker.get(); marker && Distance2D(actor->data.location, spot) > kSnap) {
 						Npc::MoveTo(actor, marker.get());
 					}

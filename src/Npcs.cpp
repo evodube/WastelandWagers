@@ -20,7 +20,7 @@ namespace fr
 		constexpr float kStallResend = 6.0f;     // no closer in this long: the walk is sent again
 		constexpr int   kMinBudget = 25;         // what a settler puts down in a round: 25 to 100 caps
 		constexpr int   kMaxBudget = 100;
-		constexpr float kSnap = 12.0f;           // arrived further than this from their spot: put exactly on it
+		constexpr float kSnap = 6.0f;            // arrived further than this from their spot: put exactly on it (well inside the walk package's 10: there, it's done)
 		constexpr float kPersonalSpace = 55.0f;  // a spot with someone (anyone) standing this close isn't free
 
 		// vanilla idles (Fallout4.esm IDLE)
@@ -352,7 +352,9 @@ namespace fr
 			case Seat::Step::kWalking:
 				if (WalkTo(actor, seat.walk, a_frame, spot, heading, a_dt, false, 40.0f)) {
 					seat.step = Seat::Step::kPlaying;
-					Npc::Arrived(actor);
+					// (their walk package stays on, linked to the spot they're now on: its travel done, it holds them there.
+					// Unlinked, as it was, it went on travelling with nowhere to go: stepping and turning on the spot, the
+					// turning log showed, procedure 0 at speed 15)
 					if (auto marker = seat.walk.marker.get(); marker && Distance2D(actor->data.location, spot) > kSnap) {
 						Npc::MoveTo(actor, marker.get());  // stopped short (maybe at someone's elbow): onto their own spot
 					}
