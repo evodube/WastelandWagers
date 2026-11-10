@@ -390,6 +390,7 @@ namespace fr
 		// out of the hand (if one's on), their chips back in their purse
 		if (_pk.inHand && st.hi >= 0 && !_pk.hand.Over()) {
 			_pk.hand.Fold(st.hi);
+			PkMuck(a_seat);
 		}
 		if (_pk.inHand && st.hi >= 0) {
 			st.stack = _pk.hand.players[st.hi].stack;
@@ -544,8 +545,9 @@ namespace fr
 				if (hi < 0) {
 					continue;
 				}
+				// (yours turned up as they land, the right way up for you: you read them on the table)
 				const auto n = SeatNormal(seat);
-				PkDeal(_pk.hand.players[hi].hole[round], HoleSpot(seat, round), std::atan2(-n.x, -n.y), false, delay);
+				PkDeal(_pk.hand.players[hi].hole[round], HoleSpot(seat, round), std::atan2(-n.x, -n.y), _pk.seats[seat].you, delay, seat);
 				delay += 0.14f;
 			}
 		}
@@ -587,6 +589,9 @@ namespace fr
 		}
 		if (seat >= 0 && !_pk.seats[seat].you) {
 			PkIdle(seat, p.folded ? 4 : paid > 0 ? 2 : -1);
+		}
+		if (seat >= 0 && p.folded) {
+			PkMuck(seat);
 		}
 		if (seat >= 0) {
 			_pk.seats[seat].last = what;
@@ -725,7 +730,13 @@ namespace fr
 		// the cards of everyone still in, turned up
 		if (h.showdown) {
 			for (auto& c : _pk.cards) {
-				c.faceUp = true;
+				int hi = -1;
+				if (c.seat >= 0) {
+					hi = _pk.seats[c.seat].hi;
+				}
+				if (!c.mucked && (c.seat < 0 || (hi >= 0 && !h.players[hi].folded))) {
+					c.faceUp = true;
+				}
 			}
 		}
 		// who won what
@@ -782,9 +793,26 @@ namespace fr
 
 	// ---------------------------------------------------------------- cards and chips
 
-	void Game::PkDeal(int a_card, const RE::NiPoint3& a_to, float a_yaw, bool a_faceUp, float a_delay)
+	void Game::PkMuck(int a_seat)
+	{
+		for (auto& c : _pk.cards) {
+			if (c.seat != a_seat || c.mucked) {
+				continue;
+			}
+			const float e = 1.0f - (1.0f - c.t) * (1.0f - c.t);
+			c.from = c.from + (c.to - c.from) * e;  // from wherever it is now
+			c.to = kDeck + RE::NiPoint3{ -4.0f, 0.0f, 0.0f };
+			c.t = 0.0f;
+			c.delay = 0.0f;
+			c.faceUp = false;
+			c.mucked = true;
+		}
+	}
+
+	void Game::PkDeal(int a_card, const RE::NiPoint3& a_to, float a_yaw, bool a_faceUp, float a_delay, int a_seat)
 	{
 		PkCard c;
+		c.seat = a_seat;
 		c.card = a_card;
 		c.from = kDeck;
 		c.to = a_to;
@@ -812,9 +840,13 @@ namespace fr
 			}
 			if (c.t < 1.0f) {
 				c.t = std::min(1.0f, c.t + a_dt / 0.35f);
-				if (c.t >= 1.0f) {
+				if (c.t >= 1.0f && !c.mucked) {
 					Audio::PlayUI(Audio::Bank::kTick, 0.25f);
 				}
+			}
+			if (c.mucked && c.t >= 1.0f) {
+				Remove(c.ref);  // back in the dealer's pile
+				continue;
 			}
 			const float want = c.faceUp ? 1.0f : 0.0f;
 			if (c.flip != want) {
@@ -831,6 +863,7 @@ namespace fr
 			const auto  world = ToWorld(a_frame, p.x, p.y, kFeltZ + lift);
 			PlaceRoot(ref.get(), world, Lying(c.yaw, flipAngle) * a_frame.rot);
 		}
+		std::erase_if(_pk.cards, [](const PkCard& c) { return c.mucked && c.t >= 1.0f; });
 	}
 
 	void Game::PkMakeChips(const Frame& a_frame)
@@ -979,6 +1012,7 @@ namespace fr
 		if (_pk.inHand && st.hi >= 0) {
 			if (!_pk.hand.Over()) {
 				_pk.hand.Fold(st.hi);
+				PkMuck(_pkYou);
 			}
 			st.stack = _pk.hand.players[st.hi].stack;
 			_pk.hand.players[st.hi].stack = 0;

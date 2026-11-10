@@ -313,6 +313,8 @@ namespace fr
 			float               t{ 0.0f };       // 0..1 on its way
 			float               flip{ 0.0f };    // 0 face down .. 1 face up, now
 			bool                faceUp{ false }; // ...where it's going
+			int                 seat{ -1 };      // whose hand it's in (-1 the board)
+			bool                mucked{ false }; // folded: going back to the dealer, then gone
 		};
 		enum class PkPhase
 		{
@@ -364,7 +366,8 @@ namespace fr
 		void         PkAct(pk::Action a_action);  // whoever's to act does this
 		void         PkEndHand();
 		void         PkClearTable();
-		void         PkDeal(int a_card, const RE::NiPoint3& a_to, float a_yaw, bool a_faceUp, float a_delay);
+		void         PkDeal(int a_card, const RE::NiPoint3& a_to, float a_yaw, bool a_faceUp, float a_delay, int a_seat = -1);
+		void         PkMuck(int a_seat);  // a fold: their cards slide back to the dealer
 		void         PkTickCards(const Frame& a_frame, float a_dt);
 		void         PkMakeChips(const Frame& a_frame);
 		void         PkSay(const std::string& a_text, int a_tone = 0);

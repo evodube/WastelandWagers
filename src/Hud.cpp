@@ -384,83 +384,23 @@ namespace fr::Hud
 
 		// ------------------------------------------------------------ poker
 
-		constexpr ImU32 kCardFace = Rgba(244, 240, 228);
-		constexpr ImU32 kCardRed = Rgba(196, 28, 36);
-		constexpr ImU32 kCardBlack = Rgba(22, 22, 26);
-
-		// a suit drawn from shapes (the fonts have no suit glyphs), centred on (a_cx, a_cy), a_r across
-		void SuitShape(const View& a_v, int a_suit, float a_cx, float a_cy, float a_r, ImU32 a_col)
-		{
-			const auto  P = [&](float x, float y) { return a_v.P(a_cx + x * a_r, a_cy + y * a_r); };
-			const float r = a_r * a_v.s;
-			switch (a_suit) {
-			case 0:  // clubs: three leaves and a stem
-				DL::AddCircleFilled(a_v.dl, P(0.0f, -0.28f), 0.25f * r, a_col, 20);
-				DL::AddCircleFilled(a_v.dl, P(-0.27f, 0.08f), 0.25f * r, a_col, 20);
-				DL::AddCircleFilled(a_v.dl, P(0.27f, 0.08f), 0.25f * r, a_col, 20);
-				DL::AddTriangleFilled(a_v.dl, P(0.0f, -0.05f), P(-0.17f, 0.5f), P(0.17f, 0.5f), a_col);
-				break;
-			case 1:  // diamonds
-				DL::AddQuadFilled(a_v.dl, P(0.0f, -0.5f), P(0.36f, 0.0f), P(0.0f, 0.5f), P(-0.36f, 0.0f), a_col);
-				break;
-			case 2:  // hearts: two lobes and a point
-				DL::AddCircleFilled(a_v.dl, P(-0.21f, -0.17f), 0.25f * r, a_col, 20);
-				DL::AddCircleFilled(a_v.dl, P(0.21f, -0.17f), 0.25f * r, a_col, 20);
-				DL::AddTriangleFilled(a_v.dl, P(-0.45f, -0.08f), P(0.45f, -0.08f), P(0.0f, 0.48f), a_col);
-				break;
-			default:  // spades: a heart upside down, and a stem
-				DL::AddCircleFilled(a_v.dl, P(-0.21f, 0.1f), 0.25f * r, a_col, 20);
-				DL::AddCircleFilled(a_v.dl, P(0.21f, 0.1f), 0.25f * r, a_col, 20);
-				DL::AddTriangleFilled(a_v.dl, P(-0.45f, 0.02f), P(0.45f, 0.02f), P(0.0f, -0.5f), a_col);
-				DL::AddTriangleFilled(a_v.dl, P(0.0f, 0.12f), P(-0.16f, 0.5f), P(0.16f, 0.5f), a_col);
-				break;
-			}
-		}
-
-		// a playing card, a_w wide, top left at (a_x, a_y); a_card < 0 face down
-		void PlayingCard(const View& a_v, int a_card, float a_x, float a_y, float a_w, float a_alpha = 1.0f)
-		{
-			const float h = a_w * 1.4f;
-			const float round = a_w * 0.1f * a_v.s;
-			DL::AddRectFilled(a_v.dl, a_v.P(a_x + 2, a_y + 3), a_v.P(a_x + a_w + 2, a_y + h + 3), Fade(Rgba(0, 0, 0, 0.45f), a_alpha), round, 0);
-			if (a_card < 0) {
-				DL::AddRectFilled(a_v.dl, a_v.P(a_x, a_y), a_v.P(a_x + a_w, a_y + h), Fade(kCardFace, a_alpha), round, 0);
-				const float in = a_w * 0.09f;
-				DL::AddRectFilled(a_v.dl, a_v.P(a_x + in, a_y + in), a_v.P(a_x + a_w - in, a_y + h - in), Fade(Rgba(120, 22, 30), a_alpha), round * 0.6f, 0);
-				DL::AddRect(a_v.dl, a_v.P(a_x + in * 1.8f, a_y + in * 1.8f), a_v.P(a_x + a_w - in * 1.8f, a_y + h - in * 1.8f),
-					Fade(Rgba(230, 200, 170, 0.6f), a_alpha), round * 0.4f, 0, std::max(1.0f, 1.0f * a_v.s));
-				return;
-			}
-			const int   suit = pk::Suit(static_cast<pk::Card>(a_card));
-			const ImU32 col = Fade(suit == 1 || suit == 2 ? kCardRed : kCardBlack, a_alpha);
-			DL::AddRectFilled(a_v.dl, a_v.P(a_x, a_y), a_v.P(a_x + a_w, a_y + h), Fade(kCardFace, a_alpha), round, 0);
-			DL::AddRect(a_v.dl, a_v.P(a_x, a_y), a_v.P(a_x + a_w, a_y + h), Fade(Rgba(150, 140, 120), a_alpha), round, 0, std::max(1.0f, 1.0f * a_v.s));
-			static constexpr std::array<const char*, 13> kRank{ "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A" };
-			const char* rank = kRank[pk::Rank(static_cast<pk::Card>(a_card))];
-			Print(a_v, Title(), rank, a_x + a_w * 0.09f, a_y + a_w * 0.04f, a_w * 0.42f, col, 0, rank[1] ? -1.0f : 0.0f);
-			SuitShape(a_v, suit, a_x + a_w * 0.2f, a_y + a_w * 0.62f, a_w * 0.22f, col);
-			SuitShape(a_v, suit, a_x + a_w * 0.56f, a_y + h * 0.64f, a_w * 0.56f, col);
-		}
-
 		// the poker HUD's pieces, sized first so they can be laid out without overlapping (and the whole HUD shrunk when
 		// the screen, or the HUD scale, leaves too little room)
 		constexpr float kPkMargin = 20.0f;
 		constexpr float kPkRow = 32.0f;
-		constexpr float kBoardCard = 50.0f;
-		constexpr float kHoleCard = 62.0f;
 
 		float PokerStatusW(const Game::HudState& a_st)
 		{
-			float w = 330.0f;
+			float w = 280.0f;
 			w = std::max(w, TextWidth(Mono(), a_st.pkInfo, 12, 1.0f) + 36.0f);
 			w = std::max(w, TextWidth(Mono(), "POKER · NO LIMIT HOLD'EM", 13, 2.0f) + 36.0f);
 			return w;
 		}
 		float PokerStatusH(const Game::HudState& a_st) { return 100.0f + kPkRow * static_cast<float>(a_st.pkRows.size()); }
-		float PokerBoardW() { return kBoardCard * 5 + 8.0f * 4 + 32.0f; }
-		float PokerBoardH() { return kBoardCard * 1.4f + 76.0f; }
-		float PokerHoleW() { return kHoleCard * 2 + 10.0f + 40.0f; }
-		float PokerHoleH() { return kHoleCard * 1.4f + 50.0f; }
+		float PokerBoardW() { return 300.0f; }
+		float PokerBoardH() { return 96.0f; }
+		float PokerHoleW() { return 300.0f; }
+		float PokerHoleH() { return 40.0f; }
 		float PokerLogH(const Game::HudState& a_st) { return a_st.log.empty() ? 0.0f : 22.0f * static_cast<float>(a_st.log.size()) + 20.0f; }
 
 		void PokerStatus(const View& a_v, const Game::HudState& a_st)
@@ -471,7 +411,7 @@ namespace fr::Hud
 			Print(a_v, Title(), Commas(a_st.caps), x + 18, y + 28, 30, kBright, kGlow, 2.0f);
 			Print(a_v, Mono(), "CAPS", x + 22 + TextWidth(Title(), Commas(a_st.caps), 30, 2.0f), y + 44, 12, kDim, 0, 2.0f);
 			Print(a_v, Mono(), a_st.pkInfo, x + 18, y + 72, 12, kText, 0, 1.0f);
-			const float stackX = x + w - 80.0f;  // the stacks' right edge; the shown cards after them
+			const float stackX = x + w - 18.0f;  // the stacks' right edge
 			float       row = y + 96;
 			for (const auto& r : a_st.pkRows) {
 				if (r.toAct) {
@@ -488,57 +428,38 @@ namespace fr::Hud
 				if (r.bet > 0) {
 					Print(a_v, Mono(), std::format("BET {}", Commas(r.bet)), stackX, row + 15, 10, kText, 0, 1.0f, Align::kRight);
 				}
-				if (r.shown[0] >= 0) {
-					PlayingCard(a_v, r.shown[0], stackX + 12, row - 2, 19);
-					PlayingCard(a_v, r.shown[1], stackX + 35, row - 2, 19);
-				}
 				row += kPkRow;
 			}
 		}
 
-		// the board, top right, with the pot and what's going on under it
+		// the pot and what's going on, top right (the cards themselves are on the table)
 		void PokerBoard(const View& a_v, const Game::HudState& a_st)
 		{
 			const float w = PokerBoardW(), x = a_v.w - kPkMargin - w, y = kPkMargin;
 			Chamfer(a_v, x, y, w, PokerBoardH(), 12.0f, kPanel, kEdge);
-			const float x0 = x + 16.0f;
-			for (int k = 0; k < 5; ++k) {
-				const float cx = x0 + k * (kBoardCard + 8.0f);
-				if (k < static_cast<int>(a_st.pkBoard.size())) {
-					PlayingCard(a_v, a_st.pkBoard[k], cx, y + 14, kBoardCard);
-				} else {
-					DL::AddRect(a_v.dl, a_v.P(cx, y + 14), a_v.P(cx + kBoardCard, y + 14 + kBoardCard * 1.4f), Rgba(80, 200, 100, 0.25f), 5.0f * a_v.s,
-						0, std::max(1.0f, 1.0f * a_v.s));
-				}
-			}
-			const float mid = x + w * 0.5f, ty = y + 22 + kBoardCard * 1.4f;
-			Print(a_v, Mono(), a_st.pkPot > 0 ? std::format("POT {}", Commas(a_st.pkPot)) : std::string("NO POT"), mid, ty, 14,
-				a_st.pkPot > 0 ? kBright : kDim, 0, 2.0f, Align::kCentre);
+			const float mid = x + w * 0.5f;
+			Print(a_v, Mono(), "POT", mid, y + 12, 12, kDim, 0, 2.0f, Align::kCentre);
+			Print(a_v, Title(), Commas(a_st.pkPot), mid, y + 28, 30, a_st.pkPot > 0 ? kBright : kDim, a_st.pkPot > 0 ? kGlow : 0, 2.0f, Align::kCentre);
 			if (!a_st.pkHelp.empty()) {
 				// (shrunk to fit the panel when it's long)
 				const float size = std::min(11.0f, 11.0f * (w - 24.0f) / std::max(1.0f, TextWidth(Mono(), a_st.pkHelp, 11, 1.0f)));
-				Print(a_v, Mono(), a_st.pkHelp, mid, ty + 24, size, kText, 0, 1.0f, Align::kCentre);
+				Print(a_v, Mono(), a_st.pkHelp, mid, y + 74, size, kText, 0, 1.0f, Align::kCentre);
 			}
 		}
 
-		// your two cards, bottom right above the keys
+		// your hand's name and your turn, bottom right above the keys
 		void PokerHole(const View& a_v, const Game::HudState& a_st)
 		{
-			if (a_st.pkHole[0] < 0) {
+			const std::string label = a_st.pkYourTurn ? (a_st.pkHand.empty() ? std::string("YOUR TURN") : "YOUR TURN · " + a_st.pkHand) : a_st.pkHand;
+			if (label.empty()) {
 				return;
 			}
 			const float w = PokerHoleW(), h = PokerHoleH();
 			const float x = a_v.w - kPkMargin - w, y = a_v.h - 56.0f - h;
-			Chamfer(a_v, x, y, w, h, 12.0f, kPanel, a_st.pkYourTurn ? kBright : kEdge);
-			const float cx = x + w * 0.5f;
-			PlayingCard(a_v, a_st.pkHole[0], cx - kHoleCard - 5.0f, y + 12, kHoleCard);
-			PlayingCard(a_v, a_st.pkHole[1], cx + 5.0f, y + 12, kHoleCard);
-			const std::string label = a_st.pkYourTurn ? (a_st.pkHand.empty() ? std::string("YOUR TURN") : "YOUR TURN · " + a_st.pkHand) : a_st.pkHand;
-			if (!label.empty()) {
-				const float size = std::min(12.0f, 12.0f * (w - 16.0f) / std::max(1.0f, TextWidth(Mono(), label, 12, 1.0f)));
-				Print(a_v, Mono(), label, cx, y + kHoleCard * 1.4f + 22, size, a_st.pkYourTurn ? kBright : kText, a_st.pkYourTurn ? kGlow : 0, 1.0f,
-					Align::kCentre);
-			}
+			Chamfer(a_v, x, y, w, h, 10.0f, kPanel, a_st.pkYourTurn ? kBright : kEdge);
+			const float size = std::min(14.0f, 14.0f * (w - 24.0f) / std::max(1.0f, TextWidth(Mono(), label, 14, 1.0f)));
+			Print(a_v, Mono(), label, x + w * 0.5f, y + (h - size) * 0.5f - 2.0f, size, a_st.pkYourTurn ? kBright : kText, a_st.pkYourTurn ? kGlow : 0,
+				1.0f, Align::kCentre);
 		}
 
 		void PokerBanner(const View& a_v, const Game::HudState& a_st)
