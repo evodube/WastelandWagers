@@ -145,7 +145,19 @@ Bool Function SitOn(Int aiActor, Int aiChair)
 	if akActor == None || akChair == None
 		return false
 	endif
+	akChair.SetActorOwner(akActor.GetActorBase())  ; (theirs while they're in it)
 	akActor.SnapIntoInteraction(akChair)
+	return true
+EndFunction
+
+; a poker chair kept for the game: owned by you while nobody's playing in it, so settlers passing by don't sit in it
+; (the players are put in it all the same)
+Bool Function ClaimChair(Int aiChair)
+	ObjectReference akChair = Game.GetForm(aiChair) as ObjectReference
+	if akChair == None
+		return false
+	endif
+	akChair.SetActorOwner(Game.GetPlayer().GetActorBase())
 	return true
 EndFunction
 

@@ -341,6 +341,16 @@ namespace fr::Npc
 		CallQuest("SitOn", what, logged, FormArg(a_actor), static_cast<std::int32_t>(a_chair->GetFormID()));
 	}
 
+	void ClaimChair(RE::TESObjectREFR* a_chair)
+	{
+		if (!a_chair || !Ready()) {
+			return;
+		}
+		const std::string what = std::format("ClaimChair {:08X}", a_chair->GetFormID());
+		const RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> logged{ new LogResult(what) };
+		CallQuest("ClaimChair", what, logged, static_cast<std::int32_t>(a_chair->GetFormID()));
+	}
+
 	std::string PackageName(RE::Actor* a_actor)
 	{
 		auto* proc = a_actor ? a_actor->currentProcess : nullptr;

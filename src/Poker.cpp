@@ -745,6 +745,9 @@ namespace fr
 					const auto   at = ChairSpot(i, facing);
 					if (chairForm) {
 						h = Spawn(chairForm, ToWorld(frame, at.x, at.y, 0.0), HeadingOf(frame, facing.x, facing.y));
+						if (auto c = h.get()) {
+							Npc::ClaimChair(c.get());  // (yours till someone plays in it: nobody passing by sits in it)
+						}
 					}
 				}
 			}
@@ -1068,6 +1071,9 @@ namespace fr
 			}
 			if (auto* proc = actor->currentProcess; proc && proc->GetOccupiedFurniture()) {
 				actor->InitiateGetUpPackage();  // (up out of their chair)
+			}
+			if (auto c = _pk.chairs[a_seat].get()) {
+				Npc::ClaimChair(c.get());  // (yours again: nobody else sits in it)
 			}
 			Npc::Leave(actor);
 		}
