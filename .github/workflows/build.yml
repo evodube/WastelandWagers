@@ -64,8 +64,10 @@ jobs:
         run: |
           $old = Get-Date "2020-01-01"
           Get-ChildItem -Recurse -File lib/commonlibf4 | ForEach-Object { $_.LastWriteTime = $old }
-          pip install --quiet git-restore-mtime
-          git restore-mtime --quiet src xmake.lua
+          foreach ($f in @(git ls-files src xmake.lua)) {
+            $ct = git log -1 --format=%ct -- $f
+            if ($ct) { (Get-Item $f).LastWriteTime = [DateTimeOffset]::FromUnixTimeSeconds([long]$ct).LocalDateTime }
+          }
 
       - name: Configure
         run: xmake f -m releasedbg -y
