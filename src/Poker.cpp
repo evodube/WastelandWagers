@@ -40,7 +40,7 @@ namespace fr
 		constexpr float kSettleIn = 2.0f;
 
 		// the seats, clockwise from the dealer's place (+X): the table's cup holders, table space
-		constexpr std::array<std::pair<float, float>, Game::kPkSeats> kHolders{ {
+		constexpr std::array<std::pair<float, float>, 7> kHolders{ {
 			{ 27.9f, -47.1f }, { 1.1f, -71.2f }, { -25.8f, -47.1f }, { -25.8f, -0.2f }, { -25.8f, 46.7f }, { 1.1f, 70.8f }, { 27.9f, 46.7f },
 		} };
 
