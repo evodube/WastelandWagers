@@ -6,7 +6,7 @@ was a blur; these repeat at a sharp scale instead.
 
     python tools/make_poker_table.py <out Data folder> [--preview]
 
-- pokerwood: mahogany, straight-grained boards along u, a clear lacquer (glossy spec)
+- pokerwood: walnut (source_table/walnut.jpg, the user's), its grain along u, a clear lacquer (glossy spec)
 - pokerrail: black padded leather: a fine pebble grain, soft sheen
 """
 
@@ -46,28 +46,25 @@ def normal_from(h, strength):
 
 
 def wood():
-    yy, xx = np.mgrid[0:N, 0:N].astype(np.float32) / N   # (rows: v, across the grain; columns: u, along it)
-    # the boards: growth layers across v, gently wandering (all of it periodic, so the tile repeats seamlessly)
-    wander = periodic((N, N), (N / 6, N / 1.5), 1) * 0.06 + periodic((N, N), (N / 30, N / 4), 2) * 0.012
-    layers = (yy * 26.0 + wander * 26.0 + 0.4 * periodic((N, N), (N / 3, N / 3), 3)) % 1.0
-    rings = np.where(layers < 0.78, layers / 0.78, (1.0 - layers) / 0.22) ** 0.85
-    pores = periodic((N, N), (0.6, 40.0), 4)                       # fine streaks along the grain
-    figure = periodic((N, N), (N / 10, N / 2), 5)                  # broad changes of tone along a board
-    # three boards across the tile, each a slightly different shade, a fine dark seam between
-    board = np.floor(yy * 3.0)
-    shade = np.choose(board.astype(int) % 3, [0.0, 0.07, -0.05])
-    seam = np.exp(-(((yy * 3.0) % 1.0) / 0.004) ** 2) + np.exp(-((1.0 - (yy * 3.0) % 1.0) / 0.004) ** 2)
-    g = 0.55 * rings + 0.2 * (pores * 0.5 + 0.5) + 0.25 * (figure * 0.5 + 0.5) + shade
-    dark = np.array((70, 28, 14), np.float32)
-    light = np.array((150, 66, 32), np.float32)
-    col = dark + (light - dark) * np.clip(g, 0, 1)[..., None]
-    col *= (1 - 0.55 * np.clip(seam, 0, 1))[..., None]
+    """the user's walnut (source_table/walnut.jpg), turned so the grain runs along u, made to tile (blended with a
+    copy of itself moved half a tile, so each edge meets its own other edge), 1024"""
+    src = Image.open(os.path.join(os.path.dirname(__file__), "source_table", "walnut.jpg")).convert("RGB")
+    src = src.rotate(90, expand=True).resize((N, N), Image.LANCZOS)
+    a = np.array(src, np.float32)
+    t = np.arange(N, dtype=np.float32) / N
+    # made to tile one way and then the other: blended with a copy moved half a tile, the copy (seamless at the edges)
+    # at the edges, the original (its own seam now in the copy's middle) everywhere else
+    w = np.clip((np.minimum(t, 1 - t) * 2 - 0.25) / 0.5, 0, 1)
+    w = w * w * (3 - 2 * w)
+    a = a * w[None, :, None] + np.roll(a, N // 2, 1) * (1 - w[None, :, None])
+    col = a * w[:, None, None] + np.roll(a, N // 2, 0) * (1 - w[:, None, None])
     d = Image.fromarray(col.clip(0, 255).astype(np.uint8), "RGB")
-    h = 0.6 * rings + 0.4 * pores - 2.0 * np.clip(seam, 0, 1)
-    n = normal_from(h, 0.9)
-    # lacquered: glossy, a little duller in the pores and seams
-    spec = np.clip(0.55 - 0.15 * (pores * 0.5 + 0.5) - 0.3 * np.clip(seam, 0, 1), 0, 1)
-    gloss = np.clip(0.7 - 0.1 * (pores * 0.5 + 0.5), 0, 1)
+    lum = col.mean(-1) / 255.0
+    blur = np.array(Image.fromarray((lum * 255).astype(np.uint8)).filter(__import__("PIL.ImageFilter", fromlist=["x"]).GaussianBlur(6)), np.float32) / 255
+    h = lum - blur                                   # the fine grain, as height
+    n = normal_from(h, 6.0)
+    spec = np.clip(0.5 + 0.6 * h, 0, 1)              # lacquered
+    gloss = np.full_like(spec, 0.68)
     s = Image.fromarray((np.stack([spec, gloss, np.zeros_like(spec)], -1) * 255).astype(np.uint8), "RGB")
     return d, n, s
 
@@ -78,8 +75,8 @@ def leather():
     creases = np.abs(periodic((N, N), 1.4, 12))
     broad = periodic((N, N), N / 8, 13)
     h = 0.8 * cells - 0.9 * np.exp(-creases / 0.08) + 0.3 * broad
-    base = np.array((24, 22, 23), np.float32)
-    tone = 1.0 + 0.10 * cells + 0.08 * broad - 0.15 * np.exp(-creases / 0.08)
+    base = np.array((30, 27, 28), np.float32)
+    tone = 1.0 + 0.22 * cells + 0.12 * broad - 0.3 * np.exp(-creases / 0.08)
     d = Image.fromarray((base * tone[..., None]).clip(0, 255).astype(np.uint8), "RGB")
     n = normal_from(h, 1.6)
     spec = np.clip(0.35 + 0.1 * cells - 0.15 * np.exp(-creases / 0.08), 0, 1)
