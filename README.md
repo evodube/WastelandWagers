@@ -129,6 +129,7 @@ g++ -std=c++20 -O2 -Isrc tests/layout_test.cpp src/rl/Layout.cpp src/rl/Wheel.cp
 - Poker table model: ["Poker Table"](https://sketchfab.com/3d-models/poker-table-a48473a5ae7c437496a7aa388f8c458b) by Pieter Ferreira on Sketchfab, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Changed for the game: the props on the felt removed, scaled, given collision, textures re-encoded.
 - Playing cards: ["Playing Cards"](https://sketchfab.com/3d-models/playing-cards-2dd7c45bf68a4ce3bf63c995b1bf12bf) by jdastine on Sketchfab, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Changed for the game: the faces packed into one atlas, each card its own mesh.
 - Roulette ball sound: recorded by [Maxwell Dufresne](https://gfxsounds.com/blog/maxwell-dufresne/), [GFXSounds](https://gfxsounds.com) (Standard licence).
+- Card sounds: ["Casino Audio"](https://kenney.nl/assets/casino-audio) by Kenney, CC0.
 - HUD fonts: Chakra Petch and Share Tech Mono (SIL Open Font License).
 - CommonLibF4 (Dear-Modding), F4SE, F4SE Menu Framework.
 
