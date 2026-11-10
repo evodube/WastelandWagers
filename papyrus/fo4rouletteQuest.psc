@@ -133,3 +133,15 @@ Bool Function PlayIdleOn(Int aiActor, Int aiIdle)
 	endif
 	return akActor.PlayIdle(akIdle)
 EndFunction
+
+; a line of the game's own (a custom-subtype topic, by its keyword: the Combat Zone crowd's cheers and groans, which
+; every common voice has)
+Bool Function SayOn(Int aiActor, Int aiKeyword)
+	Actor akActor = Game.GetForm(aiActor) as Actor
+	Keyword akKeyword = Game.GetForm(aiKeyword) as Keyword
+	if akActor == None || akKeyword == None
+		return false
+	endif
+	akActor.SayCustom(akKeyword)
+	return true
+EndFunction

@@ -46,6 +46,11 @@ namespace fr
 		constexpr std::array<RE::TESFormID, 2> kWinIdles{ 0x0010BA3A, 0x0010F9C0 };              // cheering, fight winner
 		constexpr RE::TESFormID                kNoIdle = 0x00038C7A;                             // HeadShakeNo: a fold, a lost showdown
 
+		// voice: the Combat Zone crowd's lines (custom topics by keyword, every common voice has them)
+		constexpr RE::TESFormID kCheer = 0x00110396;   // Crowd_ApprovalSounds_TopicSubType
+		constexpr RE::TESFormID kLaugh = 0x00110395;   // Crowd_Laughter_TopicSubType
+		constexpr RE::TESFormID kGroan = 0x00110398;   // Crowd_DisapprovalSounds_TopicSubType
+
 		// the seats, clockwise from the dealer's place (+X): the table's cup holders, table space
 		constexpr std::array<std::pair<float, float>, 7> kHolders{ {
 			{ 27.9f, -47.1f }, { 1.1f, -71.2f }, { -25.8f, -47.1f }, { -25.8f, -0.2f }, { -25.8f, 46.7f }, { 1.1f, 70.8f }, { 27.9f, 46.7f },
@@ -534,6 +539,12 @@ namespace fr
 		default: idle = kNoIdle; break;
 		}
 		Npc::PlayIdle(actor, idle);
+		// and a word or two: a cheer or a laugh for a win, a groan for a lost showdown (now and then)
+		if (Settings::Get().pkVoices && (a_kind == 3 || (a_kind == 4 && _pk.phase == PkPhase::kShowdown)) &&
+			std::uniform_real_distribution<float>(0.0f, 1.0f)(_rng) < 0.7f) {
+			const bool laugh = a_kind == 3 && std::uniform_real_distribution<float>(0.0f, 1.0f)(_rng) < 0.35f;
+			Npc::Say(actor, a_kind == 3 ? (laugh ? kLaugh : kCheer) : kGroan);
+		}
 		st.nextIdle = std::uniform_real_distribution<float>(10.0f, 22.0f)(_rng);  // (no idle on top of this one for a while)
 	}
 

@@ -286,6 +286,16 @@ namespace fr::Npc
 		CallQuest("PlayIdleOn", what, logged, FormArg(a_actor), static_cast<std::int32_t>(a_idle));
 	}
 
+	void Say(RE::Actor* a_actor, RE::TESFormID a_keyword)
+	{
+		if (!a_actor || !Ready()) {
+			return;
+		}
+		const std::string what = std::format("{} {:08X}", What(a_actor, "Say"), a_keyword);
+		const RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> logged{ new LogResult(what) };
+		CallQuest("SayOn", what, logged, FormArg(a_actor), static_cast<std::int32_t>(a_keyword));
+	}
+
 	std::string PackageName(RE::Actor* a_actor)
 	{
 		auto* proc = a_actor ? a_actor->currentProcess : nullptr;
