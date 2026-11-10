@@ -645,8 +645,8 @@ namespace fr
 		float      dt = _animHave ? std::chrono::duration<float>(now - _animLast).count() : 0.0f;
 		_animLast = now;
 		_animHave = true;
-		if (!_pk.table || !_pkSeated) {
-			return;
+		if (!_pk.table) {
+			return;  // (seated or just watching: the table's chips and cards moved here, once a frame)
 		}
 		dt = std::clamp(dt, 0.0f, 0.05f);
 		Frame frame;
@@ -707,7 +707,7 @@ namespace fr
 
 	bool Game::PkAnimating() const
 	{
-		return _pkSeated && std::chrono::steady_clock::now() - _animAt < std::chrono::milliseconds(250);
+		return std::chrono::steady_clock::now() - _animAt < std::chrono::milliseconds(250);
 	}
 
 	void Game::TickPoker(float a_dt)
@@ -1241,6 +1241,11 @@ namespace fr
 		_pk.boardShown = 0;
 		_pk.bannerAge = 99.0f;
 		_pk.winnerSeat = -1;
+		_pk.winFive.clear();
+		_pk.winHole = { -1, -1 };
+		_pk.winWho.clear();
+		_pk.winName.clear();
+		_pkPre = 0;
 		PkClearTable();
 		// two cards each, face down in front of them (yours too: you see them on the HUD), round from the button
 		float delay = 0.2f;
@@ -1391,6 +1396,18 @@ namespace fr
 					if (_pk.raiseTo < _pk.hand.MinRaiseTo(hi)) {
 						_pk.raiseTo = _pk.hand.MinRaiseTo(hi);
 					}
+					if (_pkPre != 0 && _pk.boardShown >= _pk.hand.board.size()) {
+						// the action you picked ahead, now it's your turn: check / fold, check (only if it's free: else
+						// it's yours to decide), call any
+						const int  pre = _pkPre;
+						const bool free = _pk.hand.CanCheck(hi);
+						_pkPre = 0;
+						if (pre == 3 || free) {
+							PkKey(1);
+						} else if (pre == 1) {
+							PkKey(0);
+						}
+					}
 					return;  // your keys
 				}
 				st.last = "THINKING";
@@ -1515,6 +1532,12 @@ namespace fr
 			// the winning five raised off the felt a touch (at a showdown)
 			if (h.showdown) {
 				const auto five = BestFive(h.players[st.hi].hole, h.board);
+				if (_pk.winFive.empty()) {
+					_pk.winFive.assign(five.begin(), five.end());
+					_pk.winHole = { h.players[st.hi].hole[0], h.players[st.hi].hole[1] };
+					_pk.winWho = who;
+					_pk.winName = pk::HandName(h.scores[st.hi]);
+				}
 				for (auto& c : _pk.cards) {
 					if ((c.seat < 0 || c.seat == i) && std::ranges::find(five, c.card) != five.end()) {
 						c.liftTo = 0.8f;
@@ -2239,6 +2262,11 @@ namespace fr
 			_pkShowCards = !_pkShowCards;
 			return;
 		}
+		if (a_key >= 34 && a_key <= 36) {
+			const int pre = a_key - 33;  // 1 check / fold, 2 check, 3 call any
+			_pkPre = _pkPre == pre ? 0 : pre;
+			return;
+		}
 		if (a_key == 15) {
 			_pkShowDealer = !_pkShowDealer;  // the board's cards on the HUD
 			return;
@@ -2270,6 +2298,21 @@ namespace fr
 		case 3: PkAct({ pk::Action::Kind::kAllIn }); break;
 		case 4: _pk.raiseTo = std::min(_pk.hand.MaxRaiseTo(hi), std::max(_pk.raiseTo, _pk.hand.MinRaiseTo(hi)) + step); break;
 		case 5: _pk.raiseTo = std::max(_pk.hand.MinRaiseTo(hi), _pk.raiseTo - step); break;
+		case 30:
+		case 31:
+		case 32:
+		case 33: {
+			// the quick sizes: the smallest raise, half the pot, two thirds, the pot (a bet that size on top of a call)
+			if (a_key == 30) {
+				_pk.raiseTo = _pk.hand.MinRaiseTo(hi);
+				break;
+			}
+			const double share = a_key == 31 ? 0.5 : a_key == 32 ? 2.0 / 3.0 : 1.0;
+			const int    toCall = _pk.hand.ToCall(hi);
+			const int    bet = static_cast<int>(std::lround((_pk.hand.PotTotal() + toCall) * share));
+			_pk.raiseTo = std::clamp(_pk.hand.players[hi].bet + toCall + bet, _pk.hand.MinRaiseTo(hi), _pk.hand.MaxRaiseTo(hi));
+			break;
+		}
 		default: break;
 		}
 		if (a_key <= 3) {
@@ -2341,6 +2384,8 @@ namespace fr
 		const auto key = [](int a_vk) { return Upper(Settings::Key(a_vk)); };
 		const int  hi = _pkYou >= 0 ? _pk.seats[_pkYou].hi : -1;
 		a_h.pkYourTurn = _pk.inHand && hi >= 0 && h.ToAct() == hi && _pk.phase == PkPhase::kBetting && _pk.boardShown >= h.board.size();
+		a_h.pkCanPre = !a_h.pkYourTurn && _pk.inHand && hi >= 0 && !h.players[hi].folded && !h.players[hi].allIn &&
+		               (_pk.phase == PkPhase::kBetting || _pk.phase == PkPhase::kDealing);
 		if (a_h.pkYourTurn) {
 			const int toCall = h.ToCall(hi);
 			const int raiseTo = std::max(_pk.raiseTo, h.MinRaiseTo(hi));
@@ -2380,6 +2425,13 @@ namespace fr
 		a_h.pkTop = _pkTopView;
 		a_h.pkZoom = _pkZoom;
 		a_h.pkDealer = _pkShowDealer;
+		a_h.pkPre = _pkPre;
+		if (_pk.phase == PkPhase::kShowdown && !_pk.winFive.empty()) {
+			a_h.pkWinFive = _pk.winFive;
+			a_h.pkWinHole = _pk.winHole;
+			a_h.pkWinWho = _pk.winWho;
+			a_h.pkWinName = _pk.winName;
+		}
 		a_h.pkAge = _pk.seatedAge;
 		a_h.pkPad = _padUsed.load();
 		if (auto table = _pk.table.get()) {

@@ -154,6 +154,12 @@ namespace fr
 			bool                  pkTop{ false };
 			bool                  pkZoom{ false };
 			bool                  pkDealer{ true };   // the board's cards shown on the HUD, under your hand
+			int                   pkPre{ 0 };         // your action picked ahead: 0 none, 1 check / fold, 2 check, 3 call any
+			bool                  pkCanPre{ false };  // in the hand, not your turn: an action can be picked ahead
+			std::vector<int>      pkWinFive;          // at the showdown: the winning five (cards)
+			std::array<int, 2>    pkWinHole{ -1, -1 };  // ...the winner's own two
+			std::string           pkWinWho;           // ...and who ("PIPER", "YOU")
+			std::string           pkWinName;          // ...with what ("A FLUSH")
 			float                 pkAge{ 99.0f };     // seconds since you sat down (the panels slide in)
 			bool                  pkPad{ false };     // a controller in use: its buttons on the HUD
 			std::string           pkHelp;             // what's happening / what to do, under the board
@@ -441,6 +447,9 @@ namespace fr
 			float                                                  driftYaw{ 0.0f };  // the view turned towards the winner
 			float                                                  thinkTotal{ 1.0f };
 			float                                                  seatedAge{ 99.0f };
+			std::vector<int>                                       winFive;           // the showdown's winning five (cards), its winner's two, who
+			std::array<int, 2>                                     winHole{ -1, -1 };
+			std::string                                            winWho, winName;
 			int                                                    winnerSeat{ -1 };  // chips on their way in: the pot's stack after  // 1 you won, 2 you lost, 0 neither
 			int                                                    lifted{ 0 };  // your stack, back in your pocket over a save
 			bool                                                   peeking{ false };  // you're looking at your cards: they're turned up
@@ -461,6 +470,7 @@ namespace fr
 		bool              _pkMenusHeld{ false };
 		bool              _pkTopView{ false };  // looking down on the poker table (V)
 		bool              _pkShowCards{ false };  // the SHOW MY CARDS button: your cards up
+		int               _pkPre{ 0 };  // your action picked ahead (the CHECK / FOLD, CHECK, CALL ANY buttons)
 		bool              _pkShowDealer{ true };  // the SHOW / HIDE DEALER button: the board's cards on the HUD
 		std::atomic<bool> _rlUi{ false };  // (roulette: the pointer's down on the buttons, off the layout)
 		double            _rlPush{ 0.0 };  // (...how far you've pushed the cursor down past the layout's edge)

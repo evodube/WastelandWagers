@@ -56,6 +56,27 @@ namespace fr::CameraHook
 			Game::Get().PkAnimate();
 		}
 
+		// every other camera state's update (first person, third person, furniture...): the poker table's chips and cards
+		// moved there too, once a frame, when you're not sitting at it (watching): off the table's own tick they shook
+		struct OtherUpdate
+		{
+			void**   vtable{ nullptr };
+			Update_t original{ nullptr };
+		};
+		std::array<OtherUpdate, RE::CameraStates::kTotal> g_other{};
+
+		void HookedOtherUpdate(RE::TESCameraState* a_this, RE::BSTSmartPointer<RE::TESCameraState>& a_next)
+		{
+			auto** vt = *reinterpret_cast<void***>(a_this);
+			for (const auto& o : g_other) {
+				if (o.vtable == vt && o.original) {
+					reinterpret_cast<void (*)(RE::TESCameraState*, RE::BSTSmartPointer<RE::TESCameraState>&)>(o.original)(a_this, a_next);
+					break;
+				}
+			}
+			Game::Get().PkAnimate();
+		}
+
 		void HookedGetTranslation(const RE::FreeCameraState* a_this, RE::NiPoint3& a_out)
 		{
 			if (!Game::Get().FreeCameraTranslation(a_this, a_out)) {
@@ -164,6 +185,31 @@ namespace fr::CameraHook
 				log::error("free camera hooks: couldn't write the vtables");
 				return;
 			}
+		}
+		// the other camera states' updates (off the live objects; each vtable once)
+		if (auto* camera = RE::PlayerCamera::GetSingleton()) {
+			int         n = 0;
+			auto* const freeState = camera->cameraStates[RE::CameraStates::kFree].get();
+			void** const freeVt = freeState ? *reinterpret_cast<void***>(freeState) : nullptr;
+			for (int s = 0; s < RE::CameraStates::kTotal; ++s) {
+				if (s == RE::CameraStates::kFree) {
+					continue;
+				}
+				auto* state = camera->cameraStates[s].get();
+				if (!state) {
+					continue;
+				}
+				auto** vt = *reinterpret_cast<void***>(state);
+				if (std::ranges::any_of(g_other, [&](const OtherUpdate& a_o) { return a_o.vtable == vt; }) || vt == freeVt) {
+					continue;
+				}
+				const auto was = SwapSlot(vt, 0x0B, reinterpret_cast<const void*>(&HookedOtherUpdate));
+				if (was) {
+					g_other[s] = { vt, reinterpret_cast<Update_t>(was) };
+					++n;
+				}
+			}
+			log::info("camera hooks: {} other camera states' updates", n);
 		}
 		// (off the live objects: the same on every runtime)
 		if (auto* menus = RE::MenuControls::GetSingleton()) {

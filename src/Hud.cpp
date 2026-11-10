@@ -425,7 +425,7 @@ namespace fr::Hud
 		// the screen, or the HUD scale, leaves too little room)
 		constexpr float kPkMargin = 20.0f;
 		constexpr float kPkRow = 46.0f;
-		constexpr float kPkBottom = 66.0f;  // the button row's room along the bottom
+		constexpr float kPkBottom = 98.0f;  // the button rows' room along the bottom (the quick sizes over the bar)
 		constexpr float kPkSideW = 170.0f;  // the column of buttons on the right
 		constexpr float kPkSideH = 7 * 34.0f;
 
@@ -575,10 +575,29 @@ namespace fr::Hud
 			if (!a_st.pkDealer || a_st.pkBoard.empty()) {
 				return;
 			}
-			constexpr float cw = 46.0f, ch = 64.0f, gap = 7.0f, pad = 8.0f;
-			const float     w = cw * 5.0f + gap * 4.0f + pad * 2.0f, h = ch + pad * 2.0f;
-			const float     x = a_v.w * 0.5f - w * 0.5f, y = kPkMargin + PokerHoleH() + 8.0f;
+			constexpr float cw = 46.0f, ch = 64.0f, gap = 7.0f, pad = 8.0f, split = 22.0f;
+			// at the showdown: the winning five lifted and outlined (the rest dimmed), the winner's own two beside the board
+			const bool  won = !a_st.pkWinFive.empty();
+			const float boardW = cw * 5.0f + gap * 4.0f;
+			const float w = boardW + pad * 2.0f + (won ? split + cw * 2.0f + gap : 0.0f), h = ch + pad * 2.0f + (won ? 22.0f : 0.0f);
+			const float x = a_v.w * 0.5f - w * 0.5f, y = kPkMargin + PokerHoleH() + 8.0f;
 			Chamfer(a_v, x, y, w, h, 10.0f, kPanel, kEdge);
+			static constexpr std::array<const char*, 13> kRanks{ "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A" };
+			auto card = [&](int a_card, float a_cx, float a_cy) {
+				const int   rank = a_card % 13, suit = a_card / 13;
+				const bool  red = suit == 1 || suit == 2;
+				const bool  in = !won || std::ranges::find(a_st.pkWinFive, a_card) != a_st.pkWinFive.end();
+				const float cy = a_cy - (won && in ? 4.0f : 0.0f);
+				const float a = in ? 1.0f : 0.35f;
+				const ImU32 ink = Fade(red ? Rgba(200, 30, 35) : Rgba(20, 20, 24), a);
+				DL::AddRectFilled(a_v.dl, a_v.P(a_cx, cy), a_v.P(a_cx + cw, cy + ch), Fade(Rgba(246, 244, 236), in ? 1.0f : 0.45f), 5.0f * a_v.s, 0);
+				if (won && in) {
+					DL::AddRect(a_v.dl, a_v.P(a_cx - 1.5f, cy - 1.5f), a_v.P(a_cx + cw + 1.5f, cy + ch + 1.5f), kBright, 6.0f * a_v.s, 0,
+						std::max(1.0f, 2.0f * a_v.s));
+				}
+				Print(a_v, Mono(), kRanks[rank], a_cx + 5.0f, cy + 4.0f, 16, ink, 0, 0.0f);
+				SuitShape(a_v, suit, a_cx + cw * 0.5f, cy + ch * 0.6f, 11.0f, ink);
+			};
 			for (int k = 0; k < 5; ++k) {
 				const float cx = x + pad + static_cast<float>(k) * (cw + gap), cy = y + pad;
 				if (k >= static_cast<int>(a_st.pkBoard.size())) {
@@ -586,14 +605,17 @@ namespace fr::Hud
 					DL::AddRect(a_v.dl, a_v.P(cx, cy), a_v.P(cx + cw, cy + ch), Rgba(80, 200, 100, 0.25f), 5.0f * a_v.s, 0, std::max(1.0f, a_v.s));
 					continue;
 				}
-				const int   card = a_st.pkBoard[k];
-				const int   rank = card % 13, suit = card / 13;
-				const bool  red = suit == 1 || suit == 2;
-				const ImU32 ink = red ? Rgba(200, 30, 35) : Rgba(20, 20, 24);
-				DL::AddRectFilled(a_v.dl, a_v.P(cx, cy), a_v.P(cx + cw, cy + ch), Rgba(246, 244, 236), 5.0f * a_v.s, 0);
-				static constexpr std::array<const char*, 13> kRanks{ "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A" };
-				Print(a_v, Mono(), kRanks[rank], cx + 5.0f, cy + 4.0f, 16, ink, 0, 0.0f);
-				SuitShape(a_v, suit, cx + cw * 0.5f, cy + ch * 0.6f, 11.0f, ink);
+				card(a_st.pkBoard[k], cx, cy);
+			}
+			if (won) {
+				const float hx = x + pad + boardW + split;
+				DL::AddLine(a_v.dl, a_v.P(hx - split * 0.5f, y + pad), a_v.P(hx - split * 0.5f, y + pad + ch), kEdge, std::max(1.0f, a_v.s));
+				for (int k = 0; k < 2; ++k) {
+					if (a_st.pkWinHole[k] >= 0) {
+						card(a_st.pkWinHole[k], hx + static_cast<float>(k) * (cw + gap), y + pad);
+					}
+				}
+				Print(a_v, Mono(), a_st.pkWinWho + " · " + a_st.pkWinName, x + w * 0.5f, y + pad + ch + 6.0f, 12, kBright, 0, 1.0f, Align::kCentre);
 			}
 		}
 
@@ -672,11 +694,14 @@ namespace fr::Hud
 			std::vector<Game::PkButton> out;
 			const bool turn = a_st.pkYourTurn;
 			// the actions, along the bottom: check / call, fold, the raise (a slider to set it, the button to make it), all in
-			const std::string call = !turn ? std::string("CHECK / CALL") : a_st.pkToCall == 0 ? std::string("CHECK") : std::format("CALL {}", Commas(a_st.pkToCall));
+			// (a call says what it's for: the pot it's to win)
+			const std::string call = !turn ? std::string("CHECK / CALL")
+			                         : a_st.pkToCall == 0 ? std::string("CHECK")
+			                                              : std::format("CALL {} TO WIN {}", Commas(a_st.pkToCall), Commas(a_st.pkPot));
 			const std::string raise = turn ? std::format("{} {}", a_st.pkToCall == 0 ? "BET" : "RAISE TO", Commas(a_st.pkRaiseTo)) : std::string("RAISE");
 			const std::string allIn = turn ? std::format("ALL IN {}", Commas(a_st.pkAllIn)) : std::string("ALL IN");
 			constexpr float h = 40.0f, gap = 8.0f;
-			const float wCall = 150.0f, wFold = 110.0f, wSlider = 200.0f, wRaise = 170.0f, wAll = 150.0f;
+			const float wCall = 200.0f, wFold = 110.0f, wSlider = 200.0f, wRaise = 170.0f, wAll = 150.0f;
 			const float w = wCall + wFold + wSlider + wRaise + wAll + gap * 4;
 			const float k = std::min(1.0f, (a_v.w - kPkMargin * 2.0f) / w);
 			float       x = a_v.w * 0.5f - w * k * 0.5f;
@@ -694,6 +719,15 @@ namespace fr::Hud
 				// the slider: from the smallest raise to all in
 				const bool  on = turn && a_st.pkMaxRaise > a_st.pkMinRaise;
 				const float sw = wSlider * k;
+				{
+					// the quick sizes, over the slider and the raise button: the smallest raise, half the pot, two
+					// thirds, the pot
+					static constexpr std::array<const char*, 4> kSizes{ "MIN", "1/2 POT", "2/3 POT", "POT" };
+					const float span = (wSlider + gap + wRaise) * k, qw = (span - gap * k * 3.0f) / 4.0f;
+					for (int q = 0; q < 4; ++q) {
+						Button(a_v, a_st, out, 30 + q, kSizes[q], x + static_cast<float>(q) * (qw + gap * k), y - 34.0f, qw, 26.0f, on, false, 11.0f);
+					}
+				}
 				Chamfer(a_v, x, y, sw, h, 6.0f, on ? kPanel : Rgba(6, 20, 9, 0.5f), on ? kEdge : Rgba(80, 200, 100, 0.2f));
 				const float l = x + 14.0f, r = x + sw - 14.0f, cy = y + h * 0.5f + 4.0f;
 				const float f = on ? std::clamp(static_cast<float>(a_st.pkRaiseTo - a_st.pkMinRaise) / static_cast<float>(a_st.pkMaxRaise - a_st.pkMinRaise), 0.0f, 1.0f) : 0.0f;
@@ -716,6 +750,16 @@ namespace fr::Hud
 			}
 			next(2, tag("(X)", raise), wRaise, turn);
 			next(3, tag("(Y)", allIn), wAll, false, Rgba(170, 100, 20));
+			} else if (a_st.pkCanPre) {
+				// not your turn yet: an action picked ahead, done the moment it is (picked again: off)
+				static constexpr std::array<const char*, 3> kPre{ "CHECK / FOLD", "CHECK", "CALL ANY" };
+				const float pw = 170.0f;
+				float       px = a_v.w * 0.5f - (pw * 3.0f + gap * 2.0f) * k * 0.5f;
+				for (int q = 0; q < 3; ++q) {
+					const bool picked = a_st.pkPre == q + 1;
+					Button(a_v, a_st, out, 34 + q, std::format("{} {}", picked ? "[X]" : "[ ]", kPre[q]), px, y, pw * k, h, true, picked, 13.0f);
+					px += (pw + gap) * k;
+				}
 			}
 			// the table's buttons, bottom right: in the corner, or above the action buttons when they'd run into them
 			const int   nSide = a_st.pkKit ? 7 : 6;
