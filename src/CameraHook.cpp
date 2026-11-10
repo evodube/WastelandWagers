@@ -53,6 +53,7 @@ namespace fr::CameraHook
 			g_update(a_this, a_next);
 			Game::Get().OnFreeCameraLook(a_this, before);
 			Game::Get().OnFreeCameraUpdate(a_this);
+			Game::Get().PkAnimate();
 		}
 
 		void HookedGetTranslation(const RE::FreeCameraState* a_this, RE::NiPoint3& a_out)

@@ -74,6 +74,7 @@ namespace fr
 		void BeforeFreeCameraUpdate(RE::FreeCameraState* a_free);
 		void OnFreeCameraLook(RE::FreeCameraState* a_free, const RE::BSTPoint2<float>& a_before);
 		void OnFreeCameraUpdate(RE::FreeCameraState* a_free);
+		void PkAnimate();  // the poker table's cards and chips moved, once a frame (from the camera's update)
 		bool FreeCameraTranslation(const RE::FreeCameraState* a_free, RE::NiPoint3& a_out);
 
 		struct HudLine
@@ -433,6 +434,10 @@ namespace fr
 		};
 		PokerState        _pk;
 		std::atomic<bool> _pkSeated{ false };
+		bool                                  PkAnimating() const;  // (the camera's update is moving them)
+		std::chrono::steady_clock::time_point _animLast{};
+		std::chrono::steady_clock::time_point _animAt{};
+		bool                                  _animHave{ false };
 		std::atomic<std::int64_t> _afterTable{ 0 };  // (up from the poker table: the click or button that did it kept from the game until let go)
 		int               _pkYou{ -1 };       // your seat (sitting there, or away with it kept)
 		float             _camPitch{ -1.0f };  // the view's pitch at a poker table (below 0: straight down, the roulette layout)

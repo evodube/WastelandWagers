@@ -480,6 +480,35 @@ namespace fr
 
 	// ---------------------------------------------------------------- the tick
 
+	// The cards and chips on their way somewhere, moved in step with the frame: from the camera's own update (the
+	// main thread, once a frame, just before the frame's drawn) while you're at the table. The rest of the table's
+	// work (the hand, the settlers, what's made and what goes) is the task each frame queues from the render thread,
+	// which doesn't keep step: some frames it ran twice and some not at all, so a chip on the move went in little jumps
+	// (and opening a menu and closing it again put it back in step for a while)
+	void Game::PkAnimate()
+	{
+		const auto now = std::chrono::steady_clock::now();
+		float      dt = _animHave ? std::chrono::duration<float>(now - _animLast).count() : 0.0f;
+		_animLast = now;
+		_animHave = true;
+		if (!_pk.table || !_pkSeated) {
+			return;
+		}
+		dt = std::clamp(dt, 0.0f, 0.05f);
+		Frame frame;
+		if (!PkFrame(frame)) {
+			return;
+		}
+		_animAt = now;
+		PkTickCards(frame, dt);
+		PkTickMoves(frame, dt);
+	}
+
+	bool Game::PkAnimating() const
+	{
+		return _pkSeated && std::chrono::steady_clock::now() - _animAt < std::chrono::milliseconds(250);
+	}
+
 	void Game::TickPoker(float a_dt)
 	{
 		if (!_pk.table) {
@@ -525,9 +554,13 @@ namespace fr
 		_pk.seatedAge += a_dt;
 		PkTickSeats(frame, a_dt);
 		PkTickHand(frame, a_dt);
-		PkTickCards(frame, a_dt);
+		if (!PkAnimating()) {
+			PkTickCards(frame, a_dt);
+		}
 		PkMakeChips(frame);
-		PkTickMoves(frame, a_dt);
+		if (!PkAnimating()) {
+			PkTickMoves(frame, a_dt);  // (when the camera's update isn't moving them: away from the table)
+		}
 		for (const auto& seat : _pk.stackChips) {
 			for (const auto& v : seat) {
 				for (const auto& h : v) {
