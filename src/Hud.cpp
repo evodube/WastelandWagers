@@ -625,9 +625,14 @@ namespace fr::Hud
 					Print(a_v, Mono(), Commas(a_st.pkMinRaise), l, y + 3.0f, 10, kDim, 0, 1.0f);
 					Print(a_v, Mono(), "MAX", r, y + 3.0f, 10, kDim, 0, 1.0f, Align::kRight);
 				}
-				// (noted as the track's ends, so where the pointer is along it is the fraction)
-				const ImVec2 p0 = a_v.P(l, y), p1 = a_v.P(r, y + h);
-				out.push_back({ 11, p0.x - a_v.origin.x, p0.y - a_v.origin.y, p1.x - a_v.origin.x, p1.y - a_v.origin.y, on });
+				// (the whole panel to grab, the knob at either end included; the track's ends noted too, so where the pointer
+				// is along it is the fraction)
+				const ImVec2 p0 = a_v.P(x, y), p1 = a_v.P(x + sw, y + h);
+				const ImVec2 tl = a_v.P(l, y), tr = a_v.P(r, y);
+				Game::PkButton sb{ 11, p0.x - a_v.origin.x, p0.y - a_v.origin.y, p1.x - a_v.origin.x, p1.y - a_v.origin.y, on };
+				sb.t0 = tl.x - a_v.origin.x;
+				sb.t1 = tr.x - a_v.origin.x;
+				out.push_back(sb);
 				x += (wSlider + gap) * k;
 			}
 			next(2, tag("(X)", raise), wRaise, turn);

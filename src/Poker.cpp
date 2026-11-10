@@ -1301,15 +1301,21 @@ namespace fr
 				m.delay -= a_dt;
 				continue;
 			}
+			auto ref = m.ref.get();
+			if (!ref) {
+				m.t = 1.0f;  // (gone)
+				continue;
+			}
+			if (!ref->Get3D()) {
+				continue;  // a chip just made: its 3D isn't loaded yet. It starts once it's there, rather than jumping to partway
+			}
 			m.t = std::min(1.0f, m.t + a_dt / m.dur);
 			// picked up, carried over and set down: up quickly, across, down onto the stack
 			const float e = m.t * m.t * (3.0f - 2.0f * m.t);
 			const auto  p = m.from + (m.to - m.from) * e;
 			const float up = m.t < 0.25f ? m.t / 0.25f : m.t > 0.8f ? (1.0f - m.t) / 0.2f : 1.0f;
 			NoFade(m.ref);
-			if (auto ref = m.ref.get()) {
-				PlaceNode(ref.get(), ToWorld(a_frame, p.x, p.y, kFeltZ + p.z + up * 2.2f), m.yaw, false);
-			}
+			PlaceNode(ref.get(), ToWorld(a_frame, p.x, p.y, kFeltZ + p.z + up * 2.2f), m.yaw, false);
 			if (m.t >= 1.0f && m.remove) {
 				Remove(m.ref);
 			}
@@ -1332,14 +1338,16 @@ namespace fr
 				const float yaw = a_frame.yaw + spin(_rng);
 				if (a_from) {
 					// spawned where it's coming from, slid over (kept: not removed at the end)
-					auto h = Spawn(Forms::Chip(idx), ToWorld(a_frame, a_from->x, a_from->y, kFeltZ + z), yaw);
+					// (off the top of the stack it comes from, not out of the middle of it)
+					const float fromZ = a_from->z + static_cast<float>(i - a_start) * kChipH;
+					auto        h = Spawn(Forms::Chip(idx), ToWorld(a_frame, a_from->x, a_from->y, kFeltZ + fromZ), yaw);
 					a_out.push_back(h);
 					PkChipMove m;
 					m.ref = h;
-					m.from = { a_from->x, a_from->y, z };
+					m.from = { a_from->x, a_from->y, fromZ };
 					m.to = { x, y, z };
-					m.delay = 0.03f * static_cast<float>(i);
-					m.dur = 0.4f;
+					m.delay = 0.04f * static_cast<float>(i - a_start);
+					m.dur = 0.45f;
 					m.yaw = yaw;
 					m.remove = false;
 					_pk.moves.push_back(m);
@@ -1398,21 +1406,34 @@ namespace fr
 			if (bet == _pk.betShown[i]) {
 				continue;
 			}
+			const bool more = bet > _pk.betShown[i];
+			std::size_t keep = 0;
 			if (bet == 0 && potGrew) {
 				PkSlideChips(_pk.betChips[i], kPot, 0.1f);
 				_pk.potHold = 0.75f;
 			} else {
-				for (auto& h : _pk.betChips[i]) {
-					Remove(h);
+				// a raise: the chips already out stay where they are (those it has in common with the bigger bet, from
+				// the bottom); only the rest change
+				if (more && _pk.betShown[i] > 0) {
+					const auto was = rl::ChipsFor(_pk.betShown[i]);
+					const auto now = rl::ChipsFor(bet);
+					while (keep < was.size() && keep < now.size() && keep < _pk.betChips[i].size() && keep < kMaxStack * 3 &&
+						   was[keep] == now[keep] && (was.size() > kMaxStack) == (now.size() > kMaxStack)) {
+						++keep;
+					}
 				}
-				_pk.betChips[i].clear();
+				for (std::size_t c = keep; c < _pk.betChips[i].size(); ++c) {
+					Remove(_pk.betChips[i][c]);
+				}
+				_pk.betChips[i].resize(std::min(keep, _pk.betChips[i].size()));
 			}
-			const bool more = bet > _pk.betShown[i];
 			_pk.betShown[i] = bet;
 			if (bet > 0) {
 				const auto b = BetSpot(i);
-				const auto from = StackSpot(i);
-				stack(bet, b.x, b.y, _pk.betChips[i], more ? &from : nullptr);
+				// off the top of their stack
+				auto from = StackSpot(i);
+				from.z = 0.02f + static_cast<float>(std::min<std::size_t>(_pk.stackChips[i].size(), kMaxStack)) * kChipH;
+				stack(bet, b.x, b.y, _pk.betChips[i], more ? &from : nullptr, keep);
 			}
 		}
 		if (_pk.potHold > 0.0f) {

@@ -154,6 +154,7 @@ namespace fr
 			                // 8 cash out, 9 view, 10 show your cards, 11 the raise slider
 			float x0{ 0 }, y0{ 0 }, x1{ 0 }, y1{ 0 };
 			bool  on{ true };
+			float t0{ 0 }, t1{ 0 };  // (the slider) its track's ends: x0..x1 is the whole of it, to grab anywhere on
 		};
 		void SetPkButtons(std::vector<PkButton> a_buttons, float a_screenW, float a_screenH);
 		void PkSetRaise(float a_frac);  // the raise slider dragged: 0 the smallest raise .. 1 all in

@@ -171,16 +171,18 @@ namespace fr
 					std::scoped_lock lock(_camMutex);
 					px = _pkPtrX;
 				}
-				float frac = -1.0f;
+				float frac = 0.0f;
+				bool  found = false;
 				{
 					std::scoped_lock lock(_btnMutex);
 					for (const auto& b : _pkButtons) {
-						if (b.id == 11 && b.x1 > b.x0) {
-							frac = static_cast<float>((px - b.x0) / (b.x1 - b.x0));
+						if (b.id == 11 && b.t1 > b.t0) {
+							frac = static_cast<float>((px - b.t0) / (b.t1 - b.t0));  // (past either end: clamped)
+							found = true;
 						}
 					}
 				}
-				if (frac >= -0.5f) {
+				if (found) {
 					tasks->AddTask([this, frac]() { PkSetRaise(frac); });
 				}
 			}
