@@ -388,7 +388,10 @@ namespace fr
 			std::array<std::vector<RE::ObjectRefHandle>, kPkSeats> stackChips;   // each player's caps in front of them
 			std::array<int, kPkSeats>                              stackShown{};
 			std::vector<PkChipMove>                                moves;
-			float                                                  potHold{ 0.0f };  // chips on their way in: the pot's stack after  // 1 you won, 2 you lost, 0 neither
+			float                                                  potHold{ 0.0f };
+			float                                                  pushAge{ 99.0f };  // the camera's push in: seconds since
+			float                                                  driftYaw{ 0.0f };  // the view turned towards the winner
+			int                                                    winnerSeat{ -1 };  // chips on their way in: the pot's stack after  // 1 you won, 2 you lost, 0 neither
 			int                                                    lifted{ 0 };  // your stack, back in your pocket over a save
 			bool                                                   peeking{ false };  // you're looking at your cards: they're turned up
 		};

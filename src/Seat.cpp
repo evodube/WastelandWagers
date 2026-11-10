@@ -174,7 +174,14 @@ namespace fr
 			std::scoped_lock lock(_camMutex);
 			_camMapped = false;
 			_mapFrames = 0;
-			_haveCamPos = false;
+			// the view glides over from where your eyes were, rather than jumping
+			if (camera->cameraRoot) {
+				_camPos = camera->cameraRoot->world.translate;
+				_haveCamPos = true;
+				_lastCam = std::chrono::steady_clock::now();
+			} else {
+				_haveCamPos = false;
+			}
 			const auto c = rl::LayoutCentre();
 			_cursorX = c.x;
 			_cursorY = c.y;

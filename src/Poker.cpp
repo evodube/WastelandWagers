@@ -353,6 +353,7 @@ namespace fr
 		}
 		_pk.bannerAge += a_dt;
 		_pk.potHold = std::max(0.0f, _pk.potHold - a_dt);
+		_pk.pushAge += a_dt;
 		PkTickSeats(frame, a_dt);
 		PkTickHand(frame, a_dt);
 		PkTickCards(frame, a_dt);
@@ -367,7 +368,21 @@ namespace fr
 			const float baseYaw = HeadingOf(frame, -n.x, -n.y);
 			// (back far enough to see the rail in front of you)
 			const auto& cs = Settings::Get();
-			const float back = cs.pkSeatBack, up = cs.pkSeatHeight;
+			// a push in for the river or an all in (in over a moment, held, back out); at the showdown, a drift
+			// towards the winner
+			const float pa = _pk.pushAge;
+			const float push = pa < 0.5f ? pa / 0.5f : pa < 2.2f ? 1.0f : pa < 3.0f ? 1.0f - (pa - 2.2f) / 0.8f : 0.0f;
+			const float pe = push * push * (3.0f - 2.0f * push);
+			const float back = cs.pkSeatBack * (1.0f - 0.25f * pe), up = cs.pkSeatHeight * (1.0f - 0.15f * pe);
+			{
+				float target = 0.0f;
+				if (_pk.phase == PkPhase::kShowdown && _pk.winnerSeat >= 0 && _pk.winnerSeat != _pkYou && _pk.potHold > 0.0f) {
+					const auto w = (HoleSpot(_pk.winnerSeat, 0) + HoleSpot(_pk.winnerSeat, 1)) * 0.5f;
+					const float to = HeadingOf(frame, w.x - mid.x, w.y - mid.y);
+					target = std::clamp(util::AngleDiff(to, baseYaw) * 0.4f, -0.6f, 0.6f);
+				}
+				_pk.driftYaw += (target - _pk.driftYaw) * std::min(1.0f, a_dt * 2.0f);
+			}
 			const auto  eye = ToWorld(frame, mid.x + n.x * back, mid.y + n.y * back, kFeltZ + up);
 			const float basePitch = std::atan2(up, back + cs.pkSeatAim);  // (down onto the felt that far in front of your cards)
 			const bool  focus = util::GameHasFocus();
@@ -395,7 +410,7 @@ namespace fr
 				_pkPtrY = std::clamp(_pkPtrY + _mouseDY * k, 0.0, static_cast<double>(sh - 1.0f));
 				_pkLookYaw = std::clamp(_pkLookYaw + turn * 1.6f * a_dt, -1.4f, 1.4f);
 				_mouseDX = _mouseDY = 0.0;
-				yaw = baseYaw + _pkLookYaw;
+				yaw = baseYaw + _pkLookYaw + _pk.driftYaw;
 				pitch = basePitch + _pkLookPitch;
 				if (_pkTopView) {
 					// from above the middle of the table, your side at the bottom of the screen (the turn keys turn it)
@@ -699,6 +714,7 @@ namespace fr
 		_pk.phase = PkPhase::kDealing;
 		_pk.boardShown = 0;
 		_pk.bannerAge = 99.0f;
+		_pk.winnerSeat = -1;
 		PkClearTable();
 		// two cards each, face down in front of them (yours too: you see them on the HUD), round from the button
 		float delay = 0.2f;
@@ -744,6 +760,7 @@ namespace fr
 			what = "FOLDS";
 		} else if (p.allIn && paid > 0) {
 			what = std::format("ALL IN ({})", p.committed);
+			_pk.pushAge = 0.0f;
 		} else if (paid == 0) {
 			what = "CHECKS";
 		} else if (paid <= toCall) {
@@ -818,6 +835,7 @@ namespace fr
 						PkSay("THE TURN");
 					} else if (_pk.boardShown == 5) {
 						PkSay("THE RIVER");
+						_pk.pushAge = 0.0f;
 					}
 					return;
 				}
@@ -971,6 +989,7 @@ namespace fr
 			}
 			if (winnerSeat < 0) {
 				winnerSeat = i;
+				_pk.winnerSeat = i;
 			}
 		}
 		if (h.showdown) {
@@ -1329,7 +1348,14 @@ namespace fr
 			std::scoped_lock lock(_camMutex);
 			_camMapped = false;
 			_mapFrames = 0;
-			_haveCamPos = false;
+			// the view glides over from where your eyes were, rather than jumping
+			if (camera->cameraRoot) {
+				_camPos = camera->cameraRoot->world.translate;
+				_haveCamPos = true;
+				_lastCam = std::chrono::steady_clock::now();
+			} else {
+				_haveCamPos = false;
+			}
 		}
 		{
 			std::scoped_lock lock(_camMutex);
