@@ -5,7 +5,9 @@ chips on the layout from a top-down camera and spin. The rotor turns, the ball r
 diamonds and frets and drops into a pocket. The wheel spins itself 15 seconds after the round's first bet; settlers
 wander over and bet with their own caps, cheering or shaking their heads at the result.
 
-**Status: 0.3.3.**
+Since 0.4.0 there's a **poker table** too: no-limit Texas Hold'em against settlers who sit in with their own caps.
+
+**Status: 0.4.0.**
 
 ## Requirements
 
@@ -38,6 +40,18 @@ wander over and bet with their own caps, cheering or shaking their heads at the 
    keeps going with you away from it.
 
 The HUD shows while you're sitting at the table.
+
+### Poker
+
+Build a **Poker Table** (Furniture > Tables) or use a **Poker Table Kit** (Vadim, or a chem station) the same way as the
+roulette kit. Activate the table to sit in: your buy-in (500 caps by default) comes out of your pocket and goes back
+when you get up. Settlers nearby take the other seats (up to five, 300 caps each from their own purse) and play by
+their own style: some tight, some loose, some who bluff. The dealer deals the cards onto the felt, chips go out for
+the bets and into the pot, and the board comes out street by street.
+
+- **1** fold, **2** check / call, **3** raise (**Up / Down** change the raise by a big blind), **4** all in.
+- **X** gets up (folding a hand you're in). **P** packs a kit table up between hands.
+- Blinds, buy-ins, how many settlers play and how long they think are on the Poker settings page.
 
 Winning bets are paid at the usual odds (35 to 1 down to even money). The result is drawn fairly first, and the ball
 is then thrown until it lands there, so every number is exactly as likely as it should be.
@@ -103,10 +117,12 @@ g++ -std=c++20 -O2 -Isrc tests/layout_test.cpp src/rl/Layout.cpp src/rl/Wheel.cp
 ## Credits
 
 - Roulette table model: ["Roulette Table 2"](https://sketchfab.com/3d-models/roulette-table-2-downloadable-b1d33eebb4f54b8aa250be2f49e87fbb) by [Dudzy](https://sketchfab.com/Dudzy) on Sketchfab, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Changed for the game: split into parts, scaled, given collision; the rotor rebuilt from its profile with frets and metal parts, new felt and layout textures (European and American).
+- Poker table model: ["Poker Table"](https://sketchfab.com/3d-models/poker-table-a48473a5ae7c437496a7aa388f8c458b) by Pieter Ferreira on Sketchfab, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Changed for the game: the props on the felt removed, scaled, given collision, textures re-encoded.
+- Playing cards: ["Playing Cards"](https://sketchfab.com/3d-models/playing-cards-2dd7c45bf68a4ce3bf63c995b1bf12bf) by jdastine on Sketchfab, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Changed for the game: the faces packed into one atlas, each card its own mesh.
 - Roulette ball sound: recorded by [Maxwell Dufresne](https://gfxsounds.com/blog/maxwell-dufresne/), [GFXSounds](https://gfxsounds.com) (Standard licence).
 - HUD fonts: Chakra Petch and Share Tech Mono (SIL Open Font License).
 - CommonLibF4 (Dear-Modding), F4SE, F4SE Menu Framework.
 
 ## License
 
-GPL-3.0 (the code). The meshes and textures made from the table model are CC BY 4.0, like the model.
+GPL-3.0 (the code). The meshes and textures made from the table, poker table and card models are CC BY 4.0, like the models.
