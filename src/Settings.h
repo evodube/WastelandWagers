@@ -44,6 +44,7 @@ namespace fr
 		bool  bettors{ true };
 		int   maxBettors{ 4 };
 		bool  bettorIdles{ true };         // they cheer, clap, shake their heads, look the layout over
+		bool  logTurning{ true };          // log what settlers held at a table are doing when they turn (fo4roulette.log, [turn])
 		float bettorEvery{ 12.0f };        // seconds between looking for someone to come over
 		float bettorRange{ 1500.0f };      // ...within this far of the table
 		int   bettorMinRounds{ 2 };

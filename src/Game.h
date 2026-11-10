@@ -321,6 +321,7 @@ namespace fr
 		bool         WalkTo(RE::Actor* a_actor, Walker& a_walk, const Frame& a_frame, const RE::NiPoint3& a_spot, float a_heading, float a_dt,
 					bool a_dealer, float a_timeout);  // true: there
 		void         FaceTowards(RE::Actor* a_actor, float a_heading);
+		void         WatchTurn(RE::Actor* a_actor, float a_heading);  // (the turning log)
 
 		// ------------------------------------------------------------ poker (Poker.cpp)
 		static constexpr int kPkSeats = 7;

@@ -89,6 +89,7 @@ namespace fr
 		bettors = ReadBool(L"Bettors", L"bEnabled", bettors);
 		maxBettors = std::clamp(static_cast<int>(ReadInt(L"Bettors", L"iMax", maxBettors)), 0, 4);  // (Game::kSpots places to stand)
 		bettorIdles = ReadBool(L"Bettors", L"bIdles", bettorIdles);
+		logTurning = ReadBool(L"Debug", L"bLogTurning", logTurning);
 		pkSmallBlind = std::clamp(static_cast<int>(ReadInt(L"Poker", L"iSmallBlind", pkSmallBlind)), 1, 1000);
 		pkBigBlind = std::clamp(static_cast<int>(ReadInt(L"Poker", L"iBigBlind", pkBigBlind)), pkSmallBlind, 2000);
 		pkBuyIn = std::clamp(static_cast<int>(ReadInt(L"Poker", L"iBuyIn", pkBuyIn)), pkBigBlind * 2, 100000);

@@ -90,8 +90,86 @@ namespace fr
 		return ToWorld(a_frame, x, y, 0.0);
 	}
 
+	namespace
+	{
+		// (the turning log: what each held settler's doing, every half second)
+		struct TurnWatch
+		{
+			float                                 yaw{ 0.0f };
+			std::chrono::steady_clock::time_point at{};
+			int                                   quiet{ 0 };
+		};
+		std::unordered_map<RE::TESFormID, TurnWatch> g_turns;
+
+		std::string FormName(const RE::TESForm* a_form)
+		{
+			if (!a_form) {
+				return "none";
+			}
+			const char* id = a_form->GetFormEditorID();
+			return std::format("{:08X}{}{}", a_form->GetFormID(), id && *id ? " " : "", id ? id : "");
+		}
+	}
+
+	void Game::WatchTurn(RE::Actor* a_actor, float a_heading)
+	{
+		// What a settler held at a table is doing while they turn (Settings: bLogTurning): their facing against the
+		// table's, how fast it's changing, the package they're running and its target, what their animation graph says
+		// about turning and moving, what they're looking at. Logged every half second while they're turning or off the
+		// table's heading, and once a minute anyway
+		if (!a_actor || !Settings::Get().logTurning) {
+			return;
+		}
+		const auto now = std::chrono::steady_clock::now();
+		auto&      w = g_turns[a_actor->GetFormID()];
+		if (w.at.time_since_epoch().count() == 0) {
+			w = { a_actor->data.angle.z, now, 0 };
+			return;
+		}
+		const float secs = std::chrono::duration<float>(now - w.at).count();
+		if (secs < 0.5f) {
+			return;
+		}
+		const float yaw = a_actor->data.angle.z;
+		const float rate = util::AngleDiff(w.yaw, yaw) / secs * 57.2958f;   // degrees a second
+		const float off = util::AngleDiff(a_heading, yaw) * 57.2958f;        // degrees off the table's heading
+		w.yaw = yaw;
+		w.at = now;
+		const bool turning = std::abs(rate) > 4.0f || std::abs(off) > 6.0f;
+		if (!turning && ++w.quiet < 120) {
+			return;
+		}
+		w.quiet = 0;
+		std::string pkg = "none", target = "none", proc = "";
+		if (auto* p = a_actor->currentProcess) {
+			pkg = FormName(p->currentPackage.package);
+			if (auto t = p->currentPackage.target.get()) {
+				target = FormName(t.get());
+				if (auto* base = t->GetObjectReference()) {
+					target += " (" + FormName(base) + ")";
+				}
+			}
+			proc = std::format(" procedure {}", p->currentPackage.currentProcedureIndex);
+		}
+		auto graphF = [&](const char* a_name) {
+			float v = 0.0f;
+			return a_actor->GetGraphVariableImplFloat(a_name, v) ? std::format("{:.2f}", v) : std::string("-");
+		};
+		auto graphB = [&](const char* a_name) {
+			bool v = false;
+			return a_actor->GetGraphVariableImplBool(a_name, v) ? (v ? "1" : "0") : "-";
+		};
+		log::info("[turn] {} ({:08X}): facing {:.0f}, the table's {:.0f} ({:+.0f} off), turning {:+.0f}/s; package {}{} at {}; "
+				  "graph TurnDelta {} TurnDeltaDamped {} Speed {} Direction {} bAnimationDriven {} IsSyncIdle {}; in combat {}, "
+				  "talking {}",
+			a_actor->GetDisplayFullName() ? a_actor->GetDisplayFullName() : "?", a_actor->GetFormID(), yaw * 57.2958f, a_heading * 57.2958f,
+			off, rate, pkg, proc, target, graphF("TurnDelta"), graphF("TurnDeltaDamped"), graphF("Speed"), graphF("Direction"),
+			graphB("bAnimationDriven"), graphB("bIsSynced"), a_actor->IsInCombat(), a_actor->IsTalking());
+	}
+
 	void Game::FaceTowards(RE::Actor* a_actor, float a_heading)
 	{
+		WatchTurn(a_actor, a_heading);
 		// (only when they've turned well away: their body's left free, as they move with their idles; it's their head
 		// that's held, its tracking off while they're at the table)
 		if (a_actor && std::abs(util::AngleDiff(a_actor->data.angle.z, a_heading)) > 0.35f) {
