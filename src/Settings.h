@@ -24,8 +24,8 @@ namespace fr
 		int keyRebet{ 0x42 };    // B: last round's bets again
 		int keyClear{ 0x43 };    // C: take your chips back
 		int keyPackUp{ 0x50 };   // P: at a table set up from a kit, pack it back into the kit
-		int keyTurnLeft{ 0x41 };  // A: turn the view left at the poker table (Q and E are often taken: Quick Workshop...)
-		int keyTurnRight{ 0x44 }; // D
+		int keyTurnLeft{ 0x51 };  // Q: turn the view left at the poker table
+		int keyTurnRight{ 0x45 }; // E
 		std::array<int, 4> keyChip{ 0x31, 0x32, 0x33, 0x34 };  // 1-4: the 1, 5, 25 and 100 chips
 
 		// [Table]

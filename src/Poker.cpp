@@ -298,7 +298,7 @@ namespace fr
 		PkMakeChips(frame);
 		if (_pkSeated && _pkYou >= 0) {
 			// the view from your seat: from just behind your cards, straight across the table. The mouse looks about
-			// (the turn keys, A and D, turn too); looking down at your cards turns them up for you
+			// (the turn keys, Q and E, turn too); looking down at your cards turns them up for you
 			const auto  n = SeatNormal(_pkYou);
 			const auto  a = HoleSpot(_pkYou, 0), b = HoleSpot(_pkYou, 1);
 			const auto  mid = (a + b) * 0.5f;
@@ -370,7 +370,7 @@ namespace fr
 
 	void Game::PkHoldMenuKeys(bool a_hold)
 	{
-		// the turn keys (A and D) turn the view at the poker table: while either's down, the game's menus (the workshop's among them)
+		// the turn keys (Q and E) turn the view at the poker table: while either's down, the game's menus (the workshop's among them)
 		// don't open
 		if (a_hold == _pkMenusHeld) {
 			return;

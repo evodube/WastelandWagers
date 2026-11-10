@@ -51,7 +51,7 @@ the bets and into the pot, and the board comes out street by street. There's no 
 deals itself as soon as you and at least one settler are seated.
 
 - Everything's on buttons: the mouse moves a pointer, a left click presses (fold, check / call, raise with - / +, all in;
-  show my cards, the view, step away, cash out). The keys below still work. **A / D** turn the view, the right mouse
+  show my cards, the view, step away, cash out). The keys below still work. **Q / E** turn the view (settable), the right mouse
   button held shows your cards.
 - Buttons along the bottom: check / call, fold, a slider for the raise and the raise button, all in. Keys: **1** fold, **2** check / call, **3** raise (**Up / Down** change it), **4** all in.
 - **X** steps away (your seat and chips kept), **C** cashes out. **P** packs a kit table up between hands.
