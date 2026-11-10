@@ -363,10 +363,17 @@ namespace fr
 		auto*        player = RE::PlayerCharacter::GetSingleton();
 		static auto* npcType = RE::TESForm::GetFormByID<RE::BGSKeyword>(Forms::kActorTypeNPC);
 		std::vector<std::pair<float, RE::Actor*>> found;
+		std::map<std::string, int>                busy;  // (for the log: why nobody came)
 		util::ForEachLoadedCell([&](RE::TESObjectCELL* a_cell) {
 			a_cell->ForEachReferenceInRange(a_frame.origin, s.bettorRange, [&](RE::TESObjectREFR* a_ref) {
 				auto* actor = a_ref ? a_ref->As<RE::Actor>() : nullptr;
-				if (!Usable(actor) || actor == player || actor->IsChild() || actor->IsInCombat() || Npc::Busy(actor) || (player && actor->GetHostileToActor(player)) ||
+				if (Usable(actor) && actor != player && !actor->IsChild()) {
+					if (const char* why = Npc::Busy(actor)) {
+						++busy[why];
+						return RE::BSContainer::ForEachResult::kContinue;
+					}
+				}
+				if (!Usable(actor) || actor == player || actor->IsChild() || actor->IsInCombat() || (player && actor->GetHostileToActor(player)) ||
 					(npcType && !actor->HasKeywordHelper(npcType, nullptr)) || PkHasSeat(actor->GetFormID()) ||
 					std::ranges::any_of(_t.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); }) ||
 					std::ranges::any_of(_other.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); })) {
@@ -381,6 +388,11 @@ namespace fr
 			});
 		});
 		if (found.empty()) {
+			std::string why;
+			for (const auto& [k, n] : busy) {
+				why += std::format("{}{} {}", why.empty() ? "" : ", ", n, k);
+			}
+			log::info("poker: nobody free to sit in{}", why.empty() ? std::string(" (no settlers in range)") : " (" + why + ")");
 			return;
 		}
 		std::ranges::sort(found, {}, &std::pair<float, RE::Actor*>::first);

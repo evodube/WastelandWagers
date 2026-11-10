@@ -42,18 +42,30 @@ jobs:
           key: xmake-pkgs-${{ runner.os }}-${{ hashFiles('xmake.lua', 'lib/commonlibf4/xmake.lua', 'lib/commonlibf4/lib/commonlib-shared/xmake.lua') }}
           restore-keys: xmake-pkgs-${{ runner.os }}-
 
-      # the compile cache: CommonLibF4's ~1000 objects come from here unless it changed, so only our own files compile
-      - name: Cache compiled objects
+      # CommonLibF4's objects kept from the last build (a fresh one when the submodule moves): its sources are dated
+      # in the past so xmake sees them unchanged, and only our own files (checked out new) compile again
+      - name: CommonLibF4 version
+        id: clib
+        shell: bash
+        run: echo "sha=$(git -C lib/commonlibf4 rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache the build folder
         uses: actions/cache@v4
         with:
-          path: build/.build_cache
-          key: xmake-ccache-${{ runner.os }}-${{ hashFiles('.gitmodules') }}-${{ github.sha }}
-          restore-keys: |
-            xmake-ccache-${{ runner.os }}-${{ hashFiles('.gitmodules') }}-
-            xmake-ccache-${{ runner.os }}-
+          path: |
+            build
+            .xmake
+          key: xmake-build-${{ runner.os }}-${{ steps.clib.outputs.sha }}-${{ github.sha }}
+          restore-keys: xmake-build-${{ runner.os }}-${{ steps.clib.outputs.sha }}-
+
+      - name: Date CommonLibF4's sources in the past
+        shell: pwsh
+        run: |
+          $old = Get-Date "2020-01-01"
+          Get-ChildItem -Recurse -File lib/commonlibf4 | ForEach-Object { $_.LastWriteTime = $old }
 
       - name: Configure
-        run: xmake f -m releasedbg --ccache=y -y
+        run: xmake f -m releasedbg -y
 
       - name: Build
         run: xmake build -y fo4roulette

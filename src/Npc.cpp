@@ -239,13 +239,13 @@ namespace fr::Npc
 		return CallActor(a_actor, "ClearLookAt");
 	}
 
-	bool Busy(RE::Actor* a_actor)
+	const char* Busy(RE::Actor* a_actor)
 	{
 		if (!a_actor) {
-			return true;
+			return "gone";
 		}
 		if (auto* proc = a_actor->currentProcess; proc && proc->GetOccupiedFurniture()) {
-			return true;
+			return "in furniture";
 		}
 		auto* extra = a_actor->extraList.get();
 		// a settler with a job (farming, guarding, a shop, a scavenging station, a supply line): the workshop links
@@ -254,28 +254,26 @@ namespace fr::Npc
 			for (const auto& l : links->linkedRefs) {
 				const char* id = l.keyword ? l.keyword->formEditorID.c_str() : nullptr;
 				if (l.REFR && id && (std::strstr(id, "LinkWork") || std::strstr(id, "Caravan"))) {
-					return true;
+					return "has a job";
 				}
 			}
 		}
+		// playing or watching pool (fo4pool.esl's aliases), or a companion
 		auto* aliases = extra ? extra->GetByType<RE::ExtraAliasInstanceArray>() : nullptr;
 		if (!aliases) {
-			return false;
+			return nullptr;
 		}
-		const auto& plugin = Settings::Get().plugin;
 		for (const auto& a : aliases->aliasArray) {
 			auto* file = a.quest ? a.quest->GetFile(0) : nullptr;
-			if (file && _stricmp(std::string(file->GetFilename()).c_str(), plugin.c_str()) == 0) {
-				continue;  // (ours)
-			}
 			if (file && _stricmp(std::string(file->GetFilename()).c_str(), "fo4pool.esl") == 0) {
-				return true;  // playing or watching pool
+				return "at the pool table";
 			}
-			if (a.instancedPackages && !a.instancedPackages->empty()) {
-				return true;
+			const char* q = a.quest ? a.quest->GetFormEditorID() : nullptr;
+			if (q && (std::strstr(q, "Followers") || std::strstr(q, "Companion"))) {
+				return "a companion";
 			}
 		}
-		return false;
+		return nullptr;
 	}
 
 	void PlayIdle(RE::Actor* a_actor, RE::TESFormID a_idle)

@@ -34,9 +34,8 @@ namespace fr::Npc
 	void PlayIdle(RE::Actor* a_actor, RE::TESFormID a_idle);
 
 	// Busy with something else, so not to be called over to a table: a settler with a job, in furniture (a chair, a
-	// workstation, a guard post), or held by another quest's alias that gives them packages of its own (a pool game, a companion, a mod's
-	// scene). Our own quest's aliases don't count.
-	bool Busy(RE::Actor* a_actor);
+	// workstation, a guard post), at the pool table (Playable Pool), or a companion.
+	const char* Busy(RE::Actor* a_actor);  // why they're busy, or nullptr: free to come over
 
 	// The AI package they're on, for the log.
 	std::string PackageName(RE::Actor* a_actor);
