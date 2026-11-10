@@ -134,7 +134,7 @@ namespace fr::SettingsMenu
 						{ L"Keys", L"iPackUp", "Pack a kit table up", Kind::kKey, &s.keyPackUp },
 						{ L"Keys", L"iTurnLeft", "Poker: turn the view left", Kind::kKey, &s.keyTurnLeft },
 						{ L"Keys", L"iTurnRight", "Poker: turn the view right", Kind::kKey, &s.keyTurnRight },
-						{ L"Keys", L"iZoom", "Poker: held, a close look at the board", Kind::kKey, &s.keyZoom },
+						{ L"Keys", L"iZoom", "Poker: held, zooms in where you look", Kind::kKey, &s.keyZoom },
 						{ L"Keys", L"iChip1", "1 cap chip", Kind::kKey, &s.keyChip[0] },
 						{ L"Keys", L"iChip5", "5 cap chip", Kind::kKey, &s.keyChip[1] },
 						{ L"Keys", L"iChip25", "25 cap chip", Kind::kKey, &s.keyChip[2] },

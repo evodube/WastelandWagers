@@ -629,7 +629,7 @@ namespace fr::Hud
 			};
 			side(10, tag("(RS)", a_st.pkPeek ? "HIDE MY CARDS" : "SHOW MY CARDS"), a_st.pkHole[0] >= 0);
 			side(9, tag("(START)", a_st.pkTop ? "VIEW: MY SEAT" : "VIEW: FROM ABOVE"), true);
-			side(12, a_st.pkZoom ? "ZOOM OUT" : "ZOOM ON THE BOARD", true);
+			side(12, a_st.pkZoom ? "ZOOM OUT" : "ZOOM IN", true);
 			side(6, tag("(BACK)", "STEP AWAY"), true);
 			side(8, tag("(LS)", "CASH OUT"), true);
 			if (a_st.pkKit) {

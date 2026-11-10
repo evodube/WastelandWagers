@@ -853,24 +853,27 @@ namespace fr
 				yaw = baseYaw + _pkLookYaw + _pk.driftYaw;
 				pitch = basePitch + _pkLookPitch;
 				const bool zoomKey = focus && ks.keyZoom > 0 && (::GetAsyncKeyState(ks.keyZoom) & 0x8000);
-				if (_pkZoom || zoomKey) {
-					// the zoom: in close over the board, looking down at it from your side of it
-					const auto   b = BoardSpot(2);
-					RE::NiPoint3 dir{ mid.x - b.x, mid.y - b.y, 0.0f };
-					const float  l = std::max(1.0f, std::hypot(dir.x, dir.y));
-					dir = dir * (1.0f / l);
-					_camWant = ToWorld(frame, b.x + dir.x * 13.0f, b.y + dir.y * 13.0f, kFeltZ + 24.0f);
-					_camYaw = HeadingOf(frame, -dir.x, -dir.y) + _pkLookYaw;
-					_camPitch = std::atan2(24.0f, 13.0f);
-				} else if (_pkTopView) {
-					// from above the middle of the table, your side at the bottom of the screen (the turn keys turn it)
-					_camWant = ToWorld(frame, n.x * cs.pkTopShift, n.y * cs.pkTopShift, kFeltZ + cs.pkTopHeight);
+				const bool zoom = _pkZoom || zoomKey;
+				if (_pkTopView) {
+					// from above the middle of the table, your side at the bottom of the screen (the turn keys turn it); the
+					// zoom: straight down, closer
+					_camWant = ToWorld(frame, n.x * cs.pkTopShift, n.y * cs.pkTopShift, kFeltZ + cs.pkTopHeight * (zoom ? 0.45f : 1.0f));
 					_camYaw = baseYaw + _pkLookYaw;
 					_camPitch = -1.0f;  // (straight down)
 				} else {
 					_camWant = eye;
 					_camYaw = yaw;
 					_camPitch = pitch;
+					if (zoom) {
+						// the zoom: in along the way you're looking, no turning: most of the way to where the view meets
+						// the felt (looking across, a fixed way in)
+						const float  cp = std::cos(pitch), sp = std::sin(pitch);
+						const RE::NiPoint3 fwd{ std::sin(yaw) * cp, std::cos(yaw) * cp, -sp };
+						const float  height = up * frame.scale;
+						const float  toFelt = sp > 0.05f ? height / sp : 1.0e9f;
+						const float  in = std::min(toFelt * 0.6f, 45.0f * frame.scale);
+						_camWant = eye + fwd * in;
+					}
 				}
 			}
 			// where the middle of the view meets the felt: on your cards, they're up for you (put back down when you
