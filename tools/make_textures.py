@@ -331,6 +331,39 @@ def layout(american: bool, size: int, ss: int = 3) -> Image.Image:
     return img.rotate(180)
 
 
+# the betting grid's own sharp texture (build_meshes.py splits the felt along this rectangle, model units, into a shape
+# of its own: LayoutGridEU / LayoutGridUS): the layout's texture spreads 1024 over the whole felt, 4.5 texels a game
+# unit, too few for the numbers
+GRID = (9.3, 32.2, -6.6, 5.7)   # x0, x1, y0, y1
+GRID_W, GRID_H = 1024, 512
+
+
+def grid_uv():
+    """the grid's corners in the layout's UVs: (u0, u1, v0, v1), u0 < u1, v0 < v1"""
+    us = sorted(LU[0] * x + LU[1] for x in GRID[:2])
+    vs = sorted(LV[0] * y + LV[1] for y in GRID[2:])
+    return us[0], us[1], vs[0], vs[1]
+
+
+def layout_grid(american: bool, whole: Image.Image) -> Image.Image:
+    """the betting grid, drawn as the layout is but bigger (the layout at the size that gives this rectangle
+    GRID_W across), cut out; round its edges it fades into the whole felt's own texture (whole), so the two meet
+    without a seam"""
+    u0, u1, v0, v1 = grid_uv()
+    big = int(round(GRID_W / (u1 - u0)))
+    full = layout(american, big, 4)
+    box = (int(u0 * big), int((1 - v1) * big), int(u1 * big), int((1 - v0) * big))
+    g = np.array(full.crop(box).resize((GRID_W, GRID_H), Image.LANCZOS), np.float32)
+    S = whole.size[0]
+    wbox = (u0 * S, (1 - v1) * S, u1 * S, (1 - v0) * S)
+    w = np.array(whole.transform((GRID_W, GRID_H), Image.EXTENT, wbox, Image.BICUBIC), np.float32)
+    yy, xx = np.mgrid[0:GRID_H, 0:GRID_W].astype(np.float32)
+    edge = np.minimum(np.minimum(xx, GRID_W - 1 - xx), np.minimum(yy, GRID_H - 1 - yy))
+    t = np.clip(edge / 24.0, 0, 1)
+    t = (t * t * (3 - 2 * t))[..., None]
+    return Image.fromarray((w * (1 - t) + g * t).clip(0, 255).astype(np.uint8), "RGB")
+
+
 def chip(value: int, col, size: int = 512) -> Image.Image:
     """the chip's face over the whole square; the side wall's UVs sit on the outer rim"""
     img = Image.new("RGB", (size, size), col)
@@ -405,8 +438,11 @@ def main() -> int:
     put(ms, "metal_s")
     put(flat(16, (255, 255, 255)), "metal_m")   # the env map's mask: all of it shines
     # the felt with the layouts printed on it
-    put(layout(False, SIZE, 4), "layout_eu_d", "BC7")
-    put(layout(True, SIZE, 4), "layout_us_d", "BC7")
+    eu, us = layout(False, SIZE, 4), layout(True, SIZE, 4)
+    put(eu, "layout_eu_d", "BC7")
+    put(us, "layout_us_d", "BC7")
+    put(layout_grid(False, eu), "layoutgrid_eu_d", "BC7")
+    put(layout_grid(True, us), "layoutgrid_us_d", "BC7")
     put(flat(64, (14, 46, 0)), "felt_s")
     # chips: one colour per material of the chip set (build_chips.py lists them)
     for hexcol in CHIP_COLOURS:

@@ -348,6 +348,56 @@ def add_envmap(path, shape_names):
     return done
 
 
+# the betting grid's rectangle (model units: make_textures.py's GRID) and the layout's UVs there (its grid_uv())
+GRID = (9.3, 32.2, -6.6, 5.7)
+GRID_UV = (0.003214, 0.566563, 0.250350, 0.552935)
+
+
+def split_grid(o, name, mat):
+    """the felt cut along the betting grid's rectangle, what's inside a shape of its own (name) with the grid's own
+    sharp texture (make_textures.py's layoutgrid_*): its UVs the layout's, scaled to the rectangle"""
+    x0, x1 = (GRID[0] - ORIGIN.x) * SCALE, (GRID[1] - ORIGIN.x) * SCALE
+    y0, y1 = (GRID[2] - ORIGIN.y) * SCALE * WIDE, (GRID[3] - ORIGIN.y) * SCALE * WIDE
+    bm = bmesh.new()
+    bm.from_mesh(o.data)
+    for co, no in (((x0, 0, 0), (1, 0, 0)), ((x1, 0, 0), (1, 0, 0)), ((0, y0, 0), (0, 1, 0)), ((0, y1, 0), (0, 1, 0))):
+        geom = bm.verts[:] + bm.edges[:] + bm.faces[:]
+        bmesh.ops.bisect_plane(bm, geom=geom, plane_co=co, plane_no=no)
+    uv = bm.loops.layers.uv.active
+    inside = []
+    for f in bm.faces:
+        c = f.calc_center_median()
+        if x0 < c.x < x1 and y0 < c.y < y1:
+            inside.append(f)
+    nb = bmesh.new()
+    nuv = nb.loops.layers.uv.new("UVMap")
+    u0, u1, v0, v1 = GRID_UV
+    vmap = {}
+    for f in inside:
+        vs = []
+        for v in f.verts:
+            if v.index not in vmap:
+                vmap[v.index] = nb.verts.new(v.co)
+            vs.append(vmap[v.index])
+        g = nb.faces.new(vs)
+        g.smooth = f.smooth
+        for lp, lo in zip(g.loops, f.loops):
+            a, b = lo[uv].uv
+            lp[nuv].uv = ((a - u0) / (u1 - u0), (b - v0) / (v1 - v0))
+    bmesh.ops.delete(bm, geom=inside, context='FACES')
+    bm.to_mesh(o.data)
+    bm.free()
+    me = bpy.data.meshes.new(name)
+    nb.to_mesh(me)
+    nb.free()
+    g = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(g)
+    g['pynNodeName'] = name
+    g['pynBlockName'] = 'BSTriShape'
+    me.materials.append(mat)
+    return g, len(inside)
+
+
 def box_map(o, tile):
     """UVs from where each face is (table space, a tile every tile units), projected the way it looks: from above
     the grain runs along the table's length (X)"""
@@ -406,6 +456,10 @@ def main():
     deco = join(diamonds, "Diamonds", m_metal)
     parent_keep(deco, root)
     l_eu = join([layout], "LayoutEU", m_leu)
+    # the betting grid: its own shape and sharp texture, cut out of the felt (split_grid)
+    m_geu = make_material(tmpl, "LayoutGridEU", "layoutgrid_eu_d", "flat_n", "felt_s", 0.2)
+    m_gus = make_material(tmpl, "LayoutGridUS", "layoutgrid_us_d", "flat_n", "felt_s", 0.2)
+    g_eu, grid_faces = split_grid(l_eu, "LayoutGridEU", m_geu)
     l_us = l_eu.copy()
     l_us.data = l_eu.data.copy()
     bpy.context.scene.collection.objects.link(l_us)
@@ -414,8 +468,16 @@ def main():
     l_us.data.materials.clear()
     l_us.data.materials.append(m_lus)
     l_us['pynNodeFlags'] = "HIDDEN | SELECTIVE_UPDATE | SELECTIVE_UPDATE_TRANSF"
-    parent_keep(l_eu, root)
-    parent_keep(l_us, root)
+    g_us = g_eu.copy()
+    g_us.data = g_eu.data.copy()
+    bpy.context.scene.collection.objects.link(g_us)
+    g_us.name = "LayoutGridUS"
+    g_us['pynNodeName'] = "LayoutGridUS"
+    g_us.data.materials.clear()
+    g_us.data.materials.append(m_gus)
+    g_us['pynNodeFlags'] = "HIDDEN | SELECTIVE_UPDATE | SELECTIVE_UPDATE_TRANSF"
+    for o in (l_eu, l_us, g_eu, g_us):
+        parent_keep(o, root)
 
     centre = wheel_centre()
     centre.y *= WIDE  # (where narrow() moved the wheel to)
@@ -446,7 +508,7 @@ def main():
         bpy.data.objects.remove(o, do_unlink=True)
 
     data = OUT
-    table_objs = [root, bsx, body, deco, l_eu, l_us] + [x for r in rotors.values() for x in r] + [system]
+    table_objs = [root, bsx, body, deco, l_eu, l_us, g_eu, g_us] + [x for r in rotors.values() for x in r] + [system]
     table_path = os.path.join(data, "Meshes", "fo4roulette", "RouletteTable.nif")
     export(table_objs, table_path)
     env = add_envmap(table_path, metal_shapes)
@@ -468,7 +530,7 @@ def main():
     rb['pynRoot'] = True
     ball.parent = rb
     export([rb, ball], os.path.join(data, "Meshes", "fo4roulette", "Ball.nif"))
-    return {"hull": hull_n, "wheel_centre": tuple(round(c, 3) for c in centre), "envmap": env}
+    return {"grid_faces": grid_faces, "hull": hull_n, "wheel_centre": tuple(round(c, 3) for c in centre), "envmap": env}
 
 
 result = main()

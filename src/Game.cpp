@@ -496,8 +496,9 @@ namespace fr
 			return;
 		}
 		const bool us = a_type == rl::WheelType::kAmerican;
-		static const std::array<std::pair<RE::BSFixedString, bool>, 4> nodes{ std::pair{ RE::BSFixedString("LayoutEU"), false },
-			std::pair{ RE::BSFixedString("RotorEU"), false }, std::pair{ RE::BSFixedString("LayoutUS"), true },
+		static const std::array<std::pair<RE::BSFixedString, bool>, 6> nodes{ std::pair{ RE::BSFixedString("LayoutEU"), false },
+			std::pair{ RE::BSFixedString("LayoutGridEU"), false }, std::pair{ RE::BSFixedString("RotorEU"), false },
+			std::pair{ RE::BSFixedString("LayoutUS"), true }, std::pair{ RE::BSFixedString("LayoutGridUS"), true },
 			std::pair{ RE::BSFixedString("RotorUS"), true } };
 		for (const auto& [name, isUS] : nodes) {
 			if (auto* node = root->GetObjectByName(name)) {
