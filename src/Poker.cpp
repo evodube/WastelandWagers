@@ -879,7 +879,7 @@ namespace fr
 			// where the middle of the view meets the felt: on your cards, they're up for you (put back down when you
 			// look away); not at a showdown, when they're up for everyone anyway
 			// (or the SHOW MY CARDS button, or the right mouse button held, in either view)
-			bool over = _pkShowCards || (focus && (::GetAsyncKeyState(VK_RBUTTON) & 0x8000));
+			bool over = focus && (::GetAsyncKeyState(VK_RBUTTON) & 0x8000);
 			if (!over && !_pkTopView && pitch > 0.05f) {
 				const float  reach = up / std::tan(pitch);
 				const auto   at = eye + RE::NiPoint3{ std::sin(yaw) * reach, std::cos(yaw) * reach, -up };
@@ -2386,7 +2386,7 @@ namespace fr
 					for (std::size_t k = 0; k < std::min(_pk.boardShown, h.board.size()); ++k) {
 						mine.push_back(h.board[k]);
 					}
-					if (!_pk.peeking && !(_pk.phase == PkPhase::kShowdown && h.showdown)) {
+					if (!_pk.peeking && !_pkShowCards && !(_pk.phase == PkPhase::kShowdown && h.showdown)) {
 						// (what you hold only shows while you're looking at your cards)
 					} else if (mine.size() >= 5) {
 						a_h.pkHand = pk::HandName(pk::Evaluate(mine));
@@ -2440,7 +2440,7 @@ namespace fr
 			a_h.pkPtrX = static_cast<float>(_pkPtrX);
 			a_h.pkPtrY = static_cast<float>(_pkPtrY);
 		}
-		a_h.pkPeek = _pk.peeking || _pkShowCards;
+		a_h.pkPeek = _pkShowCards;  // (your cards on the HUD, bottom middle: the SHOW / HIDE MY CARDS button)
 		a_h.pkTop = _pkTopView;
 		a_h.pkZoom = _pkZoom;
 		a_h.pkDealer = _pkShowDealer;

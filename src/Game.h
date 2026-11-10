@@ -471,7 +471,7 @@ namespace fr
 		float             _pkLookYaw{ 0.0f }, _pkLookPitch{ 0.0f };  // looking about from your poker seat (under _camMutex)
 		bool              _pkMenusHeld{ false };
 		bool              _pkTopView{ false };  // looking down on the poker table (V)
-		bool              _pkShowCards{ false };  // the SHOW MY CARDS button: your cards up
+		bool              _pkShowCards{ false };  // the SHOW MY CARDS button: your cards on the HUD
 		int               _pkPre{ 0 };  // your action picked ahead (the CHECK / FOLD, CHECK, CALL ANY buttons)
 		bool              _pkShowDealer{ true };  // the SHOW / HIDE DEALER button: the board's cards on the HUD
 		std::atomic<bool> _rlUi{ false };  // (roulette: the pointer's down on the buttons, off the layout)

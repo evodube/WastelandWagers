@@ -569,6 +569,38 @@ namespace fr::Hud
 			}
 		}
 
+		// a card face on the HUD (46 x 64): its rank in the corner, its suit in the middle; a_in false: dimmed; a_mark: outlined
+		void HudCard(const View& a_v, int a_card, float a_x, float a_y, bool a_in = true, bool a_mark = false)
+		{
+			constexpr float cw = 46.0f, ch = 64.0f;
+			static constexpr std::array<const char*, 13> kRanks{ "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A" };
+			const int   rank = a_card % 13, suit = a_card / 13;
+			const bool  red = suit == 1 || suit == 2;
+			const ImU32 ink = Fade(red ? Rgba(200, 30, 35) : Rgba(20, 20, 24), a_in ? 1.0f : 0.35f);
+			DL::AddRectFilled(a_v.dl, a_v.P(a_x, a_y), a_v.P(a_x + cw, a_y + ch), Fade(Rgba(246, 244, 236), a_in ? 1.0f : 0.45f), 5.0f * a_v.s, 0);
+			if (a_mark) {
+				DL::AddRect(a_v.dl, a_v.P(a_x - 1.5f, a_y - 1.5f), a_v.P(a_x + cw + 1.5f, a_y + ch + 1.5f), kBright, 6.0f * a_v.s, 0,
+					std::max(1.0f, 2.0f * a_v.s));
+			}
+			Print(a_v, Mono(), kRanks[rank], a_x + 5.0f, a_y + 4.0f, 16, ink, 0, 0.0f);
+			SuitShape(a_v, suit, a_x + cw * 0.5f, a_y + ch * 0.6f, 11.0f, ink);
+		}
+
+		// your two cards, bottom middle above the buttons: the SHOW / HIDE MY CARDS button
+		void PokerMine(const View& a_v, const Game::HudState& a_st)
+		{
+			if (!a_st.pkPeek || a_st.pkHole[0] < 0) {
+				return;
+			}
+			constexpr float cw = 46.0f, ch = 64.0f, gap = 7.0f, pad = 8.0f;
+			const float     w = cw * 2.0f + gap + pad * 2.0f, h = ch + pad * 2.0f;
+			const float     x = a_v.w * 0.5f - w * 0.5f, y = a_v.h - kPkBottom - h - 6.0f;
+			Chamfer(a_v, x, y, w, h, 10.0f, kPanel, kEdge);
+			for (int k = 0; k < 2; ++k) {
+				HudCard(a_v, a_st.pkHole[k], x + pad + static_cast<float>(k) * (cw + gap), y + pad);
+			}
+		}
+
 		// the dealer's cards (the board), under your hand's panel, top middle: the SHOW / HIDE DEALER button
 		void PokerDealer(const View& a_v, const Game::HudState& a_st)
 		{
@@ -582,21 +614,9 @@ namespace fr::Hud
 			const float w = boardW + pad * 2.0f + (won ? split + cw * 2.0f + gap : 0.0f), h = ch + pad * 2.0f + (won ? 22.0f : 0.0f);
 			const float x = a_v.w * 0.5f - w * 0.5f, y = kPkMargin + PokerHoleH() + 8.0f;
 			Chamfer(a_v, x, y, w, h, 10.0f, kPanel, kEdge);
-			static constexpr std::array<const char*, 13> kRanks{ "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A" };
 			auto card = [&](int a_card, float a_cx, float a_cy) {
-				const int   rank = a_card % 13, suit = a_card / 13;
-				const bool  red = suit == 1 || suit == 2;
-				const bool  in = !won || std::ranges::find(a_st.pkWinFive, a_card) != a_st.pkWinFive.end();
-				const float cy = a_cy - (won && in ? 4.0f : 0.0f);
-				const float a = in ? 1.0f : 0.35f;
-				const ImU32 ink = Fade(red ? Rgba(200, 30, 35) : Rgba(20, 20, 24), a);
-				DL::AddRectFilled(a_v.dl, a_v.P(a_cx, cy), a_v.P(a_cx + cw, cy + ch), Fade(Rgba(246, 244, 236), in ? 1.0f : 0.45f), 5.0f * a_v.s, 0);
-				if (won && in) {
-					DL::AddRect(a_v.dl, a_v.P(a_cx - 1.5f, cy - 1.5f), a_v.P(a_cx + cw + 1.5f, cy + ch + 1.5f), kBright, 6.0f * a_v.s, 0,
-						std::max(1.0f, 2.0f * a_v.s));
-				}
-				Print(a_v, Mono(), kRanks[rank], a_cx + 5.0f, cy + 4.0f, 16, ink, 0, 0.0f);
-				SuitShape(a_v, suit, a_cx + cw * 0.5f, cy + ch * 0.6f, 11.0f, ink);
+				const bool in = !won || std::ranges::find(a_st.pkWinFive, a_card) != a_st.pkWinFive.end();
+				HudCard(a_v, a_card, a_cx, a_cy - (won && in ? 4.0f : 0.0f), in, won && in);
 			};
 			for (int k = 0; k < 5; ++k) {
 				const float cx = x + pad + static_cast<float>(k) * (cw + gap), cy = y + pad;
@@ -870,6 +890,7 @@ namespace fr::Hud
 			PokerLog(slid(0.16f, -1.0f), a_st);
 			PokerHole(a_v, a_st);
 			PokerDealer(a_v, a_st);
+			PokerMine(a_v, a_st);
 			PokerBanner(a_v, a_st);
 			PokerButtons(a_v, a_st, a_viewport);
 		}
