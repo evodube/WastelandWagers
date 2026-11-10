@@ -1,5 +1,5 @@
 // The poker table: No-limit Texas Hold'em (pk/Holdem.h) at fo4roulette.esl's Poker Table. One poker table is in play
-// at a time, the nearest within reach. Up to seven seats: you (activate the table: the nearest free seat) and settlers
+// at a time, the nearest within reach. Up to six seats: you (activate the table: the nearest free seat) and settlers
 // who come over with their own caps (the roulette purses). The table deals itself; the cards are the 52 card models,
 // slid out from the dealer's tray and turned over; the bets and the pot are chip stacks.
 //
@@ -60,9 +60,10 @@ namespace fr
 		constexpr RE::TESFormID kLaugh = 0x00110395;   // Crowd_Laughter_TopicSubType
 		constexpr RE::TESFormID kGroan = 0x00110398;   // Crowd_DisapprovalSounds_TopicSubType
 
-		// the seats, clockwise from the dealer's place (+X): the table's cup holders, table space
-		constexpr std::array<std::pair<float, float>, 7> kHolders{ {
-			{ 27.9f, -47.1f }, { 1.1f, -71.2f }, { -25.8f, -47.1f }, { -25.8f, -0.2f }, { -25.8f, 46.7f }, { 1.1f, 70.8f }, { 27.9f, 46.7f },
+		// the seats, clockwise from the dealer's place (+X), table space: six (the table's cup holders, but for the one
+		// in the middle of the long side, whose neighbours sit in closer to the middle instead)
+		constexpr std::array<std::pair<float, float>, 6> kHolders{ {
+			{ 27.9f, -47.1f }, { 1.1f, -71.2f }, { -25.8f, -24.0f }, { -25.8f, 24.0f }, { 1.1f, 70.8f }, { 27.9f, 46.7f },
 		} };
 
 		// from the dealer's side (+X, the chip tray) in: the deck, the board, then the pot
@@ -149,24 +150,23 @@ namespace fr
 			RE::NiPoint3 stacks, bet, n, side;
 		};
 
-		const std::array<SeatLayout, 7>& Layout()
+		const std::array<SeatLayout, 6>& Layout()
 		{
-			static const std::array<SeatLayout, 7> layout = [] {
+			static const std::array<SeatLayout, 6> layout = [] {
 				struct Fit
 				{
 					float side, along, stacksIn, betIn, betAlong;
 				};
-				constexpr std::array<Fit, 7> kFit{ {
-					{ -1.0f, 9.0f, 13.0f, 14.0f, -4.0f },
-					{ 1.0f, 9.0f, 9.0f, 16.0f, 4.0f },
-					{ 1.0f, 9.0f, 13.0f, 18.0f, 2.0f },
-					{ -1.0f, 9.0f, 13.0f, 14.0f, -4.0f },
-					{ -1.0f, 9.0f, 13.0f, 14.0f, -4.0f },
-					{ 1.0f, 9.0f, 9.0f, 16.0f, 4.0f },
-					{ 1.0f, 9.0f, 13.0f, 18.0f, 2.0f },
+				constexpr std::array<Fit, 6> kFit{ {
+					{ -1.0f, 11.0f, 7.0f, 14.0f, -4.0f },
+					{ 1.0f, 10.0f, 11.0f, 16.0f, 2.0f },
+					{ -1.0f, 11.0f, 5.5f, 14.0f, -4.0f },
+					{ 1.0f, 11.0f, 5.5f, 14.0f, -4.0f },
+					{ -1.0f, 10.0f, 11.0f, 14.0f, -4.0f },
+					{ 1.0f, 11.0f, 7.0f, 14.0f, 4.0f },
 				} };
-				std::array<SeatLayout, 7> l{};
-				for (int i = 0; i < 7; ++i) {
+				std::array<SeatLayout, 6> l{};
+				for (int i = 0; i < 6; ++i) {
 					RE::NiPoint3 e, n;
 					Stadium(kHolders[i].first, kHolders[i].second, kFeltR, kFeltC, e, n);
 					const RE::NiPoint3 side{ n.y, -n.x, 0.0f };

@@ -341,7 +341,7 @@ namespace fr
 		void         WatchTurn(RE::Actor* a_actor, float a_heading);  // (the turning log)
 
 		// ------------------------------------------------------------ poker (Poker.cpp)
-		static constexpr int kPkSeats = 7;
+		static constexpr int kPkSeats = 6;
 		struct PkSeat
 		{
 			bool                used{ false };
