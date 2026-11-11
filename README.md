@@ -11,7 +11,7 @@ Every table can have a dealer: in workshop mode, assign a settler to the table (
 stand behind it while the table's in play (by the wheel at roulette, by the chip tray at poker). Nobody assigned, no
 dealer (the game goes on without). Tables set up from kits aren't the workshop's, so they can't have one.
 
-**Status: 0.7.5.**
+**Status: 0.7.6.**
 
 ## Requirements
 
