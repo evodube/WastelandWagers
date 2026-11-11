@@ -288,6 +288,7 @@ namespace fr
 		const char* a_table)
 	{
 		const auto* you = RE::PlayerCharacter::GetSingleton();
+		a_c.cool -= a_dt;
 		if (a_c.id == 0) {
 			// nobody dealing: the nearest free settler comes over, now and then
 			a_c.lookIn -= a_dt;
@@ -346,6 +347,55 @@ namespace fr
 			}
 			a_c.held = Npc::SetRestrained(actor, true);
 		}
+	}
+
+	void Game::RlDealer(Gesture a_g)
+	{
+		using namespace rl::table;
+		const double x = (kWheelX + kZeroX0) * 0.5, y = kFarEdgeY + kStepBack;
+		CroupierGesture(_t.croupier, a_g, x, y, 0.0, -1.0, kWheelX, kWheelY);  // (points at the wheel)
+	}
+
+	void Game::DealerGesture(const RE::ObjectRefHandle& a_actor, bool a_held, float& a_cool, Gesture a_g, double a_x, double a_y,
+		double a_fx, double a_fy, double a_tx, double a_ty)
+	{
+		// the game's gestures that play where they stand (flavour and talk idles; the activation ones step and turn to
+		// line up first): PointLeft / Right / Forward, BeckonLeft / Right (silent), DialogueGiveItem, a short talk
+		constexpr RE::TESFormID kPointLeft = 0x001793E4, kPointRight = 0x001793E5, kPointForward = 0x001793E3;
+		constexpr RE::TESFormID kBeckonLeft = 0x000BB967, kBeckonRight = 0x000BB965;
+		constexpr RE::TESFormID kGiveItem = 0x000CEA8D;
+		constexpr std::array<RE::TESFormID, 2> kTalk{ 0x00062271, 0x00062270 };  // RaiderTalkMT_PoseA_S, _M
+		if (!a_held || a_cool > 0.0f) {
+			return;
+		}
+		auto  ref = a_actor.get();
+		auto* actor = ref ? ref->As<RE::Actor>() : nullptr;
+		if (!Usable(actor) || actor->IsInCombat()) {
+			return;
+		}
+		RE::TESFormID idle = 0;
+		switch (a_g) {
+		case Gesture::kPoint:
+			{
+				// their right: the way they face turned a quarter to the right
+				const double vx = a_tx - a_x, vy = a_ty - a_y;
+				const double len = std::hypot(vx, vy);
+				const double side = len > 1.0 ? (vx * a_fy - vy * a_fx) / len : 0.0;
+				idle = side > 0.45 ? kPointRight : side < -0.45 ? kPointLeft : kPointForward;
+				break;
+			}
+		case Gesture::kBeckon:
+			idle = std::uniform_int_distribution<int>(0, 1)(_rng) ? kBeckonLeft : kBeckonRight;
+			break;
+		case Gesture::kDeal:
+			idle = kGiveItem;
+			break;
+		case Gesture::kTalk:
+			idle = kTalk[std::uniform_int_distribution<std::size_t>(0, kTalk.size() - 1)(_rng)];
+			break;
+		}
+		a_cool = a_g == Gesture::kPoint ? 1.4f : 2.5f;
+		Npc::PlayIdle(actor, idle);
 	}
 
 	void Game::ReleaseCroupier(Croupier& a_c, const char* a_why)
@@ -468,7 +518,7 @@ namespace fr
 		{
 			// the dealer: on the far side, between the wheel and the layout, facing the players' side
 			using namespace rl::table;
-			TickCroupier(_t.croupier, a_frame, (kWheelX + kZeroX0) * 0.5, kFarEdgeY + kStepBack, 0.0, -1.0, a_dt, "roulette");
+			TickCroupier(_t.croupier, a_frame, (kWheelX + kZeroX0) * 0.5, kFarEdgeY + kStepBack, 0.0, -1.0, a_dt, "roulette");  // (RlDealer: the same)
 		}
 		_t.seatTimer -= a_dt;
 		if (_t.seatTimer <= 0.0f) {

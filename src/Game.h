@@ -251,7 +251,11 @@ namespace fr
 			Walker              walk;
 			bool                held{ false };
 			float               lookIn{ 0.0f };  // seconds before looking for one again
+			float               cool{ 0.0f };    // seconds before they gesture again
 		};
+		// what a dealer does now and then (Npcs.cpp): point at whose turn it is, wave the table in to bet, hand the
+		// cards out, say their piece (the game's gestures that play on the spot: no stepping round to line up)
+		enum class Gesture { kPoint, kBeckon, kDeal, kTalk };
 
 		// an NPC at the table, betting
 		struct Seat
@@ -387,10 +391,19 @@ namespace fr
 		void         FaceTowards(RE::Actor* a_actor, float a_heading);
 		// the dealers (Npcs.cpp): found, walked to their place (table space, facing the way given) and stood there
 		bool         IsCroupier(RE::TESFormID a_id) const;  // dealing at one of the tables (blackjack's too)
+		void         RlDealer(Gesture a_g);  // the roulette dealer's gesture (Npcs.cpp: where they stand)
 		void         TickCroupier(Croupier& a_c, const Frame& a_frame, double a_x, double a_y, double a_faceX, double a_faceY, float a_dt,
 					const char* a_table);
 		void         ReleaseCroupier(Croupier& a_c, const char* a_why);
 		void         UnholdCroupier(Croupier& a_c);  // (a save: let go, held again after)
+		// a gesture by a dealer standing at (a_x, a_y) facing (a_fx, a_fy), table space; kPoint at (a_tx, a_ty)
+		void         DealerGesture(const RE::ObjectRefHandle& a_actor, bool a_held, float& a_cool, Gesture a_g, double a_x, double a_y,
+					double a_fx, double a_fy, double a_tx = 0.0, double a_ty = 0.0);
+		void         CroupierGesture(Croupier& a_c, Gesture a_g, double a_x, double a_y, double a_fx, double a_fy, double a_tx = 0.0,
+					double a_ty = 0.0)
+		{
+			DealerGesture(a_c.actor, a_c.held && a_c.id != 0, a_c.cool, a_g, a_x, a_y, a_fx, a_fy, a_tx, a_ty);
+		}
 		void         WatchTurn(RE::Actor* a_actor, float a_heading);  // (the turning log)
 
 		// ------------------------------------------------------------ poker (Poker.cpp)
@@ -435,6 +448,7 @@ namespace fr
 			float               flipWait{ 0.0f };  // seconds before it turns over (the showdown, one hand after another)
 			float               lift{ 0.0f };    // raised off the felt now (one of the winning five)...
 			float               liftTo{ 0.0f };  // ...and where it's going
+			bool                spawned{ false };  // (blackjack: made already, once)
 		};
 		// a chip on its way across the felt (to the pot, to a winner): removed when it gets there
 		struct PkChipMove
@@ -510,6 +524,7 @@ namespace fr
 			bool                                                   peeking{ false };  // you're looking at your cards: they're turned up
 			PkSession                                              session;
 			Croupier                                               croupier;  // the dealer, by the chip tray
+			int                                                    pointed{ -1 };  // (who the dealer last pointed at)
 		};
 		PokerState        _pk;
 		std::atomic<bool> _pkSeated{ false };
@@ -659,6 +674,8 @@ namespace fr
 			int                             lifted{ 0 };       // your bets back in your pocket over a save
 			std::array<RE::ObjectRefHandle, kBjSeats> chairs;  // (the chairs option) one at each place
 			bool                            shuffleSaid{ false };
+			float                           sweep{ 0.0f };     // (seconds to the next look for stray cards and chips)
+			float                           dealerCool{ 0.0f };  // (seconds before the dealer gestures again)
 		};
 		BlackjackState    _bj;
 		std::atomic<bool> _bjSeated{ false };
@@ -682,6 +699,11 @@ namespace fr
 		void         BjFindDealer(const Frame& a_frame);
 		void         BjTickSeats(const Frame& a_frame, float a_dt);
 		void         BjRelease(int a_seat, const char* a_why);
+		void         BjDropHands(BjSeat& a_st);
+		void         BjSpawnCards(const Frame& a_frame);
+		void         BjSweep(const Frame& a_frame);
+		void         BjOurs(std::unordered_set<RE::TESFormID>& a_ours) const;  // every card and chip of the table's
+		void         PkOurs(std::unordered_set<RE::TESFormID>& a_ours) const;
 		void         BjTickRound(float a_dt);
 		void         BjStartDeal();
 		std::size_t  BjDeal(int a_card, const RE::NiPoint3& a_to, float a_yaw, bool a_faceUp, float a_delay);

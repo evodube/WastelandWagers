@@ -122,13 +122,17 @@ def win():
 
 
 def turn():
-    """your turn at a card table: a soft two-note chime, low and short so it doesn't startle"""
-    buf = np.zeros(int(0.9 * RATE))
-    for at, f, g in ((0.0, 1046.5, 0.8), (0.13, 1568.0, 1.0)):  # C6 then G6
-        tt = t(0.7)
-        bell = (np.sin(2 * np.pi * f * tt) + 0.25 * np.sin(2 * np.pi * f * 2.0 * tt) + 0.08 * np.sin(2 * np.pi * f * 3.01 * tt))
-        bell *= np.exp(-tt / 0.22) * np.minimum(1.0, tt / 0.004)
-        place(buf, bell, at, g)
+    """your turn at a card table: a soft, low two-note tone (a mellow marimba-like knock, rounded off: nothing sharp
+    or high to pierce)"""
+    buf = np.zeros(int(1.0 * RATE))
+    for at, f, g in ((0.0, 523.25, 0.9), (0.16, 659.25, 1.0)):  # C5 then E5
+        tt = t(0.8)
+        tone = np.sin(2 * np.pi * f * tt) + 0.12 * np.sin(2 * np.pi * f * 2.0 * tt) * np.exp(-tt / 0.06)
+        tone *= np.exp(-tt / 0.28) * np.minimum(1.0, tt / 0.018)  # (a soft attack: no click)
+        place(buf, tone, at, g)
+    # a gentle low-pass: a running average over a millisecond or so takes the edge off
+    k = 24
+    buf = np.convolve(buf, np.ones(k) / k, mode="same")
     return buf
 
 

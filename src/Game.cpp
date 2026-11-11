@@ -993,6 +993,7 @@ namespace fr
 		});
 		_t.plan = {};
 		_t.planning = true;
+		RlDealer(Gesture::kTalk);  // ("no more bets")
 		_t.phase = Phase::kSpinning;
 		_t.phaseTime = 0.0f;
 		_t.playT = -kPlanLead;
@@ -1185,6 +1186,7 @@ namespace fr
 		log::info("result {}: you staked {}, got back {}; {} stakes on the table", name, yourStake, yourBack, _t.stakes.size());
 		_t.phase = Phase::kResult;
 		_t.phaseTime = 0.0f;
+		RlDealer(Gesture::kPoint);  // (at the wheel: the number's in)
 		if (Here() && _wheelView && Settings::Get().wheelViewOnSpin) {
 			_viewBackIn = 2.0f;  // a look at the ball in its pocket, then back to the layout
 		}
@@ -1200,6 +1202,7 @@ namespace fr
 		_t.planning = false;
 		_t.phaseTime = 0.0f;
 		_t.bettingTime = 0.0f;
+		RlDealer(Gesture::kBeckon);  // (place your bets)
 		_t.hudBanner = 0;
 		// a changed wheel setting comes in now, between rounds
 		const auto setting = Settings::Get().wheel == 1 ? rl::WheelType::kAmerican : rl::WheelType::kEuropean;

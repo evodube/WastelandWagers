@@ -461,11 +461,40 @@ namespace fr
 		_pk = PokerState{};
 	}
 
+	void Game::PkOurs(std::unordered_set<RE::TESFormID>& a_ours) const
+	{
+		auto add = [&](const RE::ObjectRefHandle& a_h) {
+			if (auto r = a_h.get()) {
+				a_ours.insert(r->GetFormID());
+			}
+		};
+		for (const auto& seat : _pk.stackChips) {
+			for (const auto& v : seat) {
+				std::ranges::for_each(v, add);
+			}
+		}
+		for (const auto& v : _pk.betChips) {
+			std::ranges::for_each(v, add);
+		}
+		for (const auto& v : _pk.landed) {
+			std::ranges::for_each(v, add);
+		}
+		std::ranges::for_each(_pk.potChips, add);
+		for (const auto& m : _pk.moves) {
+			add(m.ref);
+		}
+		for (const auto& c : _pk.cards) {
+			add(c.ref);
+		}
+	}
+
 	void Game::PkSweep(const Frame& a_frame)
 	{
 		// chips on the table that none of ours know of (left behind: a save made without our chips taken off first, a
-		// hand that ended some way they weren't cleared): gone. And the pot's chips checked against the pot
+		// hand that ended some way they weren't cleared): gone. And the pot's chips checked against the pot (never the
+		// blackjack table's, or a roulette table's beside it: only on this table's own felt)
 		std::unordered_set<RE::TESFormID> ours;
+		BjOurs(ours);
 		auto add = [&](const RE::ObjectRefHandle& a_h) {
 			if (auto r = a_h.get()) {
 				ours.insert(r->GetFormID());
@@ -489,7 +518,9 @@ namespace fr
 		std::vector<RE::TESObjectREFR*> strays;
 		util::ForEachLoadedCell([&](RE::TESObjectCELL* a_cell) {
 			a_cell->ForEachReferenceInRange(a_frame.origin, 110.0f * a_frame.scale, [&](RE::TESObjectREFR* a_ref) {
-				if (a_ref && !a_ref->IsDisabled() && !ours.contains(a_ref->GetFormID())) {
+				const auto local = a_ref ? a_frame.rot * ((a_ref->data.location - a_frame.origin) * (1.0f / a_frame.scale)) : RE::NiPoint3{};
+				if (a_ref && !a_ref->IsDisabled() && !ours.contains(a_ref->GetFormID()) && std::abs(local.x) < kRailR + 4.0f &&
+					std::abs(local.y) < kRailR + 48.0f) {
 					const auto* base = a_ref->GetObjectReference();
 					for (int d = 0; d < 4; ++d) {
 						if (base && base == Forms::Chip(d) && std::abs(a_ref->data.location.z - (a_frame.origin.z + kFeltZ * a_frame.scale)) < 30.0f) {
@@ -853,9 +884,20 @@ namespace fr
 			const bool turn = _pkSeated && _pk.inHand && hi >= 0 && _pk.hand.ToAct() == hi && _pk.phase == PkPhase::kBetting &&
 			                  _pk.boardShown >= _pk.hand.board.size();
 			if (turn && !_pkTurnWas && _pkPre == 0 && Settings::Get().turnChime) {
-				Audio::PlayUI(Audio::Bank::kTurn, 0.55f);
+				Audio::PlayUI(Audio::Bank::kTurn, 0.35f);
 			}
 			_pkTurnWas = turn;
+			// the dealer points at whoever's to act
+			const int toAct = _pk.inHand && _pk.phase == PkPhase::kBetting && _pk.boardShown >= _pk.hand.board.size() ? _pk.hand.ToAct() : -1;
+			if (toAct != _pk.pointed) {
+				_pk.pointed = toAct;
+				for (int i = 0; i < kPkSeats && toAct >= 0; ++i) {
+					if (_pk.seats[i].used && _pk.seats[i].hi == toAct) {
+						const auto at = HoleSpot(i, 0);
+						CroupierGesture(_pk.croupier, Gesture::kPoint, kRailR + kStandOff, 0.0, -1.0, 0.0, at.x, at.y);
+					}
+				}
+			}
 		}
 		if (!PkAnimating()) {
 			PkTickCards(frame, a_dt);
@@ -1422,6 +1464,7 @@ namespace fr
 		_pk.timer = delay + 0.4f;
 		_pk.think = 0.0f;
 		PkSay(std::format("NEW HAND · BLINDS {}/{}", s.pkSmallBlind, s.pkBigBlind));
+		CroupierGesture(_pk.croupier, Gesture::kDeal, kRailR + kStandOff, 0.0, -1.0, 0.0);
 
 	}
 
@@ -1620,6 +1663,8 @@ namespace fr
 	void Game::PkEndHand()
 	{
 		auto& h = _pk.hand;
+		_pk.croupier.cool = 0.0f;
+		CroupierGesture(_pk.croupier, Gesture::kTalk, kRailR + kStandOff, 0.0, -1.0, 0.0);  // (the hand's called)
 		_pk.phase = PkPhase::kShowdown;
 		_pk.timer = h.showdown ? 6.0f : 3.5f;
 		// the cards of everyone still in, turned up

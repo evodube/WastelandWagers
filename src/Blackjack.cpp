@@ -284,18 +284,24 @@ namespace fr
 				}
 			}
 			st.bet = st.insurance = 0;
-			st.hands.clear();
+			BjDropHands(st);
 		}
 		for (int i = 0; i < kBjSeats; ++i) {
 			if (_bj.seats[i].used && !_bj.seats[i].you) {
 				BjRelease(i, a_why);
 			}
 		}
-		BjClear();
+		// (everything off now, not slid away: nothing's left to move it after this)
 		for (auto& st : _bj.seats) {
 			for (auto& h : st.betChips) {
 				Remove(h);
 			}
+		}
+		for (auto& c : _bj.cards) {
+			Remove(c.ref);
+		}
+		for (auto& m : _bj.moves) {
+			Remove(m.ref);
 		}
 		if (auto ref = _bj.dealerActor.get(); ref && ref->As<RE::Actor>()) {
 			auto* actor = ref->As<RE::Actor>();
@@ -378,9 +384,14 @@ namespace fr
 		BjTickSeats(frame, a_dt);
 		BjTickRound(a_dt);
 		const bool animating = std::chrono::steady_clock::now() - _bjAnimAt < std::chrono::milliseconds(250);
+		BjSpawnCards(frame);
 		if (!animating) {
 			BjTickCards(frame, a_dt);
 			BjTickMoves(frame, a_dt);
+		}
+		if ((_bj.sweep -= a_dt) <= 0.0f) {
+			_bj.sweep = 2.0f;
+			BjSweep(frame);
 		}
 		if (_bjSeated && _bjYou >= 0) {
 			BjCamera(frame, a_dt);
@@ -399,7 +410,7 @@ namespace fr
 				}
 			}
 			if (prompt != 0 && prompt != _bjPrompt && Settings::Get().turnChime) {
-				Audio::PlayUI(Audio::Bank::kTurn, 0.55f);
+				Audio::PlayUI(Audio::Bank::kTurn, 0.35f);
 			}
 			_bjPrompt = prompt;
 		}
@@ -563,6 +574,47 @@ namespace fr
 		BjSay(std::format("{} DEALS", Upper(_bj.dealerName)));
 	}
 
+	void Game::BjDropHands(BjSeat& a_st)
+	{
+		// a place's hands off the table: the chips on them gone, the cards to the discard holder (left out of the round)
+		for (auto& h : a_st.hands) {
+			for (auto& c : h.chips) {
+				Remove(c);
+			}
+			for (auto& c : h.paid) {
+				Remove(c);
+			}
+			for (const auto i : h.refs) {
+				if (i >= _bj.cards.size()) {
+					continue;
+				}
+				auto& c = _bj.cards[i];
+				if (!c.ref.get()) {
+					c.mucked = true;  // (not out yet: it never will be)
+					c.spawned = true;
+					c.t = 1.0f;
+					continue;
+				}
+				if (c.mucked) {
+					continue;
+				}
+				const float e = 1.0f - (1.0f - c.t) * (1.0f - c.t);
+				c.from = c.from + (c.to - c.from) * e;
+				c.to = kDiscard;
+				c.t = 0.0f;
+				c.delay = 0.0f;
+				c.spin = 0.0f;
+				c.mucked = true;
+				c.faceUp = false;
+			}
+		}
+		for (auto& c : a_st.insChips) {
+			Remove(c);
+		}
+		a_st.insChips.clear();
+		a_st.hands.clear();
+	}
+
 	void Game::BjRelease(int a_seat, const char* a_why)
 	{
 		auto& st = _bj.seats[a_seat];
@@ -576,6 +628,7 @@ namespace fr
 		for (auto& h : st.betChips) {
 			Remove(h);
 		}
+		BjDropHands(st);  // (a hand on the table: its chips off, its cards to the discard)
 		auto  ref = st.actor.get();
 		auto* actor = ref ? ref->As<RE::Actor>() : nullptr;
 		if (actor) {
@@ -608,6 +661,7 @@ namespace fr
 		}
 		const auto* you = RE::PlayerCharacter::GetSingleton();
 		// the dealer: behind the chip rack, facing the players
+		_bj.dealerCool -= a_dt;
 		if (auto ref = _bj.dealerActor.get(); _bj.dealerId != 0) {
 			auto* actor = ref ? ref->As<RE::Actor>() : nullptr;
 			if (!Usable(actor) || actor->IsInCombat() || (you && you->IsInCombat()) || Npc::AtPool(actor)) {
@@ -788,6 +842,78 @@ namespace fr
 		return _bj.cards.size() - 1;
 	}
 
+	void Game::BjOurs(std::unordered_set<RE::TESFormID>& a_ours) const
+	{
+		auto add = [&](const RE::ObjectRefHandle& a_h) {
+			if (auto r = a_h.get()) {
+				a_ours.insert(r->GetFormID());
+			}
+		};
+		for (const auto& c : _bj.cards) {
+			add(c.ref);
+		}
+		for (const auto& m : _bj.moves) {
+			add(m.ref);
+		}
+		for (const auto& st : _bj.seats) {
+			std::ranges::for_each(st.betChips, add);
+			std::ranges::for_each(st.insChips, add);
+			for (const auto& h : st.hands) {
+				std::ranges::for_each(h.chips, add);
+				std::ranges::for_each(h.paid, add);
+			}
+		}
+	}
+
+	void Game::BjSweep(const Frame& a_frame)
+	{
+		// cards and chips on the felt that none of ours know of (left behind: a save made with them out, a place left
+		// mid-hand, an older version's): gone. Only on this table's felt, and never the poker table's
+		std::unordered_set<RE::TESFormID> ours;
+		BjOurs(ours);
+		PkOurs(ours);
+		std::unordered_set<const RE::TESBoundObject*> kinds;
+		for (int d = 0; d < 4; ++d) {
+			kinds.insert(Forms::Chip(d));
+		}
+		for (int c = 0; c < 52; ++c) {
+			kinds.insert(Forms::Card(c));
+		}
+		kinds.erase(nullptr);
+		std::vector<RE::ObjectRefHandle> strays;
+		util::ForEachLoadedCell([&](RE::TESObjectCELL* a_cell) {
+			a_cell->ForEachReferenceInRange(a_frame.origin, 95.0f * a_frame.scale, [&](RE::TESObjectREFR* a_ref) {
+				if (!a_ref || a_ref->IsDisabled() || ours.contains(a_ref->GetFormID()) || !kinds.contains(a_ref->GetObjectReference())) {
+					return RE::BSContainer::ForEachResult::kContinue;
+				}
+				const auto local = a_frame.rot * ((a_ref->data.location - a_frame.origin) * (1.0f / a_frame.scale));
+				if (std::abs(local.x) < 78.0f && local.y > -56.0f && local.y < 58.0f && local.z > kFeltZ - 4.0f && local.z < kFeltZ + 20.0f) {
+					strays.push_back(a_ref->GetHandle());
+				}
+				return RE::BSContainer::ForEachResult::kContinue;
+			});
+		});
+		if (!strays.empty()) {
+			log::warn("blackjack: {} cards and chips on the table that aren't anyone's (left behind): taken off", strays.size());
+			for (auto& h : strays) {
+				Remove(h);
+			}
+		}
+	}
+
+	void Game::BjSpawnCards(const Frame& a_frame)
+	{
+		// the cards whose turn it is to leave the shoe, made: once each, and only from the tick (the camera's update
+		// and the tick both making one left a copy on the table)
+		for (auto& c : _bj.cards) {
+			if (c.delay > 0.0f || c.mucked || c.spawned) {
+				continue;
+			}
+			c.spawned = true;
+			c.ref = Spawn(Forms::Card(c.card), ToWorld(a_frame, c.from.x, c.from.y, kFeltZ + 2.0f), a_frame.yaw);
+		}
+	}
+
 	void Game::BjTickCards(const Frame& a_frame, float a_dt)
 	{
 		for (auto& c : _bj.cards) {
@@ -797,14 +923,7 @@ namespace fr
 			}
 			auto ref = c.ref.get();
 			if (!ref) {
-				if (c.mucked) {
-					continue;
-				}
-				c.ref = Spawn(Forms::Card(c.card), ToWorld(a_frame, c.from.x, c.from.y, kFeltZ + 2.0f), a_frame.yaw);
-				ref = c.ref.get();
-				if (!ref) {
-					continue;
-				}
+				continue;  // (not made yet: BjSpawnCards, from the tick)
 			}
 			if (c.t < 1.0f) {
 				c.t = std::min(1.0f, c.t + a_dt / (c.mucked ? 0.45f : 0.38f));
@@ -979,6 +1098,8 @@ namespace fr
 		_bj.timer = delay + 0.5f;
 		_bj.dealIn = -1.0f;
 		BjSay("CARDS");
+		_bj.dealerCool = 0.0f;
+		DealerGesture(_bj.dealerActor, _bj.dealerHeld, _bj.dealerCool, Gesture::kDeal, 0.0, kDealerStand, 0.0, -1.0);
 	}
 
 	void Game::BjNextTurn()
@@ -994,6 +1115,10 @@ namespace fr
 				if (hand.done || t.value >= 21 || (splitAces && hand.cards.size() >= 2)) {
 					hand.done = true;
 					continue;
+				}
+				if (_bj.turnSeat != i) {
+					DealerGesture(_bj.dealerActor, _bj.dealerHeld, _bj.dealerCool, Gesture::kPoint, 0.0, kDealerStand, 0.0, -1.0,
+						kSpots[i].first, kSpots[i].second);  // (the dealer points at whose turn it is)
 				}
 				_bj.turnSeat = i;
 				_bj.turnHand = h;
@@ -1147,6 +1272,8 @@ namespace fr
 
 	void Game::BjSettle()
 	{
+		_bj.dealerCool = 0.0f;
+		DealerGesture(_bj.dealerActor, _bj.dealerHeld, _bj.dealerCool, Gesture::kTalk, 0.0, kDealerStand, 0.0, -1.0);
 		const int dealerValue = bj::Count(_bj.dealer).value;
 		if (dealerValue > 21) {
 			BjSay("THE DEALER BUSTS", 1);
@@ -1229,6 +1356,12 @@ namespace fr
 		// the cards into the discard holder, the chips left on the table to their players (gone)
 		for (auto& c : _bj.cards) {
 			if (!c.ref.get()) {
+				c.mucked = true;  // (not out yet: it never will be)
+				c.spawned = true;
+				c.t = 1.0f;
+				continue;
+			}
+			if (c.mucked) {
 				continue;
 			}
 			const float e = 1.0f - (1.0f - c.t) * (1.0f - c.t);
@@ -1376,9 +1509,13 @@ namespace fr
 					_bj.timer = 0.3f;
 					break;
 				}
+				for (auto& c : _bj.cards) {
+					Remove(c.ref);  // (anything still out: off, not left behind)
+				}
 				_bj.cards.clear();
 				_bj.phase = BjPhase::kBetting;
 				_bj.dealIn = -1.0f;
+				DealerGesture(_bj.dealerActor, _bj.dealerHeld, _bj.dealerCool, Gesture::kBeckon, 0.0, kDealerStand, 0.0, -1.0);  // (bets)
 			}
 			break;
 		}
@@ -1814,6 +1951,14 @@ namespace fr
 			if (st.you && st.bet > 0) {
 				_bj.lifted = st.bet;  // (your bet for the next hand: in your pocket while the save's written)
 				GivePlayer(st.bet);
+			}
+			for (auto& h : st.hands) {
+				for (auto& c : h.chips) {
+					Remove(c);
+				}
+				for (auto& c : h.paid) {
+					Remove(c);
+				}
 			}
 			st.hands.clear();
 			st.insurance = 0;
