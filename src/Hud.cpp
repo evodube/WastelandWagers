@@ -520,6 +520,15 @@ namespace fr::Hud
 		}
 
 		// your hand's name and your turn, top middle
+		// the dealer's panel's height (0: not shown): it's at the top, the turn panel under it
+		float PokerDealerH(const Game::HudState& a_st)
+		{
+			if (!a_st.pkDealer || a_st.pkBoard.empty() || a_st.blackjack) {
+				return 0.0f;
+			}
+			return 70.0f + 16.0f + (a_st.pkWinFive.empty() ? 0.0f : 22.0f);
+		}
+
 		void PokerHole(const View& a_v, const Game::HudState& a_st)
 		{
 			const std::string label = a_st.pkYourTurn ? (a_st.pkHand.empty() ? std::string("YOUR TURN") : "YOUR TURN · " + a_st.pkHand) : a_st.pkHand;
@@ -527,7 +536,8 @@ namespace fr::Hud
 				return;
 			}
 			const float w = PokerHoleW(), h = PokerHoleH();
-			const float x = a_v.w * 0.5f - w * 0.5f, y = kPkMargin;
+			const float dh = PokerDealerH(a_st);
+			const float x = a_v.w * 0.5f - w * 0.5f, y = kPkMargin + (dh > 0.0f ? dh + 8.0f : 0.0f);  // (under the dealer's cards)
 			Chamfer(a_v, x, y, w, h, 10.0f, kPanel, a_st.pkYourTurn ? kBright : kEdge);
 			const float size = std::min(14.0f, 14.0f * (w - 24.0f) / std::max(1.0f, TextWidth(Mono(), label, 14, 1.0f)));
 			Print(a_v, Mono(), label, x + w * 0.5f, y + (h - size) * 0.5f - 2.0f, size, a_st.pkYourTurn ? kBright : kText, a_st.pkYourTurn ? kGlow : 0,
@@ -643,7 +653,7 @@ namespace fr::Hud
 			}
 		}
 
-		// the dealer's cards (the board), under your hand's panel, top middle: the SHOW / HIDE DEALER button
+		// the dealer's cards (the board), top middle: the SHOW / HIDE DEALER button
 		void PokerDealer(const View& a_v, const Game::HudState& a_st)
 		{
 			if (!a_st.pkDealer || a_st.pkBoard.empty()) {
@@ -654,7 +664,7 @@ namespace fr::Hud
 			const bool  won = !a_st.pkWinFive.empty();
 			const float boardW = cw * 5.0f + gap * 4.0f;
 			const float w = boardW + pad * 2.0f + (won ? split + cw * 2.0f + gap : 0.0f), h = ch + pad * 2.0f + (won ? 22.0f : 0.0f);
-			const float x = a_v.w * 0.5f - w * 0.5f, y = kPkMargin + PokerHoleH() + 8.0f;
+			const float x = a_v.w * 0.5f - w * 0.5f, y = kPkMargin;  // (at the very top: the turn panel under it)
 			Chamfer(a_v, x, y, w, h, 10.0f, kPanel, kEdge);
 			auto card = [&](int a_card, float a_cx, float a_cy) {
 				const bool in = !won || std::ranges::find(a_st.pkWinFive, a_card) != a_st.pkWinFive.end();

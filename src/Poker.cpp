@@ -992,10 +992,10 @@ namespace fr
 				const auto   cards = ToWorld(frame, mid.x, mid.y, kFeltZ);
 				over = std::hypot(at.x - cards.x, at.y - cards.y) < kCardW * 1.6f;
 			}
-			// (face up on the table all along, unless the setting has them face down: then up while you look at them,
-			// hold the right button, or SHOW MY CARDS)
+			// (face up on the table all along, unless the setting has them face down: then up while you look at them or
+			// hold the right button; SHOW MY CARDS only turns them up on the HUD)
 			const bool down = Settings::Get().pkCardsDown;
-			const bool peek = (!down || over || _pkShowCards) && _pk.inHand && _pk.phase != PkPhase::kShowdown;
+			const bool peek = (!down || over) && _pk.inHand && _pk.phase != PkPhase::kShowdown;
 			_pk.peeking = peek;
 			for (auto& c : _pk.cards) {
 				if (c.seat == _pkYou && !c.mucked && _pk.phase != PkPhase::kShowdown && c.faceUp != peek) {
