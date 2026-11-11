@@ -52,7 +52,7 @@ namespace fr
 
 		// sitting at the table (the chairs option): a dining chair of the game's, and the seated reactions
 		constexpr RE::TESFormID                kChair = 0x000E37D3;  // NpcChairIndustrialMetalDiningSit01
-		constexpr std::array<RE::TESFormID, 3> kSeatedWin{ 0x0010FF89, 0x0010FF8C, 0x00118014 };  // cheering sitting (A), laughing
+		constexpr std::array<RE::TESFormID, 1> kSeatedWin{ 0x0010BA3B };  // IdleCheeringSitting (the ActionCustom ones don't play from PlayIdle)
 		constexpr float                        kChairOut = 20.0f;
 		// where someone sitting in the chair is, from the chair (its right, its front, up), learnt from the first one
 		// seen sitting in one

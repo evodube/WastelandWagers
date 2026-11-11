@@ -369,8 +369,11 @@ namespace fr
 		}
 	}
 
-	void Game::RlDealer(Gesture a_g)
+	void Game::RlDealer(Gesture a_g, bool a_now)
 	{
+		if (a_now) {
+			_t.croupier.cool = 0.0f;
+		}
 		using namespace rl::table;
 		const double x = -kHalfLength - 28.0, y = kWheelY;
 		CroupierGesture(_t.croupier, a_g, x, y, 1.0, 0.0, kWheelX, kWheelY);  // (points at the wheel)
@@ -379,12 +382,11 @@ namespace fr
 	void Game::DealerGesture(const RE::ObjectRefHandle& a_actor, bool a_held, float& a_cool, Gesture a_g, double a_x, double a_y,
 		double a_fx, double a_fy, double a_tx, double a_ty)
 	{
-		// the game's gestures that play where they stand (flavour and talk idles; the activation ones step and turn to
-		// line up first): PointLeft / Right / Forward, BeckonLeft / Right (silent), DialogueGiveItem, a short talk
+		// the game's gestures that play where they stand (the activation ones step and turn to line up first), and that
+		// PlayIdle does play (the log: the talk and beckon idles came back false): PointLeft / Right / Forward,
+		// DialogueGiveItem (a reach out over the table: dealing, paying, sending the ball round)
 		constexpr RE::TESFormID kPointLeft = 0x001793E4, kPointRight = 0x001793E5, kPointForward = 0x001793E3;
-		constexpr RE::TESFormID kBeckonLeft = 0x000BB967, kBeckonRight = 0x000BB965;
 		constexpr RE::TESFormID kGiveItem = 0x000CEA8D;
-		constexpr std::array<RE::TESFormID, 2> kTalk{ 0x00062271, 0x00062270 };  // RaiderTalkMT_PoseA_S, _M
 		if (!a_held || a_cool > 0.0f) {
 			return;
 		}
@@ -405,13 +407,11 @@ namespace fr
 				break;
 			}
 		case Gesture::kBeckon:
-			idle = std::uniform_int_distribution<int>(0, 1)(_rng) ? kBeckonLeft : kBeckonRight;
+			idle = kPointForward;  // (bets: a point at the layout)
 			break;
 		case Gesture::kDeal:
-			idle = kGiveItem;
-			break;
 		case Gesture::kTalk:
-			idle = kTalk[std::uniform_int_distribution<std::size_t>(0, kTalk.size() - 1)(_rng)];
+			idle = kGiveItem;  // (the hand's paid out, the ball's sent round)
 			break;
 		}
 		a_cool = a_g == Gesture::kPoint ? 1.4f : 2.5f;

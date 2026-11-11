@@ -996,7 +996,7 @@ namespace fr
 		});
 		_t.plan = {};
 		_t.planning = true;
-		RlDealer(Gesture::kTalk);  // ("no more bets")
+		RlDealer(Gesture::kDeal, true);  // (a reach out over the wheel: sending the ball round)
 		_t.phase = Phase::kSpinning;
 		_t.phaseTime = 0.0f;
 		_t.playT = -kPlanLead;

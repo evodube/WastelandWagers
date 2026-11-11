@@ -55,7 +55,7 @@ namespace fr
 		// sitting (the chairs option): the poker table's chair, out from the edge as there; their seated cheers
 		constexpr RE::TESFormID                kChair = 0x000E37D3;  // NpcChairIndustrialMetalDiningSit01
 		constexpr float                        kChairOut = 20.0f;
-		constexpr std::array<RE::TESFormID, 3> kSeatedWin{ 0x0010FF89, 0x0010FF8C, 0x00118014 };
+		constexpr std::array<RE::TESFormID, 1> kSeatedWin{ 0x0010BA3B };
 
 		float Distance2D(const RE::NiPoint3& a, const RE::NiPoint3& b) { return std::hypot(a.x - b.x, a.y - b.y); }
 
