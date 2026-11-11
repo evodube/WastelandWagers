@@ -128,6 +128,8 @@ namespace fr::SettingsMenu
 							"results also as the game's corner notifications" },
 						{ L"Sound", L"bEnabled", "Sounds on", Kind::kBool, &s.sound, 0, 0, nullptr, "switching them on takes a game restart" },
 						{ L"Sound", L"fVolume", "Volume", Kind::kFloat, &s.soundVolume, 0.0f, 1.0f, "%.2f" },
+						{ L"Sound", L"bTurnChime", "Your turn chime", Kind::kBool, &s.turnChime, 0, 0, nullptr,
+							"a chime when it's your turn at the poker or blackjack table, and when blackjack's bets open" },
 					} },
 				{ "Keys", "Click a key's button, then press the key you want. Spin 'none' = the game's activate key.",
 					{

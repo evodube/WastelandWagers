@@ -385,6 +385,24 @@ namespace fr
 		if (_bjSeated && _bjYou >= 0) {
 			BjCamera(frame, a_dt);
 		}
+		// the chime: bets open (and none of yours down yet), insurance asked, your turn (each hand of a split)
+		{
+			int prompt = 0;
+			if (_bjSeated && _bjYou >= 0) {
+				const auto& me = _bj.seats[_bjYou];
+				if (_bj.phase == BjPhase::kBetting && me.bet == 0) {
+					prompt = 1;
+				} else if (_bj.phase == BjPhase::kInsurance) {
+					prompt = 2;
+				} else if (_bj.phase == BjPhase::kPlayers && _bj.turnSeat == _bjYou) {
+					prompt = 10 + _bj.turnHand;
+				}
+			}
+			if (prompt != 0 && prompt != _bjPrompt && Settings::Get().turnChime) {
+				Audio::PlayUI(Audio::Bank::kTurn, 0.55f);
+			}
+			_bjPrompt = prompt;
+		}
 	}
 
 	void Game::BjAnimate()

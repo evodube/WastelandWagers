@@ -14,6 +14,7 @@ namespace fr::Audio
 		kCard,    // a card landing on the felt
 		kSlide,   // cards or chips slid across the felt
 		kShuffle, // the deck shuffled between hands
+		kTurn,    // your turn at a card table (a chime)
 		kCount
 	};
 

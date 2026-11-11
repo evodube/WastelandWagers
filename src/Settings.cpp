@@ -127,6 +127,7 @@ namespace fr
 		notifications = ReadBool(L"HUD", L"bNotifications", notifications);
 		sound = ReadBool(L"Sound", L"bEnabled", sound);
 		soundVolume = std::clamp(ReadFloat(L"Sound", L"fVolume", soundVolume), 0.0f, 1.0f);
+		turnChime = ReadBool(L"Sound", L"bTurnChime", turnChime);
 
 		plugin = Narrow(ReadString(L"Forms", L"sPlugin", std::wstring(plugin.begin(), plugin.end())));
 

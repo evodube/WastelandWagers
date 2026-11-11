@@ -847,6 +847,16 @@ namespace fr
 		_pk.seatedAge += a_dt;
 		PkTickSeats(frame, a_dt);
 		PkTickHand(frame, a_dt);
+		{
+			// the chime: your turn to act (not with a pre-action picked: that acts for you)
+			const int  hi = _pkYou >= 0 ? _pk.seats[_pkYou].hi : -1;
+			const bool turn = _pkSeated && _pk.inHand && hi >= 0 && _pk.hand.ToAct() == hi && _pk.phase == PkPhase::kBetting &&
+			                  _pk.boardShown >= _pk.hand.board.size();
+			if (turn && !_pkTurnWas && _pkPre == 0 && Settings::Get().turnChime) {
+				Audio::PlayUI(Audio::Bank::kTurn, 0.55f);
+			}
+			_pkTurnWas = turn;
+		}
 		if (!PkAnimating()) {
 			PkTickCards(frame, a_dt);
 		}

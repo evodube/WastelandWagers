@@ -79,6 +79,7 @@ namespace fr
 		// [Sound]
 		bool  sound{ true };
 		float soundVolume{ 0.8f };
+		bool  turnChime{ true };   // a chime when it's your turn at the poker or blackjack table (or bets open)
 
 		// [Forms]
 		std::string plugin{ "fo4roulette.esl" };

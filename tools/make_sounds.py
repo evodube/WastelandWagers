@@ -121,6 +121,17 @@ def win():
     return buf
 
 
+def turn():
+    """your turn at a card table: a soft two-note chime, low and short so it doesn't startle"""
+    buf = np.zeros(int(0.9 * RATE))
+    for at, f, g in ((0.0, 1046.5, 0.8), (0.13, 1568.0, 1.0)):  # C6 then G6
+        tt = t(0.7)
+        bell = (np.sin(2 * np.pi * f * tt) + 0.25 * np.sin(2 * np.pi * f * 2.0 * tt) + 0.08 * np.sin(2 * np.pi * f * 3.01 * tt))
+        bell *= np.exp(-tt / 0.22) * np.minimum(1.0, tt / 0.004)
+        place(buf, bell, at, g)
+    return buf
+
+
 SOURCE = os.path.join(os.path.dirname(__file__), "source_sounds", "roulette_gfxsounds.wav")
 SPLIT = 3.95  # seconds: the roll ends and the drop begins
 
@@ -190,7 +201,7 @@ def main() -> int:
     for old in os.listdir(out):
         if old.endswith(".wav"):
             os.remove(os.path.join(out, old))
-    banks = {"chip": (chip, 4), "spin": (spin, 2)}
+    banks = {"chip": (chip, 4), "spin": (spin, 2), "turn": (turn, 1)}
     if os.path.exists(SOURCE):
         banks["roll"] = (real_roll, 1)
         sets = {"rattle": real_hits(), "tick": real_ticks(), "settle": [real_settle()]}

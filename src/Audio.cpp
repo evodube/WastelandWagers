@@ -98,6 +98,7 @@ namespace fr::Audio
 			case Bank::kCard: return L"card";
 			case Bank::kSlide: return L"slide";
 			case Bank::kShuffle: return L"shuffle";
+			case Bank::kTurn: return L"turn";
 			default: return L"";
 			}
 		}

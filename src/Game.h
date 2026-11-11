@@ -663,6 +663,8 @@ namespace fr
 		bool              _bjTopView{ false };
 		float             _bjLookYaw{ 0.0f };
 		bool              _bjShowHand{ true };    // your hand on the HUD (the SHOW / HIDE HAND button)
+		int               _bjPrompt{ 0 };         // what the table's waiting on you for (the chime when it changes)
+		bool              _pkTurnWas{ false };    // (poker: your turn last tick: the chime when it comes)
 		bool              _bjShowDealer{ true };  // the dealer's cards on the HUD (SHOW / HIDE DEALER)
 		std::chrono::steady_clock::time_point _bjAnimLast{}, _bjAnimAt{};
 		bool              _bjAnimHave{ false };
