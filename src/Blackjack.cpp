@@ -1117,8 +1117,9 @@ namespace fr
 					continue;
 				}
 				if (_bj.turnSeat != i) {
-					DealerGesture(_bj.dealerActor, _bj.dealerHeld, _bj.dealerCool, Gesture::kPoint, 0.0, kDealerStand, 0.0, -1.0,
-						kSpots[i].first, kSpots[i].second);  // (the dealer points at whose turn it is)
+					const auto at = Circle(i);
+					DealerGesture(_bj.dealerActor, _bj.dealerHeld, _bj.dealerCool, Gesture::kPoint, 0.0, kDealerStand, 0.0, -1.0, at.x,
+						at.y);  // (the dealer points at whose turn it is)
 				}
 				_bj.turnSeat = i;
 				_bj.turnHand = h;
