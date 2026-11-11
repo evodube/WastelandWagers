@@ -213,9 +213,8 @@ namespace fr
 		BlockControls(true);
 		QuietNpcs(true);
 		const auto& s = Settings::Get();
-		const std::string spin = Upper(Settings::Key(s.keySpin > 0 ? s.keySpin : _activateVk.load()));
 		log::info("sat down at the table");
-		Say(std::format("LEFT BUTTON BETS · {} SPINS · {} LEAVES", spin, Upper(Settings::Key(s.keyLeave))));
+		Say(std::format("LEFT BUTTON BETS · THE DEALER SPINS · {} LEAVES", Upper(Settings::Key(s.keyLeave))));
 	}
 
 	void Game::StandUp()
@@ -583,14 +582,13 @@ namespace fr
 		h.lastWin = _t.lastWin;
 		const auto& s = Settings::Get();
 		auto key = [](int a_vk) { return Upper(Settings::Key(a_vk)); };
-		h.keys = std::format("LMB BET · RMB TAKE BACK · {}-{} CHIP · {} SPIN · {} SAME AGAIN · {} CLEAR · {} WHEEL · {} LEAVE", key(s.keyChip[0]),
-			key(s.keyChip[3]), key(s.keySpin > 0 ? s.keySpin : _activateVk.load()), key(s.keyRebet), key(s.keyClear), key(s.keyView),
-			key(s.keyLeave));
+		h.keys = std::format("LMB BET · RMB TAKE BACK · {}-{} CHIP · {} SAME AGAIN · {} CLEAR · {} WHEEL · {} LEAVE", key(s.keyChip[0]),
+			key(s.keyChip[3]), key(s.keyRebet), key(s.keyClear), key(s.keyView), key(s.keyLeave));
 		if (_seated && IsKitTable(_t.table.get().get())) {
 			h.keys += std::format(" · {} PACK UP", key(s.keyPackUp));
 			h.kitTable = true;
 		}
-		h.rlKeys = { key(s.keySpin > 0 ? s.keySpin : _activateVk.load()), key(s.keyRebet), key(s.keyClear), key(s.keyView), key(s.keyLeave),
+		h.rlKeys = { std::string(), key(s.keyRebet), key(s.keyClear), key(s.keyView), key(s.keyLeave),
 			key(s.keyPackUp), std::format("{}-{}", key(s.keyChip[0]), key(s.keyChip[3])) };
 		// the pointer, down on the buttons
 		if (_rlUi) {

@@ -145,7 +145,7 @@ namespace fr
 		const auto& s = Settings::Get();
 		const bool  focus = util::GameHasFocus();
 		const bool  seated = _seated.load();
-		const int   spin = s.keySpin > 0 ? s.keySpin : _activateVk.load();
+		const int   spin = _activateVk.load();  // (activate: blackjack's deal; at roulette nothing, the dealer spins)
 		const bool  placing = _kitPlacing.load();
 		const bool  poker = AtCardTable();  // (poker or blackjack: the pointer and its buttons)
 		const std::array<int, 15> keys{ spin, s.keyLeave, s.keyView, s.keyRebet, s.keyClear, s.keyChip[0], s.keyChip[1], s.keyChip[2],
@@ -312,7 +312,7 @@ namespace fr
 					return;
 				}
 				switch (i) {
-				case 0: StartSpin(true); break;
+				case 0: break;  // (the dealer spins the wheel: it goes by itself after the first bet)
 				case 1: StandUp(); break;
 				case 2: ToggleView(); break;
 				case 3: Rebet(); break;
@@ -360,7 +360,6 @@ namespace fr
 							return;
 						}
 						switch (id) {
-						case 24: StartSpin(true); break;
 						case 25: Rebet(); break;
 						case 26:
 							if (_t.phase == Phase::kBetting && HasBets(0)) {
@@ -751,6 +750,7 @@ namespace fr
 			ReleaseSeat(seat, nullptr);
 		}
 		_t.seats.clear();
+		ReleaseCroupier(_t.croupier, a_why);
 		_t.table = {};
 		_t.phase = Phase::kBetting;
 		_t.planning = false;
@@ -1483,6 +1483,7 @@ namespace fr
 			DespawnStake(st);
 		}
 		Remove(_t.ball);
+		UnholdCroupier(_t.croupier);
 		for (auto& seat : _t.seats) {
 			Remove(seat.walk.marker);
 			if (seat.held) {

@@ -18,7 +18,7 @@ namespace fr
 		static std::string Key(int a_vk);
 
 		// [Keys] virtual-key codes. Spin 0 = the game's activate key.
-		int keySpin{ 0 };
+		// (no spin key since 0.7.2: the dealer spins the wheel)
 		int keyLeave{ 0x58 };    // X
 		int keyView{ 0x56 };     // V: the layout or the wheel
 		int keyRebet{ 0x42 };    // B: last round's bets again

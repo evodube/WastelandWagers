@@ -119,6 +119,7 @@ namespace pk
 		int                 button{ 0 };
 		int                 smallBlind{ 0 };
 		int                 bigBlind{ 0 };
+		int                 bigBlindSeat{ -1 };   // who posted the big blind this hand (players' index)
 		int                 lastAggressor{ -1 };
 		int                 preflopRaiser{ -1 };  // who raised last before the flop (they're the one to bet the flop)
 		int                 raises{ 0 };          // raises this street

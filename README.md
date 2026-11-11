@@ -7,6 +7,8 @@ wander over and bet with their own caps, cheering or shaking their heads at the 
 
 Since 0.4.0 there's a **poker table** too: no-limit Texas Hold'em against settlers who sit in with their own caps.
 Since 0.7.0, a **blackjack table**: you and up to six settlers against the dealer.
+Every table has a dealer: a settler walks over and stands behind it (at roulette they spin the wheel, by the chip tray
+at poker).
 
 **Status: 0.7.1.**
 
@@ -30,9 +32,8 @@ Since 0.7.0, a **blackjack table**: you and up to six settlers against the deale
      the bet, what it pays and what's on it.
    - **Left button**: put a chip down (your caps go on the table). **Right button**: take your chips off that bet.
    - **1 2 3 4**: the 1, 5, 25 and 100 cap chips. **B**: the same bets as last round. **C**: all your chips back.
-   - The wheel spins **15 seconds after the first bet** of the round (yours or a settler's; the HUD counts down).
-     **E** (activate) spins it straight away. The camera goes over the wheel while the ball goes round (**V**
-     switches view any time).
+   - The dealer spins the wheel **15 seconds after the first bet** of the round (yours or a settler's; the HUD counts
+     down). The camera goes over the wheel while the ball goes round (**V** switches view any time).
    - **X**: get up. Bets on the table stay there and are paid while you're nearby.
 3. **Other players**: settlers near the table come over now and then, each to their own spot at the layout (two on each side), and put
    25 to 100 caps a round on it from their own purse, a few rounds each, until they've had enough or run out. While
@@ -76,7 +77,7 @@ onto the card boxes once you press DEAL or the betting time runs out.
   pair once (split aces get one card each); no surrender. Settlers play by the book.
 - Buttons: the chips (+1, +5, +25, +100), take back, same bet, deal; on your turn hit, stand, double, split; insurance
   or not. Keys: **1-4** the chips while bets are open, and hit / stand / double / split on your turn (insurance: **1**
-  yes, **2** no); the spin key deals; **X** leaves; **V** the view from above. Controller: **A B X Y** as 1-4, **Back**
+  yes, **2** no); **E** (activate) deals; **X** leaves; **V** the view from above. Controller: **A B X Y** as 1-4, **Back**
   leaves, **Start** the view.
 
 Winning bets are paid at the usual odds (35 to 1 down to even money). The result is drawn fairly first, and the ball

@@ -131,7 +131,6 @@ namespace fr::SettingsMenu
 					} },
 				{ "Keys", "Click a key's button, then press the key you want. Spin 'none' = the game's activate key.",
 					{
-						{ L"Keys", L"iSpin", "Spin", Kind::kKey, &s.keySpin },
 						{ L"Keys", L"iLeave", "Leave the table", Kind::kKey, &s.keyLeave },
 						{ L"Keys", L"iView", "Layout / wheel view", Kind::kKey, &s.keyView },
 						{ L"Keys", L"iRebet", "Same bets again", Kind::kKey, &s.keyRebet },

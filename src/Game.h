@@ -120,7 +120,7 @@ namespace fr
 			float                bannerAge{ 0.0f };
 			bool                 wheelView{ false };
 			bool                 kitTable{ false };    // (roulette: a table from a kit, PACK UP on offer)
-			std::array<std::string, 7> rlKeys;         // (roulette's buttons: their keys, SPIN, SAME AGAIN, CLEAR, WHEEL, LEAVE, PACK UP, chips)
+			std::array<std::string, 7> rlKeys;         // (roulette's buttons: their keys, (unused), SAME AGAIN, CLEAR, WHEEL, LEAVE, PACK UP, chips)
 			std::string          keys;                 // the key hints line
 			bool                 placing{ false };     // setting a kit table up: just the key hints
 			int                  lastWin{ 0 };
@@ -133,7 +133,7 @@ namespace fr
 				int                bet{ 0 };
 				std::string        status;          // their last action, "FOLDED", "ALL IN", "THINKING"
 				bool               toAct{ false };
-				bool               dealer{ false };
+				bool               bigBlind{ false };  // poker: the big blind this hand (a B by their name)
 				bool               you{ false };
 				bool               folded{ false };
 				std::array<int, 2> shown{ -1, -1 };  // their cards, at a showdown
@@ -239,6 +239,18 @@ namespace fr
 			float               best{ 1.0e9f };  // the closest they've got
 			float               stall{ 0.0f };   // seconds without getting closer
 			float               getUp{ 0.0f };   // seconds before trying to get them out of a chair again
+		};
+
+		// a settler standing behind a table as its dealer (poker, roulette; the blackjack table has its own): walks over
+		// while the table's in play and stands there
+		struct Croupier
+		{
+			RE::ObjectRefHandle actor;
+			RE::TESFormID       id{ 0 };
+			std::string         name;
+			Walker              walk;
+			bool                held{ false };
+			float               lookIn{ 0.0f };  // seconds before looking for one again
 		};
 
 		// an NPC at the table, betting
@@ -370,6 +382,12 @@ namespace fr
 		bool         WalkTo(RE::Actor* a_actor, Walker& a_walk, const Frame& a_frame, const RE::NiPoint3& a_spot, float a_heading, float a_dt,
 					bool a_dealer, float a_timeout);  // true: there
 		void         FaceTowards(RE::Actor* a_actor, float a_heading);
+		// the dealers (Npcs.cpp): found, walked to their place (table space, facing the way given) and stood there
+		bool         IsCroupier(RE::TESFormID a_id) const;  // dealing at one of the tables (blackjack's too)
+		void         TickCroupier(Croupier& a_c, const Frame& a_frame, double a_x, double a_y, double a_faceX, double a_faceY, float a_dt,
+					const char* a_table);
+		void         ReleaseCroupier(Croupier& a_c, const char* a_why);
+		void         UnholdCroupier(Croupier& a_c);  // (a save: let go, held again after)
 		void         WatchTurn(RE::Actor* a_actor, float a_heading);  // (the turning log)
 
 		// ------------------------------------------------------------ poker (Poker.cpp)
@@ -488,6 +506,7 @@ namespace fr
 			int                                                    lifted{ 0 };  // your stack, back in your pocket over a save
 			bool                                                   peeking{ false };  // you're looking at your cards: they're turned up
 			PkSession                                              session;
+			Croupier                                               croupier;  // the dealer, by the chip tray
 		};
 		PokerState        _pk;
 		std::atomic<bool> _pkSeated{ false };
@@ -721,7 +740,7 @@ namespace fr
 			std::deque<HudLine>                         log;
 			float                                       roomLayout{ 1.0e6f };  // free height above the layout, and the wheel
 			float                                       roomWheel{ 1.0e6f };
-		};
+			Croupier                                    croupier;  // the dealer, by the wheel
 		Slot _t;
 		Slot _other;
 		bool _secondary{ false };  // _t is the other table for now (its tick): nothing of you at the table applies

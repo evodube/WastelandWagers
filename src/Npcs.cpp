@@ -277,6 +277,104 @@ namespace fr
 
 	// ---------------------------------------------------------------- settlers betting
 
+	// ---------------------------------------------------------------- the dealers
+
+	bool Game::IsCroupier(RE::TESFormID a_id) const
+	{
+		return a_id != 0 && (_t.croupier.id == a_id || _other.croupier.id == a_id || _pk.croupier.id == a_id || _bj.dealerId == a_id);
+	}
+
+	void Game::TickCroupier(Croupier& a_c, const Frame& a_frame, double a_x, double a_y, double a_faceX, double a_faceY, float a_dt,
+		const char* a_table)
+	{
+		const auto* you = RE::PlayerCharacter::GetSingleton();
+		if (a_c.id == 0) {
+			// nobody dealing: the nearest free settler comes over, now and then
+			a_c.lookIn -= a_dt;
+			if (a_c.lookIn > 0.0f || (you && you->IsInCombat())) {
+				return;
+			}
+			a_c.lookIn = std::uniform_real_distribution<float>(6.0f, 12.0f)(_rng);
+			const auto&  s = Settings::Get();
+			auto*        player = RE::PlayerCharacter::GetSingleton();
+			static auto* npcType = RE::TESForm::GetFormByID<RE::BGSKeyword>(Forms::kActorTypeNPC);
+			RE::Actor*   best = nullptr;
+			float        bestD = 1e9f;
+			util::ForEachLoadedCell([&](RE::TESObjectCELL* a_cell) {
+				a_cell->ForEachReferenceInRange(a_frame.origin, s.bettorRange, [&](RE::TESObjectREFR* a_ref) {
+					auto* actor = a_ref ? a_ref->As<RE::Actor>() : nullptr;
+					if (!Usable(actor) || actor == player || actor->IsChild() || actor->IsInCombat() || Npc::Busy(actor) ||
+						(player && actor->GetHostileToActor(player)) || (npcType && !actor->HasKeywordHelper(npcType, nullptr)) ||
+						IsCroupier(actor->GetFormID()) || BjHasSeat(actor->GetFormID()) || PkHasSeat(actor->GetFormID()) ||
+						std::ranges::any_of(_t.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); }) ||
+						std::ranges::any_of(_other.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); })) {
+						return RE::BSContainer::ForEachResult::kContinue;
+					}
+					const float d = (actor->data.location - a_frame.origin).Length();
+					if (d < bestD) {
+						bestD = d;
+						best = actor;
+					}
+					return RE::BSContainer::ForEachResult::kContinue;
+				});
+			});
+			if (!best) {
+				return;
+			}
+			a_c.actor = best->GetHandle();
+			a_c.id = best->GetFormID();
+			a_c.name = best->GetDisplayFullName();
+			a_c.walk = Walker{};
+			a_c.held = false;
+			log::info("{}: {} ({:08X}) comes over to deal", a_table, a_c.name, a_c.id);
+			return;
+		}
+		auto  ref = a_c.actor.get();
+		auto* actor = ref ? ref->As<RE::Actor>() : nullptr;
+		if (!Usable(actor) || actor->IsInCombat() || (you && you->IsInCombat()) || Npc::AtPool(actor)) {
+			ReleaseCroupier(a_c, "gone");
+			return;
+		}
+		if (a_c.held) {
+			return;  // (there: they just stand)
+		}
+		const float heading = HeadingOf(a_frame, a_faceX, a_faceY);
+		const auto  spot = ToWorld(a_frame, a_x, a_y, 0.0);
+		if (WalkTo(actor, a_c.walk, a_frame, spot, heading, a_dt, true, 15.0f)) {
+			if (auto marker = a_c.walk.marker.get(); marker && std::hypot(actor->data.location.x - spot.x, actor->data.location.y - spot.y) > 0.5f) {
+				Npc::MoveTo(actor, marker.get());
+			}
+			a_c.held = Npc::SetRestrained(actor, true);
+		}
+	}
+
+	void Game::ReleaseCroupier(Croupier& a_c, const char* a_why)
+	{
+		if (a_c.id == 0) {
+			return;
+		}
+		if (auto ref = a_c.actor.get(); ref && ref->As<RE::Actor>()) {
+			auto* actor = ref->As<RE::Actor>();
+			if (a_c.held) {
+				Npc::SetRestrained(actor, false);
+			}
+			Npc::Leave(actor);
+		}
+		Remove(a_c.walk.marker);
+		log::info("dealer {} leaves ({})", a_c.name, a_why ? a_why : "");
+		a_c = Croupier{};
+	}
+
+	void Game::UnholdCroupier(Croupier& a_c)
+	{
+		if (a_c.held) {
+			if (auto ref = a_c.actor.get(); ref && ref->As<RE::Actor>()) {
+				Npc::SetRestrained(ref->As<RE::Actor>(), false);
+			}
+			a_c.held = false;
+		}
+	}
+
 	void Game::FindBettor(const Frame& a_frame)
 	{
 		if (const auto* you = RE::PlayerCharacter::GetSingleton(); you && you->IsInCombat()) {
@@ -299,7 +397,7 @@ namespace fr
 					(npcType && !actor->HasKeywordHelper(npcType, nullptr)) ||
 					std::ranges::any_of(_t.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); }) ||
 					std::ranges::any_of(_other.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); }) ||  // (at the other table)
-					PkHasSeat(actor->GetFormID()) || BjHasSeat(actor->GetFormID()) ||                                                                 // (playing poker)
+					PkHasSeat(actor->GetFormID()) || BjHasSeat(actor->GetFormID()) || IsCroupier(actor->GetFormID()) ||                          // (playing poker, dealing)
 					std::ranges::any_of(found, [&](const auto& f) { return f.second == actor; })) {
 					return RE::BSContainer::ForEachResult::kContinue;
 				}
@@ -367,6 +465,11 @@ namespace fr
 	void Game::TickSeats(const Frame& a_frame, float a_dt)
 	{
 		const auto& s = Settings::Get();
+		{
+			// the dealer: on the far side, between the wheel and the layout, facing the players' side
+			using namespace rl::table;
+			TickCroupier(_t.croupier, a_frame, (kWheelX + kZeroX0) * 0.5, kFarEdgeY + kStepBack, 0.0, -1.0, a_dt, "roulette");
+		}
 		_t.seatTimer -= a_dt;
 		if (_t.seatTimer <= 0.0f) {
 			_t.seatTimer = s.bettorEvery * std::uniform_real_distribution<float>(0.7f, 1.3f)(_rng);

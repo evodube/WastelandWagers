@@ -480,9 +480,9 @@ namespace fr::Hud
 					}
 					DL::AddPolyline(a_v.dl, pts.data(), k, kBright, 0, std::max(1.5f, 2.5f * a_v.s));
 				}
-				if (r.dealer) {
+				if (r.bigBlind) {
 					DL::AddCircleFilled(a_v.dl, a_v.P(cx + 11, cy + 11), 7.0f * a_v.s, Rgba(236, 232, 222), 20);
-					PrintInkCentred(a_v, Mono(), "D", cx + 11, cy + 11, 9, Rgba(20, 20, 20));
+					PrintInkCentred(a_v, Mono(), "B", cx + 11, cy + 11, 9, Rgba(20, 20, 20));
 				}
 				// the name, and what they did as a tag under it
 				Print(a_v, Mono(), r.name, x + 56, row + 4, 14, col, 0, 1.0f);
@@ -858,8 +858,8 @@ namespace fr::Hud
 			std::vector<Game::PkButton> out;
 			const bool  betting = a_st.phase == 0;
 			constexpr float h = 40.0f, gap = 8.0f;
-			const float wChip = 70.0f, wSpin = 150.0f, wSame = 150.0f, wClear = 130.0f;
-			const float w = wChip * 4 + gap * 3 + 24.0f + wSpin + wSame + wClear + gap * 2;
+			const float wChip = 70.0f, wSame = 150.0f, wClear = 130.0f;
+			const float w = wChip * 4 + gap * 3 + 24.0f + wSame + wClear + gap;
 			const float k = std::min(1.0f, (a_v.w - 48.0f) / w);
 			float       x = a_v.w * 0.5f - w * k * 0.5f;
 			const float y = a_v.h - 52.0f;
@@ -873,8 +873,7 @@ namespace fr::Hud
 				x += (wChip + gap) * k;
 			}
 			x += 24.0f * k;
-			Button(a_v, a_st, out, 24, std::format("SPIN ({})", a_st.rlKeys[0]), x, y, wSpin * k, h, betting && a_st.onTable > 0, true, 14.0f);
-			x += (wSpin + gap) * k;
+			// (no SPIN: the dealer spins the wheel, a while after the round's first bet)
 			Button(a_v, a_st, out, 25, std::format("SAME AGAIN ({})", a_st.rlKeys[1]), x, y, wSame * k, h, betting, false, 14.0f);
 			x += (wSame + gap) * k;
 			Button(a_v, a_st, out, 26, std::format("CLEAR ({})", a_st.rlKeys[2]), x, y, wClear * k, h, betting && a_st.onTable > 0, false, 14.0f,
@@ -1119,7 +1118,7 @@ namespace fr::Hud
 							pk::CardName(static_cast<pk::Card>(a_st.pkHole[1])).c_str(), board.c_str(), a_st.pkHand.c_str());
 					}
 					for (const auto& r : a_st.pkRows) {
-						Text("%s%s  %d  bet %d  %s", r.dealer ? "(D) " : "", r.name.c_str(), r.stack, r.bet, r.status.c_str());
+						Text("%s%s  %d  bet %d  %s", r.bigBlind ? "(B) " : "", r.name.c_str(), r.stack, r.bet, r.status.c_str());
 					}
 					TextUnformatted(a_st.keys.c_str());
 				} else {

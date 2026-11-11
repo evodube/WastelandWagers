@@ -456,6 +456,7 @@ namespace fr
 		for (auto& h : _pk.chairs) {
 			Remove(h);
 		}
+		ReleaseCroupier(_pk.croupier, a_why);
 		log::info("poker table no longer in play: {}", a_why);
 		_pk = PokerState{};
 	}
@@ -1044,7 +1045,7 @@ namespace fr
 					}
 				}
 				if (!Usable(actor) || actor == player || actor->IsChild() || actor->IsInCombat() || (player && actor->GetHostileToActor(player)) ||
-					(npcType && !actor->HasKeywordHelper(npcType, nullptr)) || PkHasSeat(actor->GetFormID()) || BjHasSeat(actor->GetFormID()) ||
+					(npcType && !actor->HasKeywordHelper(npcType, nullptr)) || PkHasSeat(actor->GetFormID()) || BjHasSeat(actor->GetFormID()) || IsCroupier(actor->GetFormID()) ||
 					std::ranges::any_of(_t.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); }) ||
 					std::ranges::any_of(_other.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); })) {
 					return RE::BSContainer::ForEachResult::kContinue;
@@ -1240,6 +1241,8 @@ namespace fr
 	void Game::PkTickSeats(const Frame& a_frame, float a_dt)
 	{
 		const auto& s = Settings::Get();
+		// the dealer: on the chip tray's side, between the two seats there, facing the table; just stands there
+		TickCroupier(_pk.croupier, a_frame, kRailR + kStandOff, 0.0, -1.0, 0.0, a_dt, "poker");
 		_pk.seatTimer -= a_dt;
 		if (_pk.seatTimer <= 0.0f) {
 			_pk.seatTimer = s.bettorEvery * std::uniform_real_distribution<float>(0.6f, 1.2f)(_rng);
@@ -2512,7 +2515,7 @@ namespace fr
 			HudState::PokerRow r;
 			r.name = st.you ? std::string("YOU") : Upper(st.name);
 			r.you = st.you;
-			r.dealer = i == _pk.button && _pk.inHand;
+			r.bigBlind = _pk.inHand && st.hi >= 0 && st.hi == h.bigBlindSeat;  // (no dealer at this table: the big blind's marked)
 			r.stack = st.stack;
 			if (_pk.inHand && st.hi >= 0) {
 				const auto& p = h.players[st.hi];
@@ -2674,6 +2677,7 @@ namespace fr
 			Remove(m.ref);
 		}
 		_pk.moves.clear();
+		UnholdCroupier(_pk.croupier);
 		for (auto& st : _pk.seats) {
 			if (st.used && !st.you && st.held) {
 				if (auto ref = st.actor.get(); ref && ref->As<RE::Actor>()) {

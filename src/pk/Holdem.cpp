@@ -162,6 +162,7 @@ namespace pk
 		};
 		const int sb = Live() == 2 ? button : NextSeat(button, false);
 		const int bb = NextSeat(sb, false);
+		bigBlindSeat = bb;
 		post(sb, a_small);
 		post(bb, a_big);
 		_currentBet = a_big;

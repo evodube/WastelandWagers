@@ -72,7 +72,6 @@ namespace fr
 	void Settings::Load()
 	{
 		auto key = [](const wchar_t* a_name, int a_default) { return static_cast<int>(ReadInt(L"Keys", a_name, a_default)); };
-		keySpin = key(L"iSpin", keySpin);
 		keyLeave = key(L"iLeave", keyLeave);
 		keyView = key(L"iView", keyView);
 		keyRebet = key(L"iRebet", keyRebet);

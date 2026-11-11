@@ -452,7 +452,7 @@ namespace fr
 				auto* actor = a_ref ? a_ref->As<RE::Actor>() : nullptr;
 				if (!Usable(actor) || actor == player || actor->IsChild() || actor->IsInCombat() || Npc::Busy(actor) ||
 					(player && actor->GetHostileToActor(player)) || (npcType && !actor->HasKeywordHelper(npcType, nullptr)) ||
-					BjHasSeat(actor->GetFormID()) || PkHasSeat(actor->GetFormID()) ||
+					BjHasSeat(actor->GetFormID()) || PkHasSeat(actor->GetFormID()) || IsCroupier(actor->GetFormID()) ||
 					std::ranges::any_of(_t.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); }) ||
 					std::ranges::any_of(_other.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); })) {
 					return RE::BSContainer::ForEachResult::kContinue;
@@ -520,7 +520,7 @@ namespace fr
 				auto* actor = a_ref ? a_ref->As<RE::Actor>() : nullptr;
 				if (!Usable(actor) || actor == player || actor->IsChild() || actor->IsInCombat() || Npc::Busy(actor) ||
 					(player && actor->GetHostileToActor(player)) || (npcType && !actor->HasKeywordHelper(npcType, nullptr)) ||
-					BjHasSeat(actor->GetFormID()) || PkHasSeat(actor->GetFormID()) ||
+					BjHasSeat(actor->GetFormID()) || PkHasSeat(actor->GetFormID()) || IsCroupier(actor->GetFormID()) ||
 					std::ranges::any_of(_t.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); }) ||
 					std::ranges::any_of(_other.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); })) {
 					return RE::BSContainer::ForEachResult::kContinue;
@@ -1687,13 +1687,6 @@ namespace fr
 				}
 				a_h.pkRows.push_back(std::move(r));
 			}
-		}
-		if (_bj.dealerId != 0) {
-			HudState::PokerRow r;
-			r.name = Upper(_bj.dealerName);
-			r.dealer = true;
-			r.status = "DEALER";
-			a_h.pkRows.push_back(std::move(r));
 		}
 		// the dealer's cards
 		for (std::size_t k = 0; k < _bj.dealer.size(); ++k) {
