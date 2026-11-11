@@ -539,33 +539,14 @@ namespace fr
 
 	void Game::BjFindDealer(const Frame& a_frame)
 	{
+		// only the settler assigned to the table (workshop mode) deals
+		(void)a_frame;
 		if (_bj.dealerId != 0) {
 			return;
 		}
-		const auto& s = Settings::Get();
-		auto*       player = RE::PlayerCharacter::GetSingleton();
-		static auto* npcType = RE::TESForm::GetFormByID<RE::BGSKeyword>(Forms::kActorTypeNPC);
-		RE::Actor*  best = nullptr;
-		float       bestD = 1e9f;
-		util::ForEachLoadedCell([&](RE::TESObjectCELL* a_cell) {
-			a_cell->ForEachReferenceInRange(a_frame.origin, s.bettorRange, [&](RE::TESObjectREFR* a_ref) {
-				auto* actor = a_ref ? a_ref->As<RE::Actor>() : nullptr;
-				if (!Usable(actor) || actor == player || actor->IsChild() || actor->IsInCombat() || Npc::Busy(actor) ||
-					(player && actor->GetHostileToActor(player)) || (npcType && !actor->HasKeywordHelper(npcType, nullptr)) ||
-					BjHasSeat(actor->GetFormID()) || PkHasSeat(actor->GetFormID()) || IsCroupier(actor->GetFormID()) ||
-					std::ranges::any_of(_t.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); }) ||
-					std::ranges::any_of(_other.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); })) {
-					return RE::BSContainer::ForEachResult::kContinue;
-				}
-				const float d = (actor->data.location - a_frame.origin).Length();
-				if (d < bestD) {
-					bestD = d;
-					best = actor;
-				}
-				return RE::BSContainer::ForEachResult::kContinue;
-			});
-		});
-		if (!best) {
+		auto  assigned = _bj.assigned.get();
+		auto* best = assigned ? assigned->As<RE::Actor>() : nullptr;
+		if (!best || !DealerFree(best, 0)) {
 			return;
 		}
 		_bj.dealerActor = best->GetHandle();
@@ -667,7 +648,10 @@ namespace fr
 		_bj.dealerCool -= a_dt;
 		if (auto ref = _bj.dealerActor.get(); _bj.dealerId != 0) {
 			auto* actor = ref ? ref->As<RE::Actor>() : nullptr;
-			if (!Usable(actor) || actor->IsInCombat() || (you && you->IsInCombat()) || Npc::AtPool(actor)) {
+			auto  assigned = _bj.assigned.get();
+			const bool still = assigned && assigned->GetFormID() == _bj.dealerId;  // (assigned to the table still)
+			if (!still || !Usable(actor) || actor->IsInCombat() || (you && you->IsInCombat()) || Npc::AtPool(actor)) {
+				log::info("blackjack: dealer {} leaves ({})", _bj.dealerName, still ? "gone" : "not assigned to the table any more");
 				if (actor) {
 					if (_bj.dealerHeld) {
 						Npc::SetRestrained(actor, false);

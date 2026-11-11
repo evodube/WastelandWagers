@@ -252,6 +252,7 @@ namespace fr
 			bool                held{ false };
 			float               lookIn{ 0.0f };  // seconds before looking for one again
 			float               cool{ 0.0f };    // seconds before they gesture again
+			RE::ObjectRefHandle assigned;        // the settler assigned to the table in workshop mode: the only one who deals
 		};
 		// what a dealer does now and then (Npcs.cpp): point at whose turn it is, wave the table in to bet, hand the
 		// cards out, say their piece (the game's gestures that play on the spot: no stepping round to line up)
@@ -390,11 +391,14 @@ namespace fr
 					bool a_dealer, float a_timeout);  // true: there
 		void         FaceTowards(RE::Actor* a_actor, float a_heading);
 		// the dealers (Npcs.cpp): found, walked to their place (table space, facing the way given) and stood there
-		bool         IsCroupier(RE::TESFormID a_id) const;  // dealing at one of the tables (blackjack's too)
+		bool         IsCroupier(RE::TESFormID a_id) const;  // dealing at one of the tables, or assigned to (blackjack's too)
+		RE::ObjectRefHandle AssignedTo(const RE::ObjectRefHandle& a_table);  // the settler assigned to a table (its owner)
+		void         ScanAssigned();     // who's assigned to the tables in play, now and then
+		bool         DealerFree(RE::Actor* a_actor, RE::TESFormID a_self);  // can come over and deal now
 		void         Voice(RE::Actor* a_actor, int a_how);  // a settler's cheer / laugh (a_how > 0) or groan (< 0), now and then
 		void         RlDealer(Gesture a_g);  // the roulette dealer's gesture (Npcs.cpp: where they stand)
 		void         TickCroupier(Croupier& a_c, const Frame& a_frame, double a_x, double a_y, double a_faceX, double a_faceY, float a_dt,
-					const char* a_table);
+					const char* a_table);  // (the settler assigned to the table: a_c.assigned)
 		void         ReleaseCroupier(Croupier& a_c, const char* a_why);
 		void         UnholdCroupier(Croupier& a_c);  // (a save: let go, held again after)
 		// a gesture by a dealer standing at (a_x, a_y) facing (a_fx, a_fy), table space; kPoint at (a_tx, a_ty)
@@ -677,6 +681,7 @@ namespace fr
 			bool                            shuffleSaid{ false };
 			float                           sweep{ 0.0f };     // (seconds to the next look for stray cards and chips)
 			float                           dealerCool{ 0.0f };  // (seconds before the dealer gestures again)
+			RE::ObjectRefHandle             assigned;            // the settler assigned to the table: its dealer
 			bool                            pointed{ false };    // (the dealer's pointed this round: once a round)
 		};
 		BlackjackState    _bj;

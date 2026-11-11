@@ -210,18 +210,28 @@ def quest_vmad(quest_id: int, quest_script: str, alias_properties: list[tuple[st
 
 
 
+WORKSHOP_PARENT = 0x0002058E       # Fallout4.esm's WorkshopParent quest
+WORKSHOP_WORK_OBJECT = 0x00020592  # Fallout4.esm's WorkshopWorkObject keyword
+
+
 def activator(form_id: int, editor_id: str, name: str, mesh: str, bounds: tuple, verb: str, preview: int) -> bytes:
-    """An activator with no script: activating it is what the plugin listens for (TESActivateEvent). preview: the
-    TRNS that frames it in the workshop menu (PTRN)."""
+    """An activator: activating it is what the plugin listens for (TESActivateEvent). preview: the TRNS that frames it
+    in the workshop menu (PTRN). A workshop work object (0.7.6): WorkshopObjectScript (its WorkshopParent set, as
+    Fallout4.esm's beds have it) and the WorkshopWorkObject keyword, so a settler can be assigned to it in workshop
+    mode, as to a vendor stall: that settler's the table's dealer (the plugin reads the table's owner)."""
+    vmad = struct.pack("<HHH", 6, 2, 1) + script_entry("WorkshopObjectScript", [object_property("WorkshopParent", WORKSHOP_PARENT)])
     return record(
         b"ACTI",
         0,
         form_id,
         subrecord(b"EDID", zstring(editor_id))
+        + subrecord(b"VMAD", vmad)
         + subrecord(b"OBND", struct.pack("<6h", *bounds))
         + subrecord(b"PTRN", struct.pack("<I", preview))
         + subrecord(b"FULL", zstring(name))
         + subrecord(b"MODL", zstring(mesh))
+        + subrecord(b"KSIZ", struct.pack("<I", 1))
+        + subrecord(b"KWDA", struct.pack("<I", WORKSHOP_WORK_OBJECT))
         + subrecord(b"ATTX", zstring(verb))
         + subrecord(b"FNAM", struct.pack("<H", 0)),
     )
