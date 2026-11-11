@@ -723,6 +723,7 @@ namespace fr
 				// sat in their chair (the quest's Sit package keeps them there; checked now and then, sat again if
 				// they're up, moved onto it after a couple of goes)
 				auto chair = _bj.chairs[i].get();
+				TrackSit("blackjack", st.name, actor, chair.get(), st.sitWas);
 				st.sitCheck -= a_dt;
 				if (chair && st.sitCheck <= 0.0f) {
 					st.sitCheck = 3.0f;
@@ -736,6 +737,8 @@ namespace fr
 							log::info("blackjack: {} still isn't in their chair (sit state {}): moved onto it and sat", st.name, static_cast<int>(sit));
 							Npc::MoveTo(actor, chair.get());
 							st.sitTries = 0;
+						} else {
+							log::info("[sit] blackjack: {} isn't in their chair (sit state {}): sat down again", st.name, static_cast<int>(sit));
 						}
 						Npc::SitOn(actor, chair.get());
 					}

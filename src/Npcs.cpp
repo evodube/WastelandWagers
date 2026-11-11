@@ -373,6 +373,38 @@ namespace fr
 		}
 	}
 
+	void Game::TrackSit(const char* a_table, const std::string& a_name, RE::Actor* a_actor, RE::TESObjectREFR* a_chair, int& a_was)
+	{
+		if (!a_actor) {
+			return;
+		}
+		const int now = static_cast<int>(a_actor->DoGetSitSleepState());
+		if (now == a_was) {
+			return;
+		}
+		static constexpr const char* kStates[] = { "standing", "wants to sit", "sitting down", "sitting", "wants to stand", "standing up" };
+		const auto name = [](int a_s) { return a_s >= 0 && a_s < 6 ? kStates[a_s] : "?"; };
+		std::string in = "nothing";
+		if (auto* proc = a_actor->currentProcess) {
+			if (auto f = proc->GetOccupiedFurniture().get()) {
+				in = f.get() == a_chair ? std::string("their chair") : std::format("{:08X} (not their chair)", f->GetFormID());
+			}
+		}
+		const float d = a_chair ? std::hypot(a_actor->data.location.x - a_chair->data.location.x, a_actor->data.location.y - a_chair->data.location.y) : -1.0f;
+		std::string menu;
+		if (auto* ui = RE::UI::GetSingleton()) {
+			for (const char* m : { "PipboyMenu", "WorkshopMenu", "SleepWaitMenu", "DialogueMenu", "PauseMenu", "Console", "LoadingMenu" }) {
+				if (ui->GetMenuOpen(m)) {
+					menu += menu.empty() ? m : std::string(", ") + m;
+				}
+			}
+		}
+		log::info("[sit] {}: {} {} -> {} (package {}, in {}, {:.0f} from their chair{}{}{})", a_table, a_name, a_was < 0 ? "starts" : name(a_was),
+			name(now), Npc::PackageName(a_actor), in, d, a_actor->IsInCombat() ? ", in combat" : "", menu.empty() ? "" : ", menus: ",
+			menu);
+		a_was = now;
+	}
+
 	void Game::Voice(RE::Actor* a_actor, int a_how)
 	{
 		// the game's crowd lines: cheering, laughing, groaning (the poker table's, at every table now)

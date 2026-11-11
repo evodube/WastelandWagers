@@ -399,7 +399,10 @@ namespace fr
 		void         FaceTowards(RE::Actor* a_actor, float a_heading);
 		// the dealers (Npcs.cpp): found, walked to their place (table space, facing the way given) and stood there
 		bool         IsCroupier(RE::TESFormID a_id) const;  // dealing at one of the tables (blackjack's too)
-		void         Voice(RE::Actor* a_actor, int a_how);  // a settler's cheer / laugh (a_how > 0) or groan (< 0), now and then
+		void         Voice(RE::Actor* a_actor, int a_how);
+		// a settler in a chair at a table: their sit state each tick, logged when it changes ([sit] lines), with what
+		// they're doing (their package, the furniture they're in, how far from their chair, a menu open)
+		void         TrackSit(const char* a_table, const std::string& a_name, RE::Actor* a_actor, RE::TESObjectREFR* a_chair, int& a_was);  // a settler's cheer / laugh (a_how > 0) or groan (< 0), now and then
 		void         RlDealer(Gesture a_g, bool a_now = false);  // the roulette dealer's gesture (Npcs.cpp: where they stand)
 		void         TickCroupier(Croupier& a_c, const Frame& a_frame, double a_x, double a_y, double a_faceX, double a_faceY, float a_dt,
 					const char* a_table);
@@ -435,6 +438,7 @@ namespace fr
 			float               nextIdle{ 8.0f };
 			float               sitCheck{ 0.0f };  // (chairs) seconds before checking they're still sat down
 			int                 sitTries{ 0 };     // (chairs) told to sit, and not sitting, in a row
+			int                 sitWas{ -1 };      // (their sit state last tick: changes logged, [sit])
 			double              tilt{ 0.0 };       // steaming after a bad beat (cools off hand by hand)
 			int                 handStart{ 0 };    // their caps when this hand began
 			std::string         last;            // what they last did
@@ -641,6 +645,7 @@ namespace fr
 			float               nextIdle{ 8.0f };
 			float               sitCheck{ 0.0f };  // (chairs) seconds before checking they're still sat down
 			int                 sitTries{ 0 };
+			int                 sitWas{ -1 };
 		};
 		enum class BjPhase
 		{

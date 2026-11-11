@@ -1354,6 +1354,7 @@ namespace fr
 					// and over. Checked now and then: if they're up after all, sat again, and after a couple of goes,
 					// moved onto the chair first)
 					auto chair = _pk.chairs[i].get();
+					TrackSit("poker", st.name, actor, chair.get(), st.sitWas);
 					if (chair && st.sitCheck <= 0.0f) {
 						st.sitCheck = 3.0f;
 						const auto sit = actor->DoGetSitSleepState();
@@ -1366,8 +1367,8 @@ namespace fr
 								log::info("poker: {} still isn't in their chair (sit state {}): moved onto it and sat", st.name, static_cast<int>(sit));
 								Npc::MoveTo(actor, chair.get());
 								st.sitTries = 0;
-							} else if (st.sitTries > 1) {
-								log::info("poker: {} isn't in their chair (sit state {}): sat down again", st.name, static_cast<int>(sit));
+							} else {
+								log::info("[sit] poker: {} isn't in their chair (sit state {}): sat down again", st.name, static_cast<int>(sit));
 							}
 							Npc::SitOn(actor, chair.get());
 						}
