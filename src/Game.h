@@ -741,6 +741,7 @@ namespace fr
 			float                                       roomLayout{ 1.0e6f };  // free height above the layout, and the wheel
 			float                                       roomWheel{ 1.0e6f };
 			Croupier                                    croupier;  // the dealer, by the wheel
+		};
 		Slot _t;
 		Slot _other;
 		bool _secondary{ false };  // _t is the other table for now (its tick): nothing of you at the table applies
