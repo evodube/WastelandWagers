@@ -7,9 +7,8 @@ wander over and bet with their own caps, cheering or shaking their heads at the 
 
 Since 0.4.0 there's a **poker table** too: no-limit Texas Hold'em against settlers who sit in with their own caps.
 Since 0.7.0, a **blackjack table**: you and up to six settlers against the dealer.
-Every table can have a dealer: in workshop mode, assign a settler to the table (as to a stall) and they walk over and
-stand behind it while the table's in play (by the wheel at roulette, by the chip tray at poker). Nobody assigned, no
-dealer (the game goes on without). Tables set up from kits aren't the workshop's, so they can't have one.
+Every table has a dealer: a settler walks over and stands behind it (at roulette they spin the wheel, by the chip tray
+at poker).
 
 **Status: 0.7.6.**
 

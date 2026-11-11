@@ -471,7 +471,6 @@ namespace fr
 			ScanTables();
 			PkScan();
 			BjScan();
-			ScanAssigned();
 		}
 		TableReach();
 		TickPoker(dt);

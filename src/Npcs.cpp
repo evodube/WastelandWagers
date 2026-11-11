@@ -281,81 +281,7 @@ namespace fr
 
 	bool Game::IsCroupier(RE::TESFormID a_id) const
 	{
-		if (a_id == 0) {
-			return false;
-		}
-		const auto is = [&](const RE::ObjectRefHandle& a_h) {
-			auto r = a_h.get();
-			return r && r->GetFormID() == a_id;
-		};
-		return _t.croupier.id == a_id || _other.croupier.id == a_id || _pk.croupier.id == a_id || _bj.dealerId == a_id ||
-		       is(_t.croupier.assigned) || is(_other.croupier.assigned) || is(_pk.croupier.assigned) || is(_bj.assigned);
-	}
-
-	RE::ObjectRefHandle Game::AssignedTo(const RE::ObjectRefHandle& a_table)
-	{
-		// a settler assigned to the table in workshop mode is made its owner (WorkshopObjectScript.AssignActor:
-		// SetActorRefOwner); the owner's a reference, or (older saves, a base owner) the nearest loaded one of it
-		auto t = a_table.get();
-		if (!t) {
-			return {};
-		}
-		auto* owner = t->GetOwner();
-		if (!owner) {
-			return {};
-		}
-		auto* player = RE::PlayerCharacter::GetSingleton();
-		if (auto* actor = owner->As<RE::Actor>()) {
-			return actor == player ? RE::ObjectRefHandle{} : actor->GetHandle();
-		}
-		auto* npc = owner->As<RE::TESNPC>();
-		if (!npc) {
-			return {};  // (a faction, say: nobody in particular)
-		}
-		RE::Actor* best = nullptr;
-		float      bestD = 1e9f;
-		util::ForEachLoadedCell([&](RE::TESObjectCELL* a_cell) {
-			a_cell->ForEachReferenceInRange(t->data.location, 6000.0f, [&](RE::TESObjectREFR* a_ref) {
-				auto* actor = a_ref ? a_ref->As<RE::Actor>() : nullptr;
-				if (actor && actor != player && actor->GetNPC() == npc && !actor->IsDead(false)) {
-					const float d = (actor->data.location - t->data.location).Length();
-					if (d < bestD) {
-						bestD = d;
-						best = actor;
-					}
-				}
-				return RE::BSContainer::ForEachResult::kContinue;
-			});
-		});
-		return best ? best->GetHandle() : RE::ObjectRefHandle{};
-	}
-
-	void Game::ScanAssigned()
-	{
-		const auto look = [&](RE::ObjectRefHandle& a_out, const RE::ObjectRefHandle& a_table, const char* a_what) {
-			const auto now = AssignedTo(a_table);
-			auto       was = a_out.get();
-			auto       is = now.get();
-			if (was.get() != is.get()) {
-				log::info("{}: {} assigned to deal", a_what, is ? std::format("{} ({:08X})", is->GetDisplayFullName(), is->GetFormID()) : std::string("nobody"));
-			}
-			a_out = now;
-		};
-		look(_t.croupier.assigned, _t.table, "roulette");
-		look(_other.croupier.assigned, _other.table, "roulette (the other table)");
-		look(_pk.croupier.assigned, _pk.table, "poker");
-		look(_bj.assigned, _bj.table, "blackjack");
-	}
-
-	bool Game::DealerFree(RE::Actor* a_actor, RE::TESFormID a_self)
-	{
-		// (not playing at one of the tables, not dealing at another, not in a fight, a scene or a conversation)
-		const auto id = a_actor ? a_actor->GetFormID() : 0;
-		const auto other = [&](RE::TESFormID a_dealing) { return a_dealing != 0 && a_dealing != a_self && a_dealing == id; };
-		return Usable(a_actor) && !a_actor->IsInCombat() && !Npc::Busy(a_actor) && !Npc::AtPool(a_actor) && !BjHasSeat(id) &&
-		       !PkHasSeat(id) && !other(_t.croupier.id) && !other(_other.croupier.id) && !other(_pk.croupier.id) && !other(_bj.dealerId) &&
-		       !std::ranges::any_of(_t.seats, [&](const Seat& st) { return st.id == id; }) &&
-		       !std::ranges::any_of(_other.seats, [&](const Seat& st) { return st.id == id; });
+		return a_id != 0 && (_t.croupier.id == a_id || _other.croupier.id == a_id || _pk.croupier.id == a_id || _bj.dealerId == a_id);
 	}
 
 	void Game::TickCroupier(Croupier& a_c, const Frame& a_frame, double a_x, double a_y, double a_faceX, double a_faceY, float a_dt,
@@ -363,22 +289,38 @@ namespace fr
 	{
 		const auto* you = RE::PlayerCharacter::GetSingleton();
 		a_c.cool -= a_dt;
-		// only the settler assigned to the table deals (workshop mode: assign them to it, as to a stall); someone
-		// else assigned, or nobody, and whoever's dealing goes back to their business
-		auto assigned = a_c.assigned.get();
-		if (a_c.id != 0 && (!assigned || assigned->GetFormID() != a_c.id)) {
-			ReleaseCroupier(a_c, assigned ? "someone else is assigned to the table" : "not assigned to the table any more");
-			return;
-		}
 		if (a_c.id == 0) {
+			// nobody dealing: the nearest free settler comes over, now and then
 			a_c.lookIn -= a_dt;
-			if (a_c.lookIn > 0.0f || (you && you->IsInCombat()) || !assigned) {
+			if (a_c.lookIn > 0.0f || (you && you->IsInCombat())) {
 				return;
 			}
-			a_c.lookIn = 3.0f;
-			auto* best = assigned->As<RE::Actor>();
-			if (!DealerFree(best, 0)) {
-				return;  // (busy now: playing at a table, a fight, a conversation; later)
+			a_c.lookIn = std::uniform_real_distribution<float>(6.0f, 12.0f)(_rng);
+			const auto&  s = Settings::Get();
+			auto*        player = RE::PlayerCharacter::GetSingleton();
+			static auto* npcType = RE::TESForm::GetFormByID<RE::BGSKeyword>(Forms::kActorTypeNPC);
+			RE::Actor*   best = nullptr;
+			float        bestD = 1e9f;
+			util::ForEachLoadedCell([&](RE::TESObjectCELL* a_cell) {
+				a_cell->ForEachReferenceInRange(a_frame.origin, s.bettorRange, [&](RE::TESObjectREFR* a_ref) {
+					auto* actor = a_ref ? a_ref->As<RE::Actor>() : nullptr;
+					if (!Usable(actor) || actor == player || actor->IsChild() || actor->IsInCombat() || Npc::Busy(actor) ||
+						(player && actor->GetHostileToActor(player)) || (npcType && !actor->HasKeywordHelper(npcType, nullptr)) ||
+						IsCroupier(actor->GetFormID()) || BjHasSeat(actor->GetFormID()) || PkHasSeat(actor->GetFormID()) ||
+						std::ranges::any_of(_t.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); }) ||
+						std::ranges::any_of(_other.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); })) {
+						return RE::BSContainer::ForEachResult::kContinue;
+					}
+					const float d = (actor->data.location - a_frame.origin).Length();
+					if (d < bestD) {
+						bestD = d;
+						best = actor;
+					}
+					return RE::BSContainer::ForEachResult::kContinue;
+				});
+			});
+			if (!best) {
+				return;
 			}
 			a_c.actor = best->GetHandle();
 			a_c.id = best->GetFormID();
