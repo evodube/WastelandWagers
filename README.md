@@ -8,7 +8,7 @@ wander over and bet with their own caps, cheering or shaking their heads at the 
 Since 0.4.0 there's a **poker table** too: no-limit Texas Hold'em against settlers who sit in with their own caps.
 Since 0.7.0, a **blackjack table**: you and up to six settlers against the dealer.
 
-**Status: 0.7.0.**
+**Status: 0.7.1.**
 
 ## Requirements
 
