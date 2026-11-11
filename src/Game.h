@@ -245,6 +245,7 @@ namespace fr
 			float               best{ 1.0e9f };  // the closest they've got
 			float               stall{ 0.0f };   // seconds without getting closer
 			float               getUp{ 0.0f };   // seconds before trying to get them out of a chair again
+			std::chrono::steady_clock::time_point last{};  // (the walk's timers in real seconds: the tick's are capped)
 		};
 
 		// a settler standing behind a table as its dealer (poker, roulette; the blackjack table has its own): walks over

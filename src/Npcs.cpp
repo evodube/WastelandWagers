@@ -237,6 +237,15 @@ namespace fr
 		if (d < kArrived) {
 			return true;
 		}
+		// (real seconds: the tick's own are capped a frame at a time, and the tick doesn't come every frame, so a 15s
+		// walk timed by them ran 40s and more)
+		{
+			const auto now = std::chrono::steady_clock::now();
+			if (a_walk.last != std::chrono::steady_clock::time_point{}) {
+				a_dt = std::clamp(std::chrono::duration<float>(now - a_walk.last).count(), 0.0f, 1.0f);
+			}
+			a_walk.last = now;
+		}
 		a_walk.walked += a_dt;
 		if (d < a_walk.best - 10.0f) {
 			a_walk.best = d;

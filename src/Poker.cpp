@@ -29,7 +29,7 @@ namespace fr
 		constexpr float kRailR = 45.0f;   // the rail's outside
 		constexpr float kRailC = 44.0f;
 		constexpr float kStandOff = 26.0f;  // people stand this far out from the rail
-		constexpr float kDealerOff = 15.0f; // ...the dealer, behind the chip tray, closer in
+		constexpr float kDealerOff = 26.0f; // ...the dealer, behind the chip tray, the same
 		constexpr float kCardT = 0.06f;     // a card's thickness (build_poker.py)
 		constexpr float kCardW = 3.9f;      // (build_poker.py: 3.9 x 6.24)
 		constexpr float kChipH = static_cast<float>(rl::table::kChipHeight);
