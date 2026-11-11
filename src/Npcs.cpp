@@ -336,16 +336,31 @@ namespace fr
 			ReleaseCroupier(a_c, "gone");
 			return;
 		}
-		if (a_c.held) {
-			return;  // (there: they just stand)
-		}
 		const float heading = HeadingOf(a_frame, a_faceX, a_faceY);
 		const auto  spot = ToWorld(a_frame, a_x, a_y, 0.0);
+		const float off = std::hypot(actor->data.location.x - spot.x, actor->data.location.y - spot.y);
+		if (a_c.held) {
+			// there: they just stand. Checked now and then: not on their spot (put down short of it, pushed off it),
+			// put on it again
+			a_c.snapIn -= a_dt;
+			if (a_c.snapIn <= 0.0f) {
+				a_c.snapIn = 3.0f;
+				if (off > 4.0f) {
+					if (auto marker = a_c.walk.marker.get()) {
+						log::info("{}: dealer {} {:.0f} off their spot: put on it", a_table, a_c.name, off);
+						Npc::MoveTo(actor, marker.get());
+					}
+				}
+			}
+			return;
+		}
 		if (WalkTo(actor, a_c.walk, a_frame, spot, heading, a_dt, true, 15.0f)) {
-			if (auto marker = a_c.walk.marker.get(); marker && std::hypot(actor->data.location.x - spot.x, actor->data.location.y - spot.y) > 0.5f) {
+			if (auto marker = a_c.walk.marker.get(); marker && off > 0.5f) {
 				Npc::MoveTo(actor, marker.get());
 			}
+			log::info("{}: dealer {} at their spot ({:.0f} off it: put on it)", a_table, a_c.name, off);
 			a_c.held = Npc::SetRestrained(actor, true);
+			a_c.snapIn = 2.0f;
 		}
 	}
 

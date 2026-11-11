@@ -29,6 +29,7 @@ namespace fr
 		constexpr float kRailR = 45.0f;   // the rail's outside
 		constexpr float kRailC = 44.0f;
 		constexpr float kStandOff = 26.0f;  // people stand this far out from the rail
+		constexpr float kDealerOff = 15.0f; // ...the dealer, behind the chip tray, closer in
 		constexpr float kCardT = 0.06f;     // a card's thickness (build_poker.py)
 		constexpr float kCardW = 3.9f;      // (build_poker.py: 3.9 x 6.24)
 		constexpr float kChipH = static_cast<float>(rl::table::kChipHeight);
@@ -899,7 +900,7 @@ namespace fr
 				for (int i = 0; i < kPkSeats; ++i) {
 					if (_pk.seats[i].used && _pk.seats[i].hi == toAct) {
 						const auto at = HoleSpot(i, 0);
-						CroupierGesture(_pk.croupier, Gesture::kPoint, kRailR + kStandOff, 0.0, -1.0, 0.0, at.x, at.y);
+						CroupierGesture(_pk.croupier, Gesture::kPoint, kRailR + kDealerOff, 0.0, -1.0, 0.0, at.x, at.y);
 					}
 				}
 			}
@@ -1299,7 +1300,7 @@ namespace fr
 	{
 		const auto& s = Settings::Get();
 		// the dealer: on the chip tray's side, between the two seats there, facing the table; just stands there
-		TickCroupier(_pk.croupier, a_frame, kRailR + kStandOff, 0.0, -1.0, 0.0, a_dt, "poker");
+		TickCroupier(_pk.croupier, a_frame, kRailR + kDealerOff, 0.0, -1.0, 0.0, a_dt, "poker");
 		_pk.seatTimer -= a_dt;
 		if (_pk.seatTimer <= 0.0f) {
 			_pk.seatTimer = s.bettorEvery * std::uniform_real_distribution<float>(0.6f, 1.2f)(_rng);
@@ -1469,7 +1470,7 @@ namespace fr
 		_pk.timer = delay + 0.4f;
 		_pk.think = 0.0f;
 		PkSay(std::format("NEW HAND · BLINDS {}/{}", s.pkSmallBlind, s.pkBigBlind));
-		CroupierGesture(_pk.croupier, Gesture::kDeal, kRailR + kStandOff, 0.0, -1.0, 0.0);
+		CroupierGesture(_pk.croupier, Gesture::kDeal, kRailR + kDealerOff, 0.0, -1.0, 0.0);
 
 	}
 
@@ -1669,7 +1670,7 @@ namespace fr
 	{
 		auto& h = _pk.hand;
 		_pk.croupier.cool = 0.0f;
-		CroupierGesture(_pk.croupier, Gesture::kTalk, kRailR + kStandOff, 0.0, -1.0, 0.0);  // (the hand's called)
+		CroupierGesture(_pk.croupier, Gesture::kTalk, kRailR + kDealerOff, 0.0, -1.0, 0.0);  // (the hand's called)
 		_pk.phase = PkPhase::kShowdown;
 		_pk.timer = h.showdown ? 6.0f : 3.5f;
 		// the cards of everyone still in, turned up

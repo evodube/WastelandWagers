@@ -258,6 +258,7 @@ namespace fr
 			bool                held{ false };
 			float               lookIn{ 0.0f };  // seconds before looking for one again
 			float               cool{ 0.0f };    // seconds before they gesture again
+			float               snapIn{ 0.0f };  // seconds before checking they're on their spot
 		};
 		// what a dealer does now and then (Npcs.cpp): point at whose turn it is, wave the table in to bet, hand the
 		// cards out, say their piece (the game's gestures that play on the spot: no stepping round to line up)
