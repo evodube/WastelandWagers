@@ -321,6 +321,9 @@ namespace fr
 
 	void Game::BjSay(const std::string& a_text, int a_tone)
 	{
+		if (!_bj.log.empty() && _bj.log.back().text == a_text) {
+			return;  // (the same again, a bet over the most tried again say: once is enough)
+		}
 		log::info("[blackjack] {}", a_text);
 		_bj.log.push_back({ a_text, a_tone });
 		while (_bj.log.size() > 6) {
@@ -1026,7 +1029,7 @@ namespace fr
 		}
 		const int add = std::min(a_amount, s.maxBet - st.bet);
 		if (add <= 0) {
-			BjSay(std::format("THE MOST ON A HAND IS {}", s.maxBet));
+			BjSay(std::format("THE MOST ON A HAND IS {}", s.maxBet), 2);
 			return;
 		}
 		if (!TakeFromPlayer(add)) {
@@ -1331,6 +1334,12 @@ namespace fr
 				}
 			}
 			const std::string who = st.you ? std::string("YOU") : Upper(st.name);
+			if (!st.you) {
+				auto  ref = st.actor.get();
+				auto* actor = ref ? ref->As<RE::Actor>() : nullptr;
+				const bool natural = std::ranges::any_of(st.hands, [](const BjHand& h) { return h.result >= 2.5; });
+				Voice(actor, net > 0 ? (natural ? 2 : 1) : net < 0 ? -1 : 0);
+			}
 			if (net > 0) {
 				BjSay(std::format("{} {} {}", who, st.you ? "WIN" : "WINS", net), 1);
 				BjIdle(i, 3);

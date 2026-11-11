@@ -349,6 +349,26 @@ namespace fr
 		}
 	}
 
+	void Game::Voice(RE::Actor* a_actor, int a_how)
+	{
+		// the game's crowd lines: cheering, laughing, groaning (the poker table's, at every table now)
+		constexpr RE::TESFormID kCheer = 0x00110396;  // Crowd_ApprovalSounds_TopicSubType
+		constexpr RE::TESFormID kLaugh = 0x00110395;  // Crowd_Laughter_TopicSubType
+		constexpr RE::TESFormID kGroan = 0x00110398;  // Crowd_DisapprovalSounds_TopicSubType
+		if (!a_actor || a_how == 0 || !Settings::Get().pkVoices) {
+			return;
+		}
+		const float chance = a_how > 1 ? 1.0f : a_how > 0 ? 0.7f : 0.5f;  // (2: a big one, always)
+		if (std::uniform_real_distribution<float>(0.0f, 1.0f)(_rng) >= chance) {
+			return;
+		}
+		if (a_how > 0) {
+			Npc::Say(a_actor, std::uniform_real_distribution<float>(0.0f, 1.0f)(_rng) < 0.35f ? kLaugh : kCheer);
+		} else {
+			Npc::Say(a_actor, kGroan);
+		}
+	}
+
 	void Game::RlDealer(Gesture a_g)
 	{
 		using namespace rl::table;
@@ -568,6 +588,7 @@ namespace fr
 					seat.reactIn -= a_dt;
 					if (seat.reactIn < 0.0f) {
 						SeatIdle(seat, actor, seat.roundNet > 0 ? 2 : seat.roundNet < 0 ? 3 : 4);
+						Voice(actor, seat.roundNet > 0 ? (seat.roundNet >= 100 ? 2 : 1) : seat.roundNet < 0 ? -1 : 0);
 						seat.nextIdle = std::uniform_real_distribution<float>(8.0f, 16.0f)(_rng);
 					}
 				} else if (_t.phase != Phase::kResult) {

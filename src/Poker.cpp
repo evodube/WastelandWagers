@@ -614,6 +614,9 @@ namespace fr
 
 	void Game::PkSay(const std::string& a_text, int a_tone)
 	{
+		if (!_pk.log.empty() && _pk.log.back().text == a_text) {
+			return;  // (the same again: once is enough)
+		}
 		_pk.log.push_back({ a_text, a_tone });
 		while (_pk.log.size() > 5) {
 			_pk.log.pop_front();

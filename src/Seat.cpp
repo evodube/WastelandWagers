@@ -294,9 +294,19 @@ namespace fr
 		if (byTable == _reachLong) {
 			return;
 		}
-		auto* settings = RE::GameSettingCollection::GetSingleton();
-		auto* setting = settings ? settings->GetSetting("fActivatePickLength") : nullptr;
+		// (Fallout4.ini's [Interface] fActivatePickLength: an ini setting, not a game setting)
+		auto* setting = RE::GetINISetting("fActivatePickLength:Interface");
 		if (!setting) {
+			if (auto* settings = RE::GameSettingCollection::GetSingleton()) {
+				setting = settings->GetSetting("fActivatePickLength");
+			}
+		}
+		if (!setting) {
+			static bool said = false;
+			if (!said) {
+				said = true;
+				log::warn("activation reach: fActivatePickLength not found");
+			}
 			return;
 		}
 		_reachLong = byTable;

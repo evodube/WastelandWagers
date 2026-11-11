@@ -408,6 +408,9 @@ namespace fr
 
 	void Game::Say(const std::string& a_text, int a_tone)
 	{
+		if (!_t.log.empty() && _t.log.back().text == a_text) {
+			return;  // (the same again, a bet over the limit tried again say: once is enough)
+		}
 		log::info("[table] {}", a_text);
 		_t.log.push_back({ a_text, a_tone });
 		while (_t.log.size() > kLogLines) {
