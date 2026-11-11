@@ -280,7 +280,7 @@ namespace fr
 		// past the game's activation reach, and the prompt never comes up. Near one of them, a longer reach; back to
 		// what it was away from them
 		auto* player = RE::PlayerCharacter::GetSingleton();
-		bool  near = false;
+		bool  byTable = false;
 		if (player && !AtATable() && !_kitPlacing) {
 			const auto by = [&](const RE::ObjectRefHandle& a_h, float a_r) {
 				auto t = a_h.get();
@@ -289,9 +289,9 @@ namespace fr
 				}
 				return std::hypot(t->data.location.x - player->data.location.x, t->data.location.y - player->data.location.y) < a_r;
 			};
-			near = by(_bj.table, 260.0f) || by(_pk.table, 260.0f) || by(_t.table, 320.0f) || by(_other.table, 320.0f);
+			byTable = by(_bj.table, 260.0f) || by(_pk.table, 260.0f) || by(_t.table, 320.0f) || by(_other.table, 320.0f);
 		}
-		if (near == _reachLong) {
+		if (byTable == _reachLong) {
 			return;
 		}
 		auto* settings = RE::GameSettingCollection::GetSingleton();
@@ -299,14 +299,14 @@ namespace fr
 		if (!setting) {
 			return;
 		}
-		_reachLong = near;
-		if (near) {
+		_reachLong = byTable;
+		if (byTable) {
 			_reachWas = setting->GetFloat();
 			setting->SetFloat(std::max(_reachWas, 300.0f));
 		} else {
 			setting->SetFloat(_reachWas);
 		}
-		log::info("activation reach {:.0f} ({})", setting->GetFloat(), near ? "by a table" : "back as it was");
+		log::info("activation reach {:.0f} ({})", setting->GetFloat(), byTable ? "by a table" : "back as it was");
 	}
 
 	void Game::BlockControls(bool a_block)
