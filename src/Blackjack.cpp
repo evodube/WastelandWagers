@@ -1098,6 +1098,7 @@ namespace fr
 		_bj.timer = delay + 0.5f;
 		_bj.dealIn = -1.0f;
 		BjSay("CARDS");
+		_bj.pointed = false;
 		_bj.dealerCool = 0.0f;
 		DealerGesture(_bj.dealerActor, _bj.dealerHeld, _bj.dealerCool, Gesture::kDeal, 0.0, kDealerStand, 0.0, -1.0);
 	}
@@ -1116,7 +1117,8 @@ namespace fr
 					hand.done = true;
 					continue;
 				}
-				if (_bj.turnSeat != i) {
+				if (_bj.turnSeat != i && !_bj.pointed) {
+					_bj.pointed = true;  // (once a round: at the first to play)
 					const auto at = Circle(i);
 					DealerGesture(_bj.dealerActor, _bj.dealerHeld, _bj.dealerCool, Gesture::kPoint, 0.0, kDealerStand, 0.0, -1.0, at.x,
 						at.y);  // (the dealer points at whose turn it is)

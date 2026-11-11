@@ -352,7 +352,7 @@ namespace fr
 	void Game::RlDealer(Gesture a_g)
 	{
 		using namespace rl::table;
-		const double x = (kWheelX + kZeroX0) * 0.5, y = kFarEdgeY + kStepBack;
+		const double x = kWheelX, y = kFarEdgeY + kStepBack;
 		CroupierGesture(_t.croupier, a_g, x, y, 0.0, -1.0, kWheelX, kWheelY);  // (points at the wheel)
 	}
 
@@ -516,9 +516,9 @@ namespace fr
 	{
 		const auto& s = Settings::Get();
 		{
-			// the dealer: on the far side, between the wheel and the layout, facing the players' side
+			// the dealer: right by the wheel, on the far side, facing the players' side
 			using namespace rl::table;
-			TickCroupier(_t.croupier, a_frame, (kWheelX + kZeroX0) * 0.5, kFarEdgeY + kStepBack, 0.0, -1.0, a_dt, "roulette");  // (RlDealer: the same)
+			TickCroupier(_t.croupier, a_frame, kWheelX, kFarEdgeY + kStepBack, 0.0, -1.0, a_dt, "roulette");  // (RlDealer: the same)
 		}
 		_t.seatTimer -= a_dt;
 		if (_t.seatTimer <= 0.0f) {

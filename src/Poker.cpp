@@ -887,11 +887,13 @@ namespace fr
 				Audio::PlayUI(Audio::Bank::kTurn, 0.35f);
 			}
 			_pkTurnWas = turn;
-			// the dealer points at whoever's to act
+			// the dealer points at whoever's first to act: once a hand
 			const int toAct = _pk.inHand && _pk.phase == PkPhase::kBetting && _pk.boardShown >= _pk.hand.board.size() ? _pk.hand.ToAct() : -1;
-			if (toAct != _pk.pointed) {
+			if (!_pk.inHand) {
+				_pk.pointed = -1;
+			} else if (toAct >= 0 && _pk.pointed < 0) {
 				_pk.pointed = toAct;
-				for (int i = 0; i < kPkSeats && toAct >= 0; ++i) {
+				for (int i = 0; i < kPkSeats; ++i) {
 					if (_pk.seats[i].used && _pk.seats[i].hi == toAct) {
 						const auto at = HoleSpot(i, 0);
 						CroupierGesture(_pk.croupier, Gesture::kPoint, kRailR + kStandOff, 0.0, -1.0, 0.0, at.x, at.y);

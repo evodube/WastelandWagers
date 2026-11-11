@@ -524,7 +524,7 @@ namespace fr
 			bool                                                   peeking{ false };  // you're looking at your cards: they're turned up
 			PkSession                                              session;
 			Croupier                                               croupier;  // the dealer, by the chip tray
-			int                                                    pointed{ -1 };  // (who the dealer last pointed at)
+			int                                                    pointed{ -1 };  // (who the dealer pointed at this hand: once a hand)
 		};
 		PokerState        _pk;
 		std::atomic<bool> _pkSeated{ false };
@@ -676,6 +676,7 @@ namespace fr
 			bool                            shuffleSaid{ false };
 			float                           sweep{ 0.0f };     // (seconds to the next look for stray cards and chips)
 			float                           dealerCool{ 0.0f };  // (seconds before the dealer gestures again)
+			bool                            pointed{ false };    // (the dealer's pointed this round: once a round)
 		};
 		BlackjackState    _bj;
 		std::atomic<bool> _bjSeated{ false };
