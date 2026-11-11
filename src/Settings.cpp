@@ -128,6 +128,8 @@ namespace fr
 		sound = ReadBool(L"Sound", L"bEnabled", sound);
 		soundVolume = std::clamp(ReadFloat(L"Sound", L"fVolume", soundVolume), 0.0f, 1.0f);
 		turnChime = ReadBool(L"Sound", L"bTurnChime", turnChime);
+		ballSound = ReadBool(L"Sound", L"bBall", ballSound);
+		ballVolume = std::clamp(ReadFloat(L"Sound", L"fBallVolume", ballVolume), 0.0f, 1.0f);
 
 		plugin = Narrow(ReadString(L"Forms", L"sPlugin", std::wstring(plugin.begin(), plugin.end())));
 

@@ -469,6 +469,7 @@ namespace fr
 			PkScan();
 			BjScan();
 		}
+		TableReach();
 		TickPoker(dt);
 		TickBlackjack(dt);
 		if (_t.table) {

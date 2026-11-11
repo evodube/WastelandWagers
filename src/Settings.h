@@ -79,6 +79,8 @@ namespace fr
 		// [Sound]
 		bool  sound{ true };
 		float soundVolume{ 0.8f };
+		bool  ballSound{ true };    // the roulette ball's sounds (and the wheel's), on their own...
+		float ballVolume{ 1.0f };   // ...and how loud, on top of the volume
 		bool  turnChime{ true };   // a chime when it's your turn at the poker or blackjack table (or bets open)
 
 		// [Forms]

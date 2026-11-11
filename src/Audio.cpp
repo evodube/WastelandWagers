@@ -218,6 +218,15 @@ namespace fr::Audio
 	void PlayShaped(Bank a_bank, const RE::NiPoint3& a_pos, float a_gain, const std::vector<std::pair<float, float>>& a_keys, float a_range)
 	{
 		const auto& s = Settings::Get();
+		// (the roulette ball's own: its run round the track, its knocks, rattles and settling, and the rotor's whirr)
+		const bool ball = a_bank == Bank::kRoll || a_bank == Bank::kRattle || a_bank == Bank::kSettle || a_bank == Bank::kTick ||
+		                  a_bank == Bank::kSpin;
+		if (ball) {
+			if (!s.ballSound) {
+				return;
+			}
+			a_gain *= s.ballVolume;
+		}
 		if (!s.sound || a_gain <= 0.001f) {
 			return;
 		}

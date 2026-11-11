@@ -339,6 +339,9 @@ namespace fr
 		void BlockControls(bool a_block);
 		void QuietNpcs(bool a_quiet);  // the game's greetings off while you're at the table
 		bool _npcsQuiet{ false };
+		void TableReach();          // a longer reach for activating while you're by one of the tables (Seat.cpp)
+		bool _reachLong{ false };
+		float _reachWas{ 150.0f };
 		void HoldPlayerView();
 		void PlaceGhost(const Frame& a_frame);
 		std::optional<rl::Bet> HoverBet() const;
