@@ -1,4 +1,4 @@
-// Every fo4roulette.ini setting on pages in F4SE Menu Framework's menu (Real Roulette > Table, Camera, ...).
+// Every fo4roulette.ini setting on pages in F4SE Menu Framework's menu (Mini Games > Table, Camera, ...).
 //
 // One table below drives it: each row is an INI key, the Settings field it sets, a label, a range and a line of
 // help. Changes apply straight away and are written to the INI as soon as they're made.
@@ -103,7 +103,7 @@ namespace fr::SettingsMenu
 						{ L"Poker", L"iMaxSettlers", "Most settlers at the table", Kind::kInt, &s.pkMaxPlayers, 0, 6, nullptr },
 						{ L"Poker", L"iSettlerBuyIn", "A settler's buy-in (most)", Kind::kInt, &s.pkNpcBuyIn, 20, 20000, nullptr },
 						{ L"Poker", L"fThinkTime", "Settlers' thinking time", Kind::kFloat, &s.pkThink, 0.2f, 5.0f, "%.1fx" },
-						{ L"Poker", L"bChairs", "Settlers sit (chairs)", Kind::kBool, &s.pkChairs, 0, 0, nullptr,
+						{ L"Poker", L"bChairs", "Poker: settlers sit (chairs)", Kind::kBool, &s.pkChairs, 0, 0, nullptr,
 							"chairs round the poker table and settlers sit in them (seated, they cheer and laugh but don't reach in to bet)" },
 						{ L"Blackjack", L"bChairs", "Blackjack: settlers sit (chairs)", Kind::kBool, &s.bjChairs, 0, 0, nullptr,
 							"chairs round the blackjack table and settlers sit in them" },
@@ -442,7 +442,7 @@ namespace fr::SettingsMenu
 		}
 		installed = true;
 		Settings::Get().Load();  // the menu shows the INI's values from the start
-		F4SEMenuFramework::SetSection("Real Roulette");
+		F4SEMenuFramework::SetSection("Mini Games");
 		AddPages(std::make_index_sequence<6>{});
 		log::info("settings pages registered in F4SE Menu Framework ({} pages)", Pages().size());
 	}

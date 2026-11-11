@@ -351,7 +351,7 @@ def build() -> bytes:
         0,
         subrecord(b"HEDR", struct.pack("<fiI", 1.0, count, FIRST_ID + 0x4E))
         + subrecord(b"CNAM", zstring("evodube"))
-        + subrecord(b"SNAM", zstring("Real Roulette: a playable roulette table"))
+        + subrecord(b"SNAM", zstring("Mini Games: playable roulette, poker and blackjack tables"))
         + subrecord(b"MAST", zstring("Fallout4.esm"))
         + subrecord(b"DATA", struct.pack("<Q", 0)),
     )

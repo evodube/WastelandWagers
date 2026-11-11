@@ -1,4 +1,4 @@
-# Real Roulette (fo4roulette)
+# Mini Games (fo4roulette)
 
 A playable roulette table for Fallout 4, as an F4SE plugin: build the table in a settlement, sit down at it, put
 chips on the layout from a top-down camera and spin. The rotor turns, the ball runs round the track, rattles over the
@@ -85,11 +85,11 @@ is then thrown until it lands there, so every number is exactly as likely as it 
 ### European or American
 
 `[Table] iWheel` (or the Table page in the menu): 0 European (one zero), 1 American (0 and 00, and the 0-00-1-2-3 top
-line bet). Every table shows the matching wheel and layout; a table in play switches between rounds.
+line bet; the default). Every table shows the matching wheel and layout; a table in play switches between rounds.
 
 ### Settings
 
-Every setting is in `Data\F4SE\Plugins\fo4roulette.ini` and on the Real Roulette pages in the F4SE Menu Framework
+Every setting is in `Data\F4SE\Plugins\fo4roulette.ini` and on the Mini Games pages in the F4SE Menu Framework
 menu (Table, Camera, NPCs, HUD & sound, Keys). What you change in the menu goes to `fo4roulette_user.ini` beside it,
 read first, so updating the mod doesn't put your settings back.
 

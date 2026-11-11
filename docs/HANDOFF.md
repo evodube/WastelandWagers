@@ -1,6 +1,6 @@
 # fo4roulette: project handoff
 
-**Real Roulette** (repo `evodube/fo4roulette`): a playable roulette table for Fallout 4, F4SE plugin, OG 1.10.163.
+**Mini Games** (formerly Real Roulette; repo `evodube/fo4roulette`): a playable roulette table for Fallout 4, F4SE plugin, OG 1.10.163.
 Built on Playable Pool's foundations (`evodube/fo4pool`): its free camera hooks, Present hook, Papyrus quest pattern
 for walking NPCs, HUD fonts, XAudio2 sounds, settings menu and CI.
 

@@ -30,7 +30,7 @@ namespace fr
 		std::array<int, 4> keyChip{ 0x31, 0x32, 0x33, 0x34 };  // 1-4: the 1, 5, 25 and 100 chips
 
 		// [Table]
-		int   wheel{ 0 };                  // 0 European (single 0), 1 American (0 and 00)
+		int   wheel{ 1 };                  // 0 European (single 0), 1 American (0 and 00, the default)
 		float spinDelay{ 15.0f };          // the wheel spins itself this long after the round's first bet
 		int   maxBet{ 500 };               // caps on one bet
 		float activeDistance{ 3000.0f };   // a table this close to you is played at (NPCs come)

@@ -1,4 +1,4 @@
-Real Roulette (fo4roulette): credits and licences for the models it's built from
+Mini Games (fo4roulette): credits and licences for the models it's built from
 
 The tables' and cards' meshes and textures in Meshes\fo4roulette and Textures\fo4roulette are made from these models,
 each under Creative Commons Attribution 4.0 (CC BY 4.0, https://creativecommons.org/licenses/by/4.0/), and are shared
