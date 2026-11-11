@@ -228,6 +228,12 @@ namespace fr
 			bool                             dirty{ true };  // its stack needs (re)making
 			int                              won{ -1 };      // -1 not settled, 0 lost, else what it paid (on top of the stake)
 			std::vector<RE::ObjectRefHandle> paid;           // the winnings, stacked beside it
+			bool                             placed{ false };  // where its stacks went (clear of everyone else's)...
+			rl::Vec2                         at;
+			double                           base{ 0.0 };      // ...and how high they start (on top of another, if no room)
+			rl::Vec2                         paidAt;
+			double                           paidBase{ 0.0 };
+			bool                             paidPlaced{ false };
 		};
 
 		// an NPC on their way to a spot by the table (a bettor's)

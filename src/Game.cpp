@@ -1406,6 +1406,57 @@ namespace fr
 	{
 		using namespace rl::table;
 		std::uniform_real_distribution<float> spinAngle(0.0f, 6.283f);
+		// every stack on the layout, so a new one goes where there's room: no chips through each other (stakes on the
+		// same bet, or on bets next to each other, from different players)
+		struct Foot
+		{
+			double x, y, top;
+		};
+		std::vector<Foot> feet;
+		const auto height = [](int a_amount) {
+			return static_cast<double>(std::min<std::size_t>(rl::ChipsFor(a_amount).size(), static_cast<std::size_t>(kMaxStack))) * kChipHeight;
+		};
+		for (const auto& st : _t.stakes) {
+			if (!st.dirty && st.placed) {
+				feet.push_back({ st.at.x, st.at.y, st.base + height(st.amount) });
+				if (st.won > 0 && st.paidPlaced) {
+					feet.push_back({ st.paidAt.x, st.paidAt.y, st.paidBase + height(st.won) });
+				}
+			}
+		}
+		constexpr double kClear = kChipRadius * 2.0 + 0.15;
+		// a place for a stack: the one wanted (or where it was), else the nearest clear one round it (a little way
+		// out at most: still on its bet); none, and it goes on top of what's there
+		const auto place = [&](rl::Vec2 a_want, const rl::Vec2* a_was, double& a_base) {
+			const auto clear = [&](double a_x, double a_y) {
+				return std::ranges::none_of(feet, [&](const Foot& f) { return std::hypot(f.x - a_x, f.y - a_y) < kClear; });
+			};
+			if (a_was && clear(a_was->x, a_was->y)) {
+				a_base = 0.0;
+				return *a_was;
+			}
+			if (clear(a_want.x, a_want.y)) {
+				a_base = 0.0;
+				return a_want;
+			}
+			for (double r = 0.8; r <= 2.81; r += 0.5) {
+				for (int k = 0; k < 12; ++k) {
+					const double a = k * 0.5235987756;
+					const rl::Vec2 p{ a_want.x + r * std::cos(a), a_want.y + r * std::sin(a) };
+					if (clear(p.x, p.y)) {
+						a_base = 0.0;
+						return p;
+					}
+				}
+			}
+			a_base = 0.0;
+			for (const auto& f : feet) {
+				if (std::hypot(f.x - a_want.x, f.y - a_want.y) < kClear) {
+					a_base = std::max(a_base, f.top);
+				}
+			}
+			return a_want;
+		};
 		for (auto& st : _t.stakes) {
 			if (!st.dirty) {
 				continue;
@@ -1420,7 +1471,7 @@ namespace fr
 			st.chips.clear();
 			st.paid.clear();
 			const auto off = OwnerOffset(st.owner);
-			auto stack = [&](int a_amount, double a_x, double a_y, std::vector<RE::ObjectRefHandle>& a_out) {
+			auto stack = [&](int a_amount, double a_x, double a_y, double a_base, std::vector<RE::ObjectRefHandle>& a_out) {
 				auto chips = rl::ChipsFor(a_amount);
 				if (chips.size() > static_cast<std::size_t>(kMaxStack)) {
 					chips.erase(chips.begin() + kMaxStack, chips.end());  // (the biggest are first)
@@ -1428,14 +1479,23 @@ namespace fr
 				// biggest at the bottom
 				for (std::size_t i = 0; i < chips.size(); ++i) {
 					const int idx = static_cast<int>(std::ranges::find(rl::kChipValues, chips[i]) - std::begin(rl::kChipValues));
-					const auto pos = ToWorld(a_frame, a_x, a_y, kFeltZ + 0.02 + static_cast<double>(i) * kChipHeight);
+					const auto pos = ToWorld(a_frame, a_x, a_y, kFeltZ + 0.02 + a_base + static_cast<double>(i) * kChipHeight);
 					a_out.push_back(Spawn(Forms::Chip(idx), pos, a_frame.yaw + spinAngle(_rng)));
 				}
 			};
-			stack(st.amount, st.bet.spot.x + off.x, st.bet.spot.y + off.y, st.chips);
+			const rl::Vec2 want{ st.bet.spot.x + off.x, st.bet.spot.y + off.y };
+			const rl::Vec2 was = st.at;
+			st.at = place(want, st.placed ? &was : nullptr, st.base);
+			stack(st.amount, st.at.x, st.at.y, st.base, st.chips);
+			feet.push_back({ st.at.x, st.at.y, st.base + height(st.amount) });
 			if (st.won > 0) {
-				stack(st.won, st.bet.spot.x + off.x + kChipRadius * 2.2, st.bet.spot.y + off.y, st.paid);
+				const rl::Vec2 pwas = st.paidAt;
+				st.paidAt = place({ st.at.x + kChipRadius * 2.2, st.at.y }, st.paidPlaced ? &pwas : nullptr, st.paidBase);
+				st.paidPlaced = true;
+				stack(st.won, st.paidAt.x, st.paidAt.y, st.paidBase, st.paid);
+				feet.push_back({ st.paidAt.x, st.paidAt.y, st.paidBase + height(st.won) });
 			}
+			st.placed = true;
 		}
 	}
 
