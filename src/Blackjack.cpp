@@ -83,7 +83,8 @@ namespace fr
 
 		bool Usable(RE::Actor* a_actor)
 		{
-			return a_actor && !a_actor->IsDisabled() && !a_actor->IsDead(false) && a_actor->Get3D();
+			return a_actor && !a_actor->IsDisabled() && !a_actor->IsDead(false) && a_actor->Get3D() &&
+			       !RE::PowerArmor::ActorInPowerArmor(*a_actor);  // (nobody in power armour plays or deals)
 		}
 
 		// (as at the poker table: a still chip or card's last frame's place set to where it is, so the upscaler and frame

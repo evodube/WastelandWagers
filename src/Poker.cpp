@@ -317,7 +317,8 @@ namespace fr
 
 		bool Usable(RE::Actor* a_actor)
 		{
-			return a_actor && !a_actor->IsDisabled() && !a_actor->IsDead(false) && a_actor->Get3D();
+			return a_actor && !a_actor->IsDisabled() && !a_actor->IsDead(false) && a_actor->Get3D() &&
+			       !RE::PowerArmor::ActorInPowerArmor(*a_actor);  // (nobody in power armour plays or deals)
 		}
 
 		int TakePurse(RE::TESFormID a_id, int a_most)
