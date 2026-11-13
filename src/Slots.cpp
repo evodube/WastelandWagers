@@ -17,7 +17,8 @@
 // whose annotation furnitureIdleFlavor1Slave, 1.17 seconds in, is where the machine's own graph played its Pull). The
 // quest watches the sitter's animation for it (RegisterForAnimationEvent) and hands it to LeverDown here: the lever goes
 // down and the reels spin from then. When their hand's been idle a while, the pull's played on them
-// (fo4rouletteSlotPullIdle: that same animation) and the pull waits for it.
+// (fo4rouletteSlotPullIdle: that same animation) and the pull waits for it (asked again if it didn't play): a
+// settler's reels only ever spin with their hand on the lever.
 
 #include "Game.h"
 
@@ -719,17 +720,14 @@ namespace fr
 			if (!SlFrame(i, frame)) {
 				continue;
 			}
-			// a pull asked for whose hand never came (the idle didn't play): the lever on its own
+			// a pull asked for whose hand never came (the idle didn't play: mid-way through another of their sitting
+			// animations, say): asked for again shortly. The reels never go without their hand on the lever
 			if (m.pend >= 0.0f) {
 				m.pend += a_dt;
-				if (m.pend > 2.5f) {
+				if (m.pend > 3.0f) {
 					m.pend = -1.0f;
-					if (!m.spin.on && m.step == 2 && !m.you) {
-						log::info("slots: {}'s pull idle didn't put the lever down: pulled anyway", m.name);
-						if (const int bet = SlNpcBet(i); bet > 0) {
-							SlPull(i, bet, false, now);
-						}
-					}
+					m.idleHand = std::max(0.0f, m.askAt - 0.5f);
+					log::info("slots: {}'s pull idle didn't put the lever down: asking again", m.name);
 				}
 			}
 			if (m.dryOn && std::chrono::duration<float>(now - m.dry).count() > 1.0f) {

@@ -31,6 +31,12 @@ SANS = os.path.join(HERE, "DejaVuSans-Bold.ttf")
 SYMBOLS = ["cherry", "bell", "orange", "bar", "seven", "lemon", "plum"]
 STRIP = (int(0.0114 * N), int(0.6113 * N), int(0.0556 * N) + 1, int(0.9932 * N) + 1)  # x0, y0, x1, y1
 
+# the labels (the texture's pixels at 2048): the two prize plates either side of the reels, GRAND PRIZE, INSERT COIN
+PLATE_L = (54, 408, 152, 572)
+PLATE_R = (594, 408, 692, 570)
+GRAND = (1462, 676, 1702, 750)
+COIN = (1484, 408, 1608, 452)
+
 RED = np.array([0.50, 0.035, 0.045])
 GOLD = np.array([0.88, 0.66, 0.24])
 BLACK = np.array([0.075, 0.07, 0.07])
@@ -178,21 +184,48 @@ def plate(im, box, lines):
         y += h * sz / total * 0.86
 
 
-def relabel(im, box, text, col, bg=None, serif=True):
-    """a label's old lettering painted out (its own background colour) and new lettering put in"""
+def relabel(im, box, lines, col, bg=None, serif=True):
+    """a label's old lettering painted out (its own background colour) and new lettering put in, a line or more"""
+    if isinstance(lines, str):
+        lines = [lines]
     x0, y0, x1, y1 = box
-    region = np.asarray(im.crop(box)).reshape(-1, 3)
-    if bg is None:
-        bg = tuple(int(c) for c in np.median(region, axis=0))
+    painted = plain(im, [box])  # (the old lettering gone, its metal's grain kept)
+    im.paste(painted.crop(box), box[:2])
     d = ImageDraw.Draw(im)
-    d.rectangle(box, fill=bg)
     w, h = x1 - x0, y1 - y0
-    px = int(h * 0.8)
+    lh = h / len(lines)
+    px = int(lh * 0.8)
     f = font(SERIF if serif else SANS, px)
-    while f.getlength(text) > w * 0.94 and px > 6:
+    while max(f.getlength(t) for t in lines) > w * 0.94 and px > 6:
         px -= 1
         f = font(SERIF if serif else SANS, px)
-    d.text((x0 + w / 2, y0 + h / 2), text, font=f, fill=col, anchor="mm")
+    for k, text in enumerate(lines):
+        d.text((x0 + w / 2, y0 + lh * (k + 0.5)), text, font=f, fill=col, anchor="mm")
+
+
+def plain(im, boxes, ring=14):
+    """a label's old lettering gone (in the colour map and the specular map both, or the old words show through the
+    new ones as a sheen): the colour of the surface round it (the commonest in a ring just outside), with its grain (a
+    pixel's difference from that colour, taken at random from the ring), so it's no flat patch"""
+    a = np.asarray(im).astype(np.float64)
+    rng = np.random.default_rng(11)
+    H, W = a.shape[:2]
+    for x0, y0, x1, y1 in boxes:
+        X0, Y0, X1, Y1 = max(0, x0 - ring), max(0, y0 - ring), min(W, x1 + ring), min(H, y1 + ring)
+        outer = a[Y0:Y1, X0:X1].copy()
+        mask = np.ones(outer.shape[:2], bool)
+        mask[y0 - Y0:y1 - Y0, x0 - X0:x1 - X0] = False
+        around = outer[mask]
+        base = np.median(around, axis=0)
+        dev = around - base
+        dev = np.clip(dev, -40, 40)
+        pick = dev[rng.integers(0, len(dev), (y1 - y0) * (x1 - x0))].reshape(y1 - y0, x1 - x0, a.shape[2])
+        a[y0:y1, x0:x1] = base + pick * 0.6
+    out = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
+    soft = out.filter(ImageFilter.GaussianBlur(0.7))
+    for box in boxes:
+        out.paste(soft.crop(box), box[:2])
+    return out
 
 
 def flatten_normal(n, boxes):
@@ -211,19 +244,22 @@ def main(out):
     gold = (236, 190, 80)
     red = (230, 40, 45)
     white = (240, 232, 220)
-    plate(im, (58, 412, 148, 568), [("JACKPOT", 1.0, gold), ("7 7 7", 1.6, red), ("WINS IT", 1.0, gold)])
-    plate(im, (598, 412, 688, 566), [("BAR BAR", 1.0, white), ("BAR", 1.0, white), ("PAYS 50", 1.3, gold)])
-    # GRAND PRIZE -> JACKPOT; INSERT COIN -> INSERT CAPS
-    relabel(im, (1462, 676, 1702, 746), "JACKPOT", (236, 190, 80))
-    relabel(im, (1484, 410, 1608, 446), "INSERT CAPS", (236, 190, 80), serif=False)
+    plate(im, PLATE_L, [("JACKPOT", 1.0, gold), ("7 7 7", 1.6, red), ("WINS IT", 1.0, gold)])
+    plate(im, PLATE_R, [("BAR BAR", 1.0, white), ("BAR", 1.0, white), ("PAYS 50", 1.3, gold)])
+    # GRAND PRIZE -> JACKPOT; INSERT COIN -> INSERT CAPS (two lines, as it was)
+    relabel(im, GRAND, "JACKPOT", (236, 190, 80))
+    relabel(im, COIN, ["INSERT", "CAPS"], (236, 190, 80), serif=False)
     if "--png" in sys.argv:
         im.save(os.path.join(out, "SlotMachine_d.png"))
     save_dds(im.convert("RGBA"), os.path.join(out, "SlotMachine_d.dds"), "BC7")
     n = Image.open(os.path.join(SRC, "SlotMachine01_n.png")).convert("RGBA").resize((N, N), Image.LANCZOS)
-    n = flatten_normal(n, [STRIP, (58, 412, 148, 568), (598, 412, 688, 566), (1462, 676, 1702, 746), (1484, 410, 1608, 446)])
+    n = flatten_normal(n, [STRIP, PLATE_L, PLATE_R, GRAND, COIN])
     save_dds(n, os.path.join(out, "SlotMachine_n.dds"), "BC7")
-    sp = Image.open(os.path.join(SRC, "SlotMachine01_s.png")).convert("RGBA").resize((N, N), Image.LANCZOS)
-    save_dds(sp.convert("RGB"), os.path.join(out, "SlotMachine_s.dds"), "DXT1")
+    sp = Image.open(os.path.join(SRC, "SlotMachine01_s.png")).convert("RGB").resize((N, N), Image.LANCZOS)
+    sp = plain(sp, [PLATE_L, PLATE_R, GRAND, COIN])
+    if "--png" in sys.argv:
+        sp.save(os.path.join(out, "SlotMachine_s.png"))
+    save_dds(sp, os.path.join(out, "SlotMachine_s.dds"), "DXT1")
 
 
 if __name__ == "__main__":
