@@ -2,6 +2,7 @@
 """The slot machine's model and material: the Vault-Tec Workshop's WorkshopSlotMachine01.nif (tools/source_slots,
 from DLCworkshop03 - Main.ba2) with
   - its material our own (Materials\\fo4roulette\\SlotMachine.BGSM: the DLC's, its textures ours: make_slot_machine.py),
+  - its stool's too (Materials\\fo4roulette\\SlotStool.BGSM: casino red leather, chrome and brass: make_slot_stool.py),
   - its behaviour graph off (the BGED extra data renamed: the plugin turns the reels and the lever itself, so they land
     where it wants them; the DLC's graph would play its own canned spins),
   - its workshop power connection points off (the CPA extra data renamed: nothing to wire),
@@ -23,6 +24,7 @@ from nifheader import Nif, trishape  # noqa: E402
 
 SRC = os.path.join(HERE, "source_slots")
 MATERIAL = "Materials\\fo4roulette\\SlotMachine.BGSM"
+STOOL = "Materials\\fo4roulette\\SlotStool.BGSM"  # (the stool's: tools/make_slot_stool.py)
 TEXTURES = {
     "DLC06/SetDressing/SlotMachine/SlotMachine01_d.dds": "fo4roulette/SlotMachine_d.dds",
     "DLC06/SetDressing/SlotMachine/SlotMachine01_n.dds": "fo4roulette/SlotMachine_n.dds",
@@ -69,11 +71,13 @@ def main(data: str) -> None:
     for k, s in enumerate(strings):
         if s == "Materials\\DLC06\\SetDressing\\SlotMachine\\SlotMachine01.BGSM":
             strings[k] = MATERIAL
+        elif s.lower() == "materials\\setdressing\\playerhouse\\playerhouse_stoolbar01.bgsm":
+            strings[k] = STOOL
         elif s == "BGED":
             strings[k] = "BGEX"  # (the behaviour graph: off)
         elif s == "CPA":
             strings[k] = "CPX"   # (the power connection points: off)
-    assert MATERIAL in strings and "BGEX" in strings
+    assert MATERIAL in strings and STOOL in strings and "BGEX" in strings
     # the reels' and the lever's own controllers (the DLC's whole animation timeline, played by its graph): not active,
     # or they'd set the bones every frame over ours
     d = bytearray(n.d)
