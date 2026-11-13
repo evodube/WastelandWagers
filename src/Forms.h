@@ -19,6 +19,7 @@ namespace fr::Forms
 	inline constexpr std::uint32_t kPokerKitID = 0x846;  // ALCH fo4roulettePokerKit
 	inline constexpr std::uint32_t kBlackjackTableID = 0x84A;  // ACTI fo4rouletteBlackjackTable: Meshes\fo4roulette\BlackjackTable.nif
 	inline constexpr std::uint32_t kBlackjackKitID = 0x84C;    // ALCH fo4rouletteBlackjackKit
+	inline constexpr std::uint32_t kWorkshopMenuID = 0x850;    // KYWD fo4rouletteWorkshopMenuMiniGames: the Mini Games workshop category
 	inline constexpr std::uint32_t kSlotMachineID = 0x84E;     // FURN fo4rouletteSlotMachine: Meshes\fo4roulette\SlotMachine.nif (the
 	                                                           // Vault-Tec Workshop's machine, re-skinned; its sitting animations)
 
@@ -103,6 +104,41 @@ namespace fr::Forms
 		auto* machine = SlotMachine();
 		return base && machine && base == machine;
 	}
+	// the workshop menu's Mini Games category (every table's and the slot machine's recipe is in it): put in the Furniture
+	// menu, beside Tables, when the game's data is loaded. The menu's form list isn't overridden in the plugin (that
+	// would undo other mods' changes to it): our category's added to it here, each time the game starts
+	inline void AddWorkshopMenu()
+	{
+		auto* data = RE::TESDataHandler::GetSingleton();
+		auto* ours = Own(kWorkshopMenuID);
+		auto* tables = RE::TESForm::GetFormByID(0x00118F59);  // WorkshopRecipeFilterFurniture02Tables
+		if (!data || !ours || !tables) {
+			log::warn("workshop menu: the Mini Games category ({}) or the Tables one ({}) isn't there", ours != nullptr, tables != nullptr);
+			return;
+		}
+		int added = 0;
+		for (auto* list : data->GetFormArray<RE::BGSListForm>()) {
+			if (!list) {
+				continue;
+			}
+			bool hasTables = false, hasOurs = false;
+			for (auto* f : list->arrayOfForms) {
+				hasTables = hasTables || f == tables;
+				hasOurs = hasOurs || f == ours;
+			}
+			if (hasTables && !hasOurs) {
+				// (right after Tables)
+				auto at = std::ranges::find(list->arrayOfForms, tables);
+				list->arrayOfForms.insert(at == list->arrayOfForms.end() ? at : at + 1, ours);
+				++added;
+				log::info("workshop menu: Mini Games added to {:08X} (the menu with Tables in it)", list->GetFormID());
+			}
+		}
+		if (added == 0) {
+			log::warn("workshop menu: no menu with Tables in it found: the Mini Games category isn't in the workshop menu");
+		}
+	}
+
 	// the Vault-Tec Workshop's own: its slot machine's disappointed look (DLC06_SlotMachineDisappointedIdle)
 	inline RE::TESForm* SlotDisappointed()
 	{

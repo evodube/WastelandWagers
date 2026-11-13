@@ -33,7 +33,9 @@ Form IDs (src/Forms.h expects these):
     xx00084D  COBJ fo4rouletteco_BlackjackKit  the blackjack kit at a chem station (Utility)
     xx00084E  FURN fo4rouletteSlotMachine  Slot Machine (Meshes/fo4roulette/SlotMachine.nif: the Vault-Tec Workshop's
                                            machine re-skinned; its sitting animations: DLCworkshop03.esm is a master)
-    xx00084F  COBJ workshop_co_fo4rouletteSlotMachine  in the workshop menu (where the Vault-Tec machine is)
+    xx00084F  COBJ workshop_co_fo4rouletteSlotMachine  in the workshop menu
+    xx000850  KYWD fo4rouletteWorkshopMenuMiniGames  the workshop menu's Mini Games category (Furniture > Mini Games):
+                                           every table's and the slot machine's recipe is in it
 
 Record layouts follow Playable Pool's tools/make_esl.py (laid out as Fallout4.esm's own records).
 """
@@ -119,6 +121,17 @@ def keyword(form_id: int, editor_id: str) -> bytes:
     return record(
         b"KYWD", 0, form_id,
         subrecord(b"EDID", zstring(editor_id)) + subrecord(b"CNAM", bytes.fromhex("ffffff00")) + subrecord(b"TNAM", struct.pack("<I", 0)),
+    )
+
+
+def menu_keyword(form_id: int, editor_id: str, name: str) -> bytes:
+    """a workshop menu category (a recipe filter, as Fallout4.esm's WorkshopRecipeFilterFurniture02Tables): its name is
+    what the menu shows. The plugin puts it in the Furniture menu when the game's data is loaded (Forms.h
+    AddWorkshopMenu: not in the menu's form list here, so nothing else's menu changes are overwritten)"""
+    return record(
+        b"KYWD", 0, form_id,
+        subrecord(b"EDID", zstring(editor_id)) + subrecord(b"CNAM", bytes.fromhex("ffffff00")) + subrecord(b"TNAM", struct.pack("<I", 9))
+        + subrecord(b"FULL", zstring(name)),
     )
 
 
@@ -327,11 +340,13 @@ def build() -> bytes:
     walk = own | (FIRST_ID + 7)
     seat_link = own | (FIRST_ID + 0x48)
     sit = own | (FIRST_ID + 0x49)
-    keywords = [keyword(link, "fo4rouletteLinkSpot"), keyword(seat_link, "fo4rouletteLinkSeat")]
+    menu = own | (FIRST_ID + 0x50)  # the Mini Games workshop category: every table's and the slot machine's recipe
+    keywords = [keyword(link, "fo4rouletteLinkSpot"), keyword(seat_link, "fo4rouletteLinkSeat"),
+                menu_keyword(menu, "fo4rouletteWorkshopMenuMiniGames", "Mini Games")]
     packages = [travel_package(walk, "fo4rouletteWalkToSpot", link), sit_package(sit, "fo4rouletteSitInSeat", seat_link)]
     quests = [quest(own | (FIRST_ID + 8), "fo4rouletteQuest", walk, sit)]
     recipes = [workshop_recipe(own | (FIRST_ID + 9), "workshop_co_fo4rouletteTable", table,
-                               [(0x0001FAC2, 12), (0x0001FABD, 4), (0x001223C7, 4), (0x0003D294, 2)])]
+                               [(0x0001FAC2, 12), (0x0001FABD, 4), (0x001223C7, 4), (0x0003D294, 2)], category=menu)]
     # the Roulette Table Kit: sold at the Dugout Inn (the plugin adds it to Vadim's stock); used, a table in front of
     # you. No model: nothing shows in the Pip-Boy or barter previews
     kit = own | (FIRST_ID + 10)
@@ -355,7 +370,7 @@ def build() -> bytes:
     acti.append(activator(poker, "fo4roulettePokerTable", "Poker Table", "fo4roulette\\PokerTable.nif",
                           (-47, -91, 0, 47, 91, 65), "Play", 0x001A03DD))
     recipes.append(workshop_recipe(own | (FIRST_ID + 0x45), "workshop_co_fo4roulettePokerTable", poker,
-                                   [(0x0001FAC2, 10), (0x001223C7, 6), (0x0003D294, 2), (0x0001FAA5, 1)]))
+                                   [(0x0001FAC2, 10), (0x001223C7, 6), (0x0003D294, 2), (0x0001FAA5, 1)], category=menu))
     pkit = own | (FIRST_ID + 0x46)
     potions.append(potion(pkit, "fo4roulettePokerKit", "Poker Table Kit",
                           "A folding poker table, cards and all. Use it to set the table up in front of you; sit at it "
@@ -370,7 +385,7 @@ def build() -> bytes:
     acti.append(activator(bjt, "fo4rouletteBlackjackTable", "Blackjack Table", "fo4roulette\\BlackjackTable.nif",
                           (-73, -49, 0, 73, 49, 69), "Play", 0x001A03DD))
     recipes.append(workshop_recipe(own | (FIRST_ID + 0x4B), "workshop_co_fo4rouletteBlackjackTable", bjt,
-                                   [(0x0001FAC2, 12), (0x001223C7, 6), (0x0003D294, 2), (0x0001FAA5, 1)]))
+                                   [(0x0001FAC2, 12), (0x001223C7, 6), (0x0003D294, 2), (0x0001FAA5, 1)], category=menu))
     bkit = own | (FIRST_ID + 0x4C)
     potions.append(potion(bkit, "fo4rouletteBlackjackKit", "Blackjack Table Kit",
                           "A folding blackjack table, shoe and all. Use it to set the table up in front of you; sit at "
@@ -385,14 +400,14 @@ def build() -> bytes:
     furniture = [slot_machine(slots)]
     recipes.append(workshop_recipe(own | (FIRST_ID + 0x4F), "workshop_co_fo4rouletteSlotMachine", slots,
                                    [(0x0001FABD, 4), (0x0003D294, 2), (0x0001FAB7, 3), (0x0001FAB0, 2), (0x0001FA9B, 2)],
-                                   category=0x0011FBD3, sounds=(0x000196B6, 0x000196BD)))
+                                   category=menu, sounds=(0x000196B6, 0x000196BD)))
 
     count = len(acti) + len(stats) + len(keywords) + len(packages) + len(quests) + len(recipes) + len(potions) + len(furniture)
     header = record(
         b"TES4",
         FLAG_MASTER | FLAG_LIGHT,
         0,
-        subrecord(b"HEDR", struct.pack("<fiI", 1.0, count, FIRST_ID + 0x50))
+        subrecord(b"HEDR", struct.pack("<fiI", 1.0, count, FIRST_ID + 0x51))
         + subrecord(b"CNAM", zstring("evodube"))
         + subrecord(b"SNAM", zstring("Mini Games: playable roulette, poker and blackjack tables, and slot machines"))
         + subrecord(b"MAST", zstring("Fallout4.esm"))

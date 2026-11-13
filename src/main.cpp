@@ -29,6 +29,7 @@ namespace
 			fr::menus::Watch();
 			fr::Game::Listen();
 			fr::Game::Get().SetUpKit();
+			fr::Forms::AddWorkshopMenu();
 			break;
 		case F4SE::MessagingInterface::kPreLoadGame:
 			fr::Game::Get().Forget();
