@@ -19,6 +19,10 @@
 // down and the reels spin from then. When their hand's been idle a while, the pull's played on them
 // (fo4rouletteSlotPullIdle: that same animation) and the pull waits for it (asked again if it didn't play): a
 // settler's reels only ever spin with their hand on the lever.
+//
+// You sit in it too (its activation's default processing, past the block that keeps passers-by off it), the view over
+// your left shoulder: your pull plays that same animation on you and waits for your hand the same way. In power
+// armour you can't sit: you play it standing, as before, the lever on its own.
 
 #include "Game.h"
 
@@ -556,6 +560,18 @@ namespace fr
 
 	void Game::SlLever(RE::TESFormID a_who, Clock::time_point a_at)
 	{
+		// your hand put your machine's lever down
+		if (_slSeated && _slSits && _slYou >= 0 && _slYou < static_cast<int>(_sl.size()) && a_who == 0x14) {
+			auto& m = _sl[_slYou];
+			if (!m.spin.on && m.pend >= 0.0f) {
+				m.pend = -1.0f;
+				SlPull(_slYou, m.pendBet, true, a_at);
+			} else {
+				m.dry = a_at;  // (your sitting idle's own pull, or one mid-spin: the lever goes with your hand, nothing more)
+				m.dryOn = true;
+			}
+			return;
+		}
 		// a settler's hand put a machine's lever down
 		for (int i = 0; i < static_cast<int>(_sl.size()); ++i) {
 			auto& m = _sl[i];
@@ -694,6 +710,7 @@ namespace fr
 
 	void Game::TickSlots(float a_dt)
 	{
+		SlTickGetUp(a_dt);
 		if (_sl.empty()) {
 			return;
 		}
@@ -722,7 +739,7 @@ namespace fr
 			}
 			// a pull asked for whose hand never came (the idle didn't play: mid-way through another of their sitting
 			// animations, say): asked for again shortly. The reels never go without their hand on the lever
-			if (m.pend >= 0.0f) {
+			if (m.pend >= 0.0f && !m.you) {
 				m.pend += a_dt;
 				if (m.pend > 3.0f) {
 					m.pend = -1.0f;
@@ -751,9 +768,82 @@ namespace fr
 		if (_slSeated && _slYou >= 0) {
 			Frame frame;
 			if (SlFrame(_slYou, frame)) {
+				SlTickYou(frame, a_dt);
 				SlCamera(frame, a_dt);
 			}
 		}
+	}
+
+	void Game::SlTickYou(const Frame& a_frame, float a_dt)
+	{
+		(void)a_frame;
+		auto* player = RE::PlayerCharacter::GetSingleton();
+		if (!player || !_slSits) {
+			return;
+		}
+		auto&      m = _sl[_slYou];
+		const auto sit = player->DoGetSitSleepState();
+		const bool sitting = sit == RE::SIT_SLEEP_STATE::kIsSitting;
+		if (sitting) {
+			_slSat = true;
+		} else if (_slSat && sit == RE::SIT_SLEEP_STATE::kNormal) {
+			// up out of it some other way (combat, a script): you've left the machine
+			log::info("slots: you're not sat at the machine any more: up");
+			SlStandUp();
+			return;
+		}
+		// your pull: the pull idle played on you once you're sat, the reels when your hand puts the lever down
+		// (SlLever). An idle that doesn't take is played again; failing that, the lever goes on its own
+		if (m.pend < 0.0f) {
+			return;
+		}
+		m.pend += a_dt;
+		auto* pull = Forms::SlotPull();
+		if (!pull) {
+			m.pend = -1.0f;
+			SlPull(_slYou, m.pendBet, true, Clock::now());
+			return;
+		}
+		if (m.pendSent == 0 && sitting) {
+			Npc::PlayIdle(player, pull->GetFormID());
+			m.pendSent = 1;
+			m.pend = 0.0f;
+		} else if (m.pendSent == 1 && m.pend > 1.6f && sitting) {
+			log::info("slots: your pull idle didn't put the lever down: played again");
+			Npc::PlayIdle(player, pull->GetFormID());
+			m.pendSent = 2;
+		}
+		if ((m.pendSent > 0 && m.pend > 3.4f) || (m.pendSent == 0 && m.pend > 6.0f)) {
+			log::info("slots: your hand never got to the lever: pulled anyway");
+			m.pend = -1.0f;
+			SlPull(_slYou, m.pendBet, true, Clock::now());
+		}
+	}
+
+	void Game::SlTickGetUp(float a_dt)
+	{
+		// got up out of the machine: the game's own get-up asked for; still in it a while on, moved off it
+		if (_slGetUp < 0.0f) {
+			return;
+		}
+		_slGetUp += a_dt;
+		auto* player = RE::PlayerCharacter::GetSingleton();
+		if (!player || player->DoGetSitSleepState() == RE::SIT_SLEEP_STATE::kNormal) {
+			_slGetUp = -1.0f;
+			return;
+		}
+		if (_slGetUp < 2.5f) {
+			return;
+		}
+		_slGetUp = -1.0f;
+		auto machine = _slGetUpFrom.get();
+		Frame frame;
+		if (!machine || !machine->Get3D() || !FrameOf(machine.get(), frame)) {
+			return;
+		}
+		const auto spot = ToWorld(frame, 0.0, kStandY - 12.0, 0.0);
+		log::info("slots: the get-up didn't take: moved off the machine");
+		Npc::MovePlayerOff(machine.get(), spot.x - machine->data.location.x, spot.y - machine->data.location.y);
 	}
 
 	void Game::SlAnimate()
@@ -812,7 +902,16 @@ namespace fr
 			return;
 		}
 		m.you = true;
+		m.pend = -1.0f;
 		_slYou = i;
+		// sat in it (in power armour you can't: you play it standing, the lever on its own)
+		_slSits = !RE::PowerArmor::ActorInPowerArmor(*player);
+		_slSat = false;
+		_slGetUp = -1.0f;
+		if (_slSits) {
+			Npc::SitPlayerIn(a_machine);
+			Npc::WatchLever(player, true);
+		}
 		if (!InFreeCamera()) {
 			camera->ToggleFreeCameraMode(false);
 		}
@@ -853,8 +952,25 @@ namespace fr
 		}
 		_slSeated = false;
 		if (_slYou >= 0 && _slYou < static_cast<int>(_sl.size())) {
-			_sl[_slYou].you = false;  // (a pull under way: still yours, paid as it lands)
+			auto& m = _sl[_slYou];
+			m.you = false;  // (a pull under way: still yours, paid as it lands)
+			if (m.pend >= 0.0f) {
+				m.pend = -1.0f;
+				GivePlayer(m.pendBet);  // (a pull still waiting on your hand: your caps back)
+			}
+			if (_slSits) {
+				if (auto* player = RE::PlayerCharacter::GetSingleton()) {
+					Npc::WatchLever(player, false);
+					if (player->DoGetSitSleepState() != RE::SIT_SLEEP_STATE::kNormal) {
+						Npc::StandPlayerUp();
+						_slGetUp = 0.0f;
+						_slGetUpFrom = m.ref;
+					}
+				}
+			}
 		}
+		_slSits = false;
+		_slSat = false;
 		_slYou = -1;
 		_camPitch = -1.0f;
 		HoldPlayerView();
@@ -895,7 +1011,7 @@ namespace fr
 			return;
 		case 94:
 			{
-				if (m.spin.on) {
+				if (m.spin.on || m.pend >= 0.0f) {
 					return;
 				}
 				if (!TakeFromPlayer(_slBet)) {
@@ -903,7 +1019,14 @@ namespace fr
 					return;
 				}
 				_slBanner = 0;
-				SlPull(_slYou, _slBet, true, Clock::now());
+				if (_slSits && Forms::SlotPull()) {
+					// your hand to the lever first: the reels go when it's down (SlTickYou, SlLever)
+					m.pend = 0.0f;
+					m.pendBet = _slBet;
+					m.pendSent = 0;
+				} else {
+					SlPull(_slYou, _slBet, true, Clock::now());
+				}
 				return;
 			}
 		case 95:
@@ -917,8 +1040,12 @@ namespace fr
 	void Game::SlCamera(const Frame& a_frame, float a_dt)
 	{
 		(void)a_dt;
-		// from the stool, a little above the reels, looking at them
-		const auto eye = ToWorld(a_frame, 0.0, -36.0, 113.0);
+		// sat on the stool: over your left shoulder, at the reels and the lever (your right hand on it); standing (in
+		// power armour), from the stool, a little above the reels
+		const bool   over = _slSits;
+		const double ex = over ? -30.0 : 0.0, ey = over ? -82.0 : -36.0, ez = over ? 136.0 : 113.0;
+		const double tx = over ? 2.0 : 0.0, ty = over ? 3.8 : -1.0, tz = over ? 100.0 : 101.0;
+		const auto   eye = ToWorld(a_frame, ex, ey, ez);
 		std::scoped_lock lock(_camMutex);
 		float sw, sh;
 		{
@@ -939,8 +1066,8 @@ namespace fr
 		_pkPtrY = std::clamp(_pkPtrY + _mouseDY * k, 0.0, static_cast<double>(sh - 1.0f));
 		_mouseDX = _mouseDY = 0.0;
 		_camWant = eye;
-		_camYaw = HeadingOf(a_frame, 0.0, 1.0);
-		_camPitch = std::atan2(113.0f - 101.0f, 36.0f + 1.0f);
+		_camYaw = HeadingOf(a_frame, tx - ex, ty - ey);
+		_camPitch = static_cast<float>(std::atan2(ez - tz, std::hypot(tx - ex, ty - ey)));
 	}
 
 	void Game::SlSay(const std::string& a_text, int a_tone)
@@ -969,7 +1096,7 @@ namespace fr
 		a_h.slBet = _slBet;
 		a_h.slJackpot = a_h.pkPot;
 		a_h.slMaxBet = kMaxBet;
-		a_h.slSpinning = _slYou >= 0 && _slYou < static_cast<int>(_sl.size()) && _sl[_slYou].spin.on;
+		a_h.slSpinning = _slYou >= 0 && _slYou < static_cast<int>(_sl.size()) && (_sl[_slYou].spin.on || _sl[_slYou].pend >= 0.0f);
 		a_h.pkInfo = std::format("{} CAPS A PULL · 25 A PULL FOR THE JACKPOT", _slBet);
 		{
 			std::scoped_lock lock(_camMutex);

@@ -331,6 +331,36 @@ namespace fr::Npc
 		CallQuest("WatchLever", what, logged, FormArg(a_actor), a_on);
 	}
 
+	void SitPlayerIn(RE::TESObjectREFR* a_furniture)
+	{
+		if (!a_furniture || !Ready()) {
+			return;
+		}
+		const std::string what = std::format("SitPlayerIn {:08X}", a_furniture->GetFormID());
+		const RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> logged{ new LogResult(what) };
+		CallQuest("SitPlayerIn", what, logged, FormArg(a_furniture));
+	}
+
+	void StandPlayerUp()
+	{
+		if (!Ready()) {
+			return;
+		}
+		const std::string what = "StandPlayerUp";
+		const RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> logged{ new LogResult(what) };
+		CallQuest("StandPlayerUp", what, logged);
+	}
+
+	void MovePlayerOff(RE::TESObjectREFR* a_furniture, float a_dx, float a_dy)
+	{
+		if (!a_furniture || !Ready()) {
+			return;
+		}
+		const std::string what = std::format("MovePlayerOff {:08X} ({:.0f}, {:.0f})", a_furniture->GetFormID(), a_dx, a_dy);
+		const RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> logged{ new LogResult(what) };
+		CallQuest("MovePlayerOff", what, logged, FormArg(a_furniture), a_dx, a_dy);
+	}
+
 	void Say(RE::Actor* a_actor, RE::TESFormID a_keyword)
 	{
 		if (!a_actor || !Ready()) {

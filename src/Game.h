@@ -746,6 +746,8 @@ namespace fr
 			// a settler's hand on the lever: their pulls go when their pull animation puts the lever down (Slots.cpp
 			// SlLever), their sitting idle's own pulls or one asked for (the pull idle played on them)
 			float                pend{ -1.0f };     // seconds since a pull was asked for (< 0: none)
+			int                  pendBet{ 0 };      // (yours: the caps already taken)
+			int                  pendSent{ 0 };     // (yours: how many times the pull idle's been played on you)
 			float                idleHand{ 0.0f };  // seconds since their hand last went to the lever
 			float                askAt{ 6.0f };     // ...asked for a pull when it's been this long
 			std::chrono::steady_clock::time_point dry{};  // the lever pulled with nothing on it
@@ -756,6 +758,10 @@ namespace fr
 		std::vector<SlotMachine> _sl;
 		std::atomic<bool>        _slSeated{ false };
 		int                      _slYou{ -1 };     // the machine you're at
+		bool                     _slSits{ false };  // ...sat in it (not in power armour): your pulls go with your hand
+		bool                     _slSat{ false };   // (seen sitting in it: up again some other way, you've left it)
+		float                    _slGetUp{ -1.0f }; // seconds since you were got up out of it (< 0: not)
+		RE::ObjectRefHandle      _slGetUpFrom;
 		int                      _slBet{ 5 };
 		float                    _slFind{ 4.0f };  // seconds to looking for a settler to play
 		float                    _slAge{ 0.0f };
@@ -772,6 +778,8 @@ namespace fr
 		void         SlRelease(int a_i, const char* a_why);
 		void         SlPull(int a_i, int a_bet, bool a_you, std::chrono::steady_clock::time_point a_at);
 		void         SlLever(RE::TESFormID a_who, std::chrono::steady_clock::time_point a_at);
+		void         SlTickYou(const Frame& a_frame, float a_dt);
+		void         SlTickGetUp(float a_dt);
 		int          SlNpcBet(int a_i);
 		void         SlPay(int a_i);
 		void         SlSitDown(RE::TESObjectREFR* a_machine);

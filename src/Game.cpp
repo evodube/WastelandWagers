@@ -1654,6 +1654,9 @@ namespace fr
 		_slSeated = false;
 		_sl.clear();
 		_slYou = -1;
+		_slSits = false;
+		_slSat = false;
+		_slGetUp = -1.0f;
 		_slLog.clear();
 		_bjYou = -1;
 		_camPitch = -1.0f;

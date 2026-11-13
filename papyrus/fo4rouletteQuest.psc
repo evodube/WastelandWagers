@@ -173,6 +173,37 @@ Event OnAnimationEvent(ObjectReference akSource, String asEventName)
 	endif
 EndEvent
 
+; you at a slot machine: sat in it (its activation's blocked, so nobody passing sits in it: the default processing
+; still sits you), and up out of it again (the game's own get-up)
+Bool Function SitPlayerIn(Int aiFurniture)
+	ObjectReference akFurniture = Game.GetForm(aiFurniture) as ObjectReference
+	if akFurniture == None
+		return false
+	endif
+	return akFurniture.Activate(Game.GetPlayer(), true)
+EndFunction
+
+Bool Function StandPlayerUp()
+	Action akExit = Game.GetForm(0x0002248D) as Action  ; ActionInteractionExit
+	if akExit == None
+		return false
+	endif
+	return Game.GetPlayer().PlayIdleAction(akExit)
+EndFunction
+
+; ...and if the get-up didn't take: moved off it, to a spot that far from it (world units), facing the way you were
+Bool Function MovePlayerOff(Int aiFurniture, Float afX, Float afY)
+	ObjectReference akFurniture = Game.GetForm(aiFurniture) as ObjectReference
+	if akFurniture == None
+		return false
+	endif
+	Actor akPlayer = Game.GetPlayer()
+	Float angle = akPlayer.GetAngleZ()
+	akPlayer.MoveTo(akFurniture, afX, afY, 0.0, false)
+	akPlayer.SetAngle(0.0, 0.0, angle)
+	return true
+EndFunction
+
 ; sat down in a chair (a poker table's)
 Bool Function SitOn(Int aiActor, Int aiChair, Int aiLink, Int aiSeatLink)
 	Actor akActor = Game.GetForm(aiActor) as Actor
