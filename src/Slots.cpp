@@ -38,6 +38,18 @@ namespace fr
 	{
 		using Clock = std::chrono::steady_clock;
 
+		// the hands on levers, from the script thread (LeverDown), for the tick
+		std::mutex                                               g_leverLock;
+		std::vector<std::pair<RE::TESFormID, Clock::time_point>> g_levers;
+
+		void LeverDown(std::monostate, std::int32_t a_actor)
+		{
+			std::scoped_lock lock(g_leverLock);
+			if (g_levers.size() < 64) {
+				g_levers.emplace_back(static_cast<RE::TESFormID>(a_actor), Clock::now());
+			}
+		}
+
 		// the strip, top to bottom (tools/make_slot_machine.py SYMBOLS)
 		enum Sym : int
 		{
