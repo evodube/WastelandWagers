@@ -48,7 +48,7 @@ namespace fr
 				auto* player = RE::PlayerCharacter::GetSingleton();
 				if (a_event.objectActivated && a_event.actionRef && a_event.actionRef.get() == player &&
 					(Forms::IsTable(a_event.objectActivated.get()) || Forms::IsPokerTable(a_event.objectActivated.get()) ||
-					 Forms::IsBlackjackTable(a_event.objectActivated.get()))) {
+					 Forms::IsBlackjackTable(a_event.objectActivated.get()) || Forms::IsSlotMachine(a_event.objectActivated.get()))) {
 					auto handle = a_event.objectActivated->GetHandle();
 					if (auto* tasks = F4SE::GetTaskInterface()) {
 						tasks->AddTask([handle]() {
@@ -137,7 +137,11 @@ namespace fr
 
 	void Game::OnActivated(RE::TESObjectREFR* a_ref)
 	{
-		if (_seated || _pkSeated || _bjSeated || _kitPlacing || IsKitPreview(a_ref) || IsGamePaused()) {
+		if (_seated || _pkSeated || _bjSeated || _slSeated || _kitPlacing || IsKitPreview(a_ref) || IsGamePaused()) {
+			return;
+		}
+		if (Forms::IsSlotMachine(a_ref)) {
+			SlSitDown(a_ref);
 			return;
 		}
 		if (Forms::IsPokerTable(a_ref)) {
@@ -568,6 +572,13 @@ namespace fr
 
 	void Game::UpdateHud()
 	{
+		if (_slSeated) {
+			HudState h;
+			SlHud(h);
+			std::scoped_lock lock(_hudMutex);
+			_hud = std::move(h);
+			return;
+		}
 		if (_bjSeated) {
 			HudState h;
 			BjHud(h);

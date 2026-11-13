@@ -15,6 +15,10 @@ namespace fr::Audio
 		kSlide,   // cards or chips slid across the felt
 		kShuffle, // the deck shuffled between hands
 		kTurn,    // your turn at a card table (a chime)
+		kSlotPull,  // a slot machine's lever (the Vault-Tec Workshop machine's own sounds)
+		kSlotReel,  // ...its reels running
+		kSlotStop,  // ...a reel stopping
+		kSlotWin,   // ...a win
 		kCount
 	};
 

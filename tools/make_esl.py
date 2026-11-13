@@ -31,6 +31,9 @@ Form IDs (src/Forms.h expects these):
     xx00084B  COBJ workshop_co_fo4rouletteBlackjackTable  in the workshop menu, Furniture > Tables
     xx00084C  ALCH fo4rouletteBlackjackKit  Blackjack Table Kit (sold by Vadim too)
     xx00084D  COBJ fo4rouletteco_BlackjackKit  the blackjack kit at a chem station (Utility)
+    xx00084E  FURN fo4rouletteSlotMachine  Slot Machine (Meshes/fo4roulette/SlotMachine.nif: the Vault-Tec Workshop's
+                                           machine re-skinned; its sitting animations: DLCworkshop03.esm is a master)
+    xx00084F  COBJ workshop_co_fo4rouletteSlotMachine  in the workshop menu (where the Vault-Tec machine is)
 
 Record layouts follow Playable Pool's tools/make_esl.py (laid out as Fallout4.esm's own records).
 """
@@ -227,7 +230,40 @@ def activator(form_id: int, editor_id: str, name: str, mesh: str, bounds: tuple,
     )
 
 
-def workshop_recipe(form_id: int, editor_id: str, created: int, components: list[tuple[int, int]]) -> bytes:
+DLC06 = 0x01000000  # DLCworkshop03.esm: our second master (its forms are 01xxxxxx here)
+
+
+def slot_machine(form_id: int) -> bytes:
+    """The Vault-Tec Workshop's slot machine (DLC06WorkshopSlotMachineBase) as furniture of ours: our re-skinned model
+    (its behaviour graph off: the plugin turns the reels), the DLC's slot machine sitting animations (AnimFurnSlotMachine,
+    its furniture marker model), no workshop power, no scripts, not a relaxation object (settlers don't wander over to it
+    on their own: the plugin sits them at it). Its marker data copied as it is in the DLC."""
+    keywords = [0x000BA2F6,           # FurnitureCantWait (no Wait prompt sat at it)
+                0x000A56D8,           # FurnitureForce3rdPerson
+                DLC06 | 0x001A5C]     # AnimFurnSlotMachine
+    return record(
+        b"FURN",
+        0,
+        form_id,
+        subrecord(b"EDID", zstring("fo4rouletteSlotMachine"))
+        + subrecord(b"OBND", struct.pack("<6h", -20, -61, 0, 20, 22, 125))
+        + subrecord(b"PTRN", struct.pack("<I", DLC06 | 0x00252D))
+        + subrecord(b"FULL", zstring("Slot Machine"))
+        + subrecord(b"MODL", zstring("fo4roulette\\SlotMachine.nif"))
+        + subrecord(b"KSIZ", struct.pack("<I", len(keywords)))
+        + subrecord(b"KWDA", b"".join(struct.pack("<I", k) for k in keywords))
+        + subrecord(b"PNAM", struct.pack("<I", 0))
+        + subrecord(b"FNAM", struct.pack("<H", 0))
+        + subrecord(b"MNAM", bytes.fromhex("01000040"))
+        + subrecord(b"WBDT", b"\x00")
+        + subrecord(b"FNPR", bytes.fromhex("01000e00"))
+        + subrecord(b"XMRK", zstring("DLC06\\Markers\\WorkshopSlotMachineMarker.nif"))
+        + subrecord(b"SNAM", bytes.fromhex("dd2496bfa84637c2000000000000000000000000ffffffff")),
+    )
+
+
+def workshop_recipe(form_id: int, editor_id: str, created: int, components: list[tuple[int, int]],
+                    category: int = 0x00118F59, sounds: tuple[int, int] = (0x000196B2, 0x000196BC)) -> bytes:
     """A workshop menu entry, laid out as Fallout4.esm's workshop_co_MetalTableRound01: pick-up and put-down sounds
     (wood), the components, no description, the object, the settlement workbench, the Tables category, makes one."""
     return record(
@@ -235,13 +271,13 @@ def workshop_recipe(form_id: int, editor_id: str, created: int, components: list
         0,
         form_id,
         subrecord(b"EDID", zstring(editor_id))
-        + subrecord(b"YNAM", struct.pack("<I", 0x000196B2))
-        + subrecord(b"ZNAM", struct.pack("<I", 0x000196BC))
+        + subrecord(b"YNAM", struct.pack("<I", sounds[0]))
+        + subrecord(b"ZNAM", struct.pack("<I", sounds[1]))
         + subrecord(b"FVPA", b"".join(struct.pack("<II", c, n) for c, n in components))
         + subrecord(b"DESC", zstring(""))
         + subrecord(b"CNAM", struct.pack("<I", created))
         + subrecord(b"BNAM", struct.pack("<I", 0x0005B5E3))
-        + subrecord(b"FNAM", struct.pack("<I", 0x00118F59))
+        + subrecord(b"FNAM", struct.pack("<I", category))
         + subrecord(b"INTV", struct.pack("<HH", 1, 0)),
     )
 
@@ -279,7 +315,7 @@ def quest(form_id: int, editor_id: str, package: int, sit: int, priority: int = 
 
 
 def build() -> bytes:
-    own = 0x01000000  # our records come after the one master
+    own = 0x02000000  # our records come after the two masters (Fallout4.esm, DLCworkshop03.esm)
     table = own | FIRST_ID
     acti = [activator(table, "fo4rouletteTable", "Roulette Table", "fo4roulette\\RouletteTable.nif",
                       (-118, -62, 0, 118, 62, 81), "Play",
@@ -344,15 +380,24 @@ def build() -> bytes:
                           [(0x0001FAC2, 12), (0x001223C7, 6), (0x0003D294, 2), (0x0001FAA5, 2)],
                           0x00102158, 0x0006980C))
 
-    count = len(acti) + len(stats) + len(keywords) + len(packages) + len(quests) + len(recipes) + len(potions)
+    # ---- the slot machine (the Vault-Tec Workshop's)
+    slots = own | (FIRST_ID + 0x4E)
+    furniture = [slot_machine(slots)]
+    recipes.append(workshop_recipe(own | (FIRST_ID + 0x4F), "workshop_co_fo4rouletteSlotMachine", slots,
+                                   [(0x0001FABD, 4), (0x0003D294, 2), (0x0001FAB7, 3), (0x0001FAB0, 2), (0x0001FA9B, 2)],
+                                   category=0x0011FBD3, sounds=(0x000196B6, 0x000196BD)))
+
+    count = len(acti) + len(stats) + len(keywords) + len(packages) + len(quests) + len(recipes) + len(potions) + len(furniture)
     header = record(
         b"TES4",
         FLAG_MASTER | FLAG_LIGHT,
         0,
-        subrecord(b"HEDR", struct.pack("<fiI", 1.0, count, FIRST_ID + 0x4E))
+        subrecord(b"HEDR", struct.pack("<fiI", 1.0, count, FIRST_ID + 0x50))
         + subrecord(b"CNAM", zstring("evodube"))
-        + subrecord(b"SNAM", zstring("Mini Games: playable roulette, poker and blackjack tables"))
+        + subrecord(b"SNAM", zstring("Mini Games: playable roulette, poker and blackjack tables, and slot machines"))
         + subrecord(b"MAST", zstring("Fallout4.esm"))
+        + subrecord(b"DATA", struct.pack("<Q", 0))
+        + subrecord(b"MAST", zstring("DLCworkshop03.esm"))
         + subrecord(b"DATA", struct.pack("<Q", 0)),
     )
     # groups in the order the game's own master has them
@@ -361,6 +406,7 @@ def build() -> bytes:
         + group(b"KYWD", b"".join(keywords))
         + group(b"ACTI", b"".join(acti))
         + group(b"STAT", b"".join(stats))
+        + group(b"FURN", b"".join(furniture))
         + group(b"ALCH", b"".join(potions))
         + group(b"QUST", b"".join(quests))
         + group(b"PACK", b"".join(packages))

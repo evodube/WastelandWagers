@@ -99,6 +99,10 @@ namespace fr::Audio
 			case Bank::kSlide: return L"slide";
 			case Bank::kShuffle: return L"shuffle";
 			case Bank::kTurn: return L"turn";
+			case Bank::kSlotPull: return L"slotpull";
+			case Bank::kSlotReel: return L"slotreel";
+			case Bank::kSlotStop: return L"slotstop";
+			case Bank::kSlotWin: return L"slotwin";
 			default: return L"";
 			}
 		}

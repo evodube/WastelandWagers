@@ -28,6 +28,7 @@ namespace fr
 		log::info("co-save: {} purses written", g_purses.size());
 		SaveKit(a_intfc);
 		SavePokerMemory(a_intfc);
+		SaveJackpot(a_intfc);
 	}
 
 	void Game::Load(const F4SE::SerializationInterface* a_intfc)
@@ -35,6 +36,7 @@ namespace fr
 		std::scoped_lock lock(g_npcMutex);
 		g_purses.clear();
 		g_pkMemory.clear();
+		s_jackpot = 0;
 		RevertKit();
 		std::uint32_t type = 0, version = 0, length = 0;
 		while (a_intfc->GetNextRecordInfo(type, version, length)) {
@@ -44,6 +46,10 @@ namespace fr
 			}
 			if (type == kPkMemoryType) {
 				LoadPokerMemory(a_intfc, version);
+				continue;
+			}
+			if (type == kJackpotType) {
+				LoadJackpot(a_intfc, version);
 				continue;
 			}
 			if (version != kVersion || type != kPursesType) {

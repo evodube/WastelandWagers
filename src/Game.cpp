@@ -117,6 +117,21 @@ namespace fr
 		// (blackjack: A, B, X, Y as the 1-4 keys; Back leave; Start the view; right stick your hand on the HUD)
 		static constexpr std::array<std::pair<WORD, int>, 7> kBjMap{ { { 0x1000, 80 }, { 0x2000, 81 }, { 0x4000, 82 }, { 0x8000, 83 },
 			{ 0x0020, 67 }, { 0x0010, 66 }, { 0x0080, 69 } } };
+		// (a slot machine: A pull, X / Y the bet down / up, B or Back get up)
+		static constexpr std::array<std::pair<WORD, int>, 5> kSlMap{ { { 0x1000, 94 }, { 0x4000, 96 }, { 0x8000, 97 }, { 0x2000, 95 },
+			{ 0x0020, 95 } } };
+		if (_slSeated) {
+			for (const auto& [mask, key] : kSlMap) {
+				if (pressed & mask) {
+					tasks->AddTask([this, key]() {
+						if (!IsGamePaused() || key == 95) {
+							SlKey(key);
+						}
+					});
+				}
+			}
+			return;
+		}
 		if (_bjSeated) {
 			for (const auto& [mask, key] : kBjMap) {
 				if (pressed & mask) {
@@ -171,8 +186,8 @@ namespace fr
 						}
 					}
 				}
-				_pkDragging = id == 11 && !_bjSeated;  // (the raise slider: dragged while the button's held, below)
-				if (id >= 0 && (id != 11 || _bjSeated)) {
+				_pkDragging = id == 11 && !_bjSeated && !_slSeated;  // (the raise slider: dragged while the button's held, below)
+				if (id >= 0 && (id != 11 || _bjSeated || _slSeated)) {
 					tasks->AddTask([this, id]() {
 						if (!IsGamePaused()) {
 							CardKey(id);
@@ -240,6 +255,28 @@ namespace fr
 						case 1: CancelKit(true); break;
 						case 10: TurnKit(-1); break;
 						default: TurnKit(1); break;
+						}
+					});
+				}
+				continue;
+			}
+			if (_slSeated) {
+				// at a slot machine: 1-4 the bet (1, 5, 10, 25), activate or same-again pull, leave gets up
+				int sk = -1;
+				switch (i) {
+				case 5: sk = 90; break;
+				case 6: sk = 91; break;
+				case 7: sk = 92; break;
+				case 8: sk = 93; break;
+				case 0:
+				case 3: sk = 94; break;
+				case 1: sk = 95; break;
+				default: break;
+				}
+				if (sk >= 0) {
+					tasks->AddTask([this, sk]() {
+						if (!IsGamePaused() || sk == 95) {
+							SlKey(sk);
 						}
 					});
 				}
@@ -448,6 +485,12 @@ namespace fr
 				BjStandUp();
 			}
 		}
+		if (_slSeated) {
+			if (menus::Open(menus::kDialogue)) {
+				log::info("a conversation started while you were at a slot machine: getting up");
+				SlStandUp();
+			}
+		}
 		if (IsGamePaused()) {
 			return;  // (menus, the Pip-Boy, the workshop: everything holds still; a conversation doesn't)
 		}
@@ -471,10 +514,12 @@ namespace fr
 			ScanTables();
 			PkScan();
 			BjScan();
+			SlScan();
 		}
 		TableReach();
 		TickPoker(dt);
 		TickBlackjack(dt);
+		TickSlots(dt);
 		if (_t.table) {
 			TickTable(dt);
 		}
@@ -765,6 +810,7 @@ namespace fr
 	{
 		PkEnd("a loading screen");
 		BjEnd("a loading screen");
+		SlEnd("a loading screen");
 		if (_kitPlacing) {
 			CancelKit(true);  // travelling while setting a kit up: the kit back
 		}
@@ -1528,6 +1574,7 @@ namespace fr
 		}
 		PkBeforeSave();
 		BjBeforeSave();
+		SlBeforeSave();
 		Remove(_ghost);
 		_ghostValue = -1;
 		BeforeSaveTable();
@@ -1604,6 +1651,10 @@ namespace fr
 		_pkYou = -1;
 		_bj = BlackjackState{};
 		_bjSeated = false;
+		_slSeated = false;
+		_sl.clear();
+		_slYou = -1;
+		_slLog.clear();
 		_bjYou = -1;
 		_camPitch = -1.0f;
 		_kitPlacing = false;  // (the preview went with the old game)

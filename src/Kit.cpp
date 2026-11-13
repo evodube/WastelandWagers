@@ -131,7 +131,7 @@ namespace fr
 
 	void Game::BeginKitPlacement(int a_kind)
 	{
-		if (_kitPlacing || _seated || _pkSeated || _bjSeated) {
+		if (_kitPlacing || _seated || _pkSeated || _bjSeated || _slSeated) {
 			GiveKit(a_kind);  // (a second kit used while one's being set up, or from a table: that one back)
 			return;
 		}

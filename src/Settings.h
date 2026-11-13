@@ -79,6 +79,8 @@ namespace fr
 		// [Sound]
 		bool  sound{ true };
 		float soundVolume{ 0.8f };
+		bool  slSettlers{ true };   // settlers sit down at slot machines and play
+		int   slMaxSettlers{ 3 };   // ...at most this many at once
 		bool  ballSound{ true };    // the roulette ball's sounds (and the wheel's), on their own...
 		float ballVolume{ 1.0f };   // ...and how loud, on top of the volume
 		bool  turnChime{ true };   // a chime when it's your turn at the poker or blackjack table (or bets open)

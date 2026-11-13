@@ -128,6 +128,8 @@ namespace fr
 		sound = ReadBool(L"Sound", L"bEnabled", sound);
 		soundVolume = std::clamp(ReadFloat(L"Sound", L"fVolume", soundVolume), 0.0f, 1.0f);
 		turnChime = ReadBool(L"Sound", L"bTurnChime", turnChime);
+		slSettlers = ReadBool(L"Slots", L"bSettlers", slSettlers);
+		slMaxSettlers = std::clamp(static_cast<int>(ReadInt(L"Slots", L"iMaxSettlers", slMaxSettlers)), 0, 12);
 		ballSound = ReadBool(L"Sound", L"bBall", ballSound);
 		ballVolume = std::clamp(ReadFloat(L"Sound", L"fBallVolume", ballVolume), 0.0f, 1.0f);
 

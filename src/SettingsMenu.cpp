@@ -121,6 +121,12 @@ namespace fr::SettingsMenu
 						{ L"Poker", L"fTopHeight", "View from above: height", Kind::kFloat, &s.pkTopHeight, 40.0f, 400.0f, "%.0f" },
 						{ L"Poker", L"fTopShift", "View from above: moved towards you", Kind::kFloat, &s.pkTopShift, -40.0f, 60.0f, "%.0f" },
 					} },
+				{ "Slots", "Slot machines (the Vault-Tec Workshop's, re-skinned): 1, 5, 10 or 25 caps a pull; three 7s at 25 win the jackpot.",
+					{
+						{ L"Slots", L"bSettlers", "Settlers play the slots", Kind::kBool, &s.slSettlers, 0, 0, nullptr,
+							"settlers sit down at free slot machines and play them with their own caps" },
+						{ L"Slots", L"iMaxSettlers", "Most settlers at the machines", Kind::kInt, &s.slMaxSettlers, 0, 12, nullptr },
+					} },
 				{ "HUD & sound", "The HUD sizes itself to your screen height; the scale makes it bigger or smaller on top of that.",
 					{
 						{ L"HUD", L"fScale", "HUD scale", Kind::kFloat, &s.hudScale, 0.3f, 3.0f, "%.2fx" },
@@ -447,7 +453,7 @@ namespace fr::SettingsMenu
 		installed = true;
 		Settings::Get().Load();  // the menu shows the INI's values from the start
 		F4SEMenuFramework::SetSection("Mini Games");
-		AddPages(std::make_index_sequence<6>{});
+		AddPages(std::make_index_sequence<7>{});
 		log::info("settings pages registered in F4SE Menu Framework ({} pages)", Pages().size());
 	}
 }

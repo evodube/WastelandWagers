@@ -485,7 +485,7 @@ namespace fr
 				auto* actor = a_ref ? a_ref->As<RE::Actor>() : nullptr;
 				if (!Usable(actor) || actor == player || actor->IsChild() || actor->IsInCombat() || Npc::Busy(actor) ||
 					(player && actor->GetHostileToActor(player)) || (npcType && !actor->HasKeywordHelper(npcType, nullptr)) ||
-					BjHasSeat(actor->GetFormID()) || PkHasSeat(actor->GetFormID()) || IsCroupier(actor->GetFormID()) ||
+					BjHasSeat(actor->GetFormID()) || PkHasSeat(actor->GetFormID()) || SlHasSeat(actor->GetFormID()) || IsCroupier(actor->GetFormID()) ||
 					std::ranges::any_of(_t.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); }) ||
 					std::ranges::any_of(_other.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); })) {
 					return RE::BSContainer::ForEachResult::kContinue;
@@ -553,7 +553,7 @@ namespace fr
 				auto* actor = a_ref ? a_ref->As<RE::Actor>() : nullptr;
 				if (!Usable(actor) || actor == player || actor->IsChild() || actor->IsInCombat() || Npc::Busy(actor) ||
 					(player && actor->GetHostileToActor(player)) || (npcType && !actor->HasKeywordHelper(npcType, nullptr)) ||
-					BjHasSeat(actor->GetFormID()) || PkHasSeat(actor->GetFormID()) || IsCroupier(actor->GetFormID()) ||
+					BjHasSeat(actor->GetFormID()) || PkHasSeat(actor->GetFormID()) || SlHasSeat(actor->GetFormID()) || IsCroupier(actor->GetFormID()) ||
 					std::ranges::any_of(_t.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); }) ||
 					std::ranges::any_of(_other.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); })) {
 					return RE::BSContainer::ForEachResult::kContinue;
@@ -1799,6 +1799,10 @@ namespace fr
 
 	void Game::CardKey(int a_key)
 	{
+		if (_slSeated) {
+			SlKey(a_key);
+			return;
+		}
 		if (_bjSeated) {
 			BjKey(a_key);
 		} else {

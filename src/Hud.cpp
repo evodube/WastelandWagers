@@ -1106,6 +1106,121 @@ namespace fr::Hud
 			BlackjackButtons(a_v, a_st, a_viewport);
 		}
 
+		// ------------------------------------------------------------ a slot machine
+
+		void SlotPaytable(const View& a_v, const Game::HudState& a_st)
+		{
+			// what pays, right, under the jackpot
+			static constexpr std::array<std::pair<const char*, const char*>, 10> kRows{ {
+				{ "7  7  7", "JACKPOT" },
+				{ "BAR BAR BAR", "50 x" },
+				{ "BELL x3", "20 x" },
+				{ "CHERRY x3", "15 x" },
+				{ "PLUM x3", "12 x" },
+				{ "ORANGE x3", "10 x" },
+				{ "LEMON x3", "8 x" },
+				{ "2 CHERRIES", "4 x" },
+				{ "1 CHERRY", "1 x" },
+				{ "", "" },
+			} };
+			const float w = 230.0f, h = 30.0f + 20.0f * 9 + 34.0f;
+			const float x = a_v.w - kPkMargin - w, y = kPkMargin + PokerBoardH() + 10.0f;
+			Chamfer(a_v, x, y, w, h, 10.0f, kPanel, kEdge);
+			Print(a_v, Mono(), "PAYS (TIMES THE BET)", x + 14, y + 10, 11, kDim, 0, 2.0f);
+			float row = y + 30.0f;
+			for (int i = 0; i < 9; ++i) {
+				const ImU32 col = i == 0 ? kBright : kText;
+				Print(a_v, Mono(), kRows[i].first, x + 14, row, 12, col, 0, 1.0f);
+				Print(a_v, Mono(), kRows[i].second, x + w - 14, row, 12, col, 0, 1.0f, Align::kRight);
+				row += 20.0f;
+			}
+			Print(a_v, Mono(), std::format("THE JACKPOT AT {} A PULL;", a_st.slMaxBet), x + 14, row + 2, 10, kDim, 0, 1.0f);
+			Print(a_v, Mono(), "LESS: 100 x THE BET", x + 14, row + 16, 10, kDim, 0, 1.0f);
+		}
+
+		void SlotBanner(const View& a_v, const Game::HudState& a_st)
+		{
+			// the pull's result, top middle (clear of the reels)
+			if (a_st.banner == 0) {
+				return;
+			}
+			const bool  won = a_st.banner == 2;
+			const float alpha = std::min(1.0f, a_st.bannerAge * 4.0f) * std::clamp((6.0f - a_st.bannerAge) / 0.6f, 0.0f, 1.0f);
+			if (alpha <= 0.0f) {
+				return;
+			}
+			const float w = std::max({ 340.0f, TextWidth(Title(), a_st.bannerTitle, 26, 3.0f) + 60.0f, TextWidth(Mono(), a_st.bannerSub, 13, 2.0f) + 60.0f });
+			const float cx = a_v.w * 0.5f, y = kPkMargin;
+			Chamfer(a_v, cx - w * 0.5f, y, w, 80, 14, Fade(kPanel, alpha), Fade(won ? kBright : kEdge, alpha));
+			Print(a_v, Title(), a_st.bannerTitle, cx, y + 10, 26, Fade(won ? kBright : kText, alpha), Fade(won ? kGlow : 0, alpha), 3.0f, Align::kCentre);
+			if (!a_st.bannerSub.empty()) {
+				Print(a_v, Mono(), a_st.bannerSub, cx, y + 52, 13, Fade(kText, alpha), 0, 2.0f, Align::kCentre);
+			}
+		}
+
+		void SlotButtons(const View& a_v, const Game::HudState& a_st, ImGuiViewport* a_viewport)
+		{
+			std::vector<Game::PkButton> out;
+			constexpr float h = 40.0f, gap = 8.0f;
+			const bool      pad = a_st.pkPad;
+			const float     y = a_v.h - 52.0f;
+			static constexpr std::array<int, 4> kBets{ 1, 5, 10, 25 };
+			std::vector<std::tuple<int, std::string, float, bool, bool>> row;  // id, label, width, on, strong
+			for (int i = 0; i < 4; ++i) {
+				const bool picked = a_st.slBet == kBets[i];
+				row.emplace_back(90 + i, std::format("{}BET {}", pad ? "" : std::format("{} · ", i + 1), kBets[i]), 104.0f, !a_st.slSpinning || picked, picked);
+			}
+			row.emplace_back(94, a_st.slSpinning ? std::string("SPINNING...") : (pad ? std::format("(A) PULL · {}", a_st.slBet) : std::format("PULL · {}", a_st.slBet)), 190.0f,
+				!a_st.slSpinning && a_st.caps >= a_st.slBet, true);
+			float w = 0.0f;
+			for (const auto& r : row) {
+				w += std::get<2>(r) + gap;
+			}
+			w -= gap;
+			const float k = std::min(1.0f, (a_v.w - kPkMargin * 2.0f - kPkSideW) / w);
+			float       x = a_v.w * 0.5f - w * k * 0.5f;
+			for (const auto& [id, label, bw, on, strong] : row) {
+				Button(a_v, a_st, out, id, label, x, y, bw * k, h, on, strong, 14.0f);
+				x += (bw + gap) * k;
+			}
+			const float sx = a_v.w - kPkMargin - kPkSideW;
+			const float sy = a_v.h - kPkBottom - 8.0f - 28.0f;
+			Button(a_v, a_st, out, 95, pad ? "(B) GET UP" : "GET UP", sx, sy, kPkSideW, 28.0f, true, false, 12.0f);
+			Game::Get().SetPkButtons(std::move(out), a_viewport->Size.x, a_viewport->Size.y);
+			if (a_st.pkPtrX >= 0.0f) {
+				const ImVec2 p{ a_v.origin.x + a_st.pkPtrX, a_v.origin.y + a_st.pkPtrY };
+				const float  s = std::max(0.6f, a_v.s);
+				const ImVec2 a{ p.x, p.y }, b{ p.x, p.y + 20.0f * s }, c{ p.x + 13.0f * s, p.y + 14.0f * s };
+				DL::AddTriangleFilled(a_v.dl, a, b, c, Rgba(230, 255, 230));
+				DL::AddTriangle(a_v.dl, a, b, c, Rgba(10, 40, 15), std::max(1.0f, 1.5f * s));
+			}
+		}
+
+		void DrawSlots(View a_v, const Game::HudState& a_st, ImGuiViewport* a_viewport)
+		{
+			const float needW = PokerStatusW(a_st) + 340.0f + 230.0f + kPkMargin * 4.0f;
+			const float needH = kPkMargin + std::max(PokerStatusH(a_st), PokerBoardH() + 260.0f) + 16.0f + std::max(PokerLogH(a_st), 140.0f) + kPkBottom;
+			const float f = std::min({ 1.0f, a_v.w / needW, a_v.h / needH });
+			if (f < 1.0f) {
+				a_v.s *= f;
+				a_v.w /= f;
+				a_v.h /= f;
+			}
+			auto slid = [&](float a_delay, float a_dir) {
+				const float t = std::clamp((a_st.pkAge - a_delay) / 0.45f, 0.0f, 1.0f);
+				const float e = 1.0f - (1.0f - t) * (1.0f - t) * (1.0f - t);
+				View v = a_v;
+				v.origin.x += a_dir * (1.0f - e) * 420.0f * a_v.s;
+				return v;
+			};
+			PokerStatus(slid(0.0f, -1.0f), a_st);
+			PokerBoard(slid(0.08f, 1.0f), a_st);
+			SlotPaytable(slid(0.12f, 1.0f), a_st);
+			PokerLog(slid(0.16f, -1.0f), a_st);
+			SlotBanner(a_v, a_st);
+			SlotButtons(a_v, a_st, a_viewport);
+		}
+
 		// ------------------------------------------------------------ plain fallback (the art didn't load)
 
 		constexpr ImGuiWindowFlags kFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize |
@@ -1180,6 +1295,10 @@ namespace fr::Hud
 			}
 			if (st.blackjack) {
 				DrawBlackjack(v, st, viewport);
+				return;
+			}
+			if (st.slots) {
+				DrawSlots(v, st, viewport);
 				return;
 			}
 			History(v, st);

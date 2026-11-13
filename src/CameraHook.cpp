@@ -55,6 +55,7 @@ namespace fr::CameraHook
 			Game::Get().OnFreeCameraUpdate(a_this);
 			Game::Get().PkAnimate();
 			Game::Get().BjAnimate();
+			Game::Get().SlAnimate();
 		}
 
 		// every other camera state's update (first person, third person, furniture...): the poker table's chips and cards
@@ -77,6 +78,7 @@ namespace fr::CameraHook
 			}
 			Game::Get().PkAnimate();
 			Game::Get().BjAnimate();
+			Game::Get().SlAnimate();
 		}
 
 		void HookedGetTranslation(const RE::FreeCameraState* a_this, RE::NiPoint3& a_out)

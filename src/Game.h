@@ -70,9 +70,10 @@ namespace fr
 
 		// camera hooks (CameraHook.cpp)
 		RE::TESObjectREFR* PkChairTable(const RE::TESObjectREFR* a_ref) const;  // one of the poker table's chairs: its table
-		bool AtATable() const { return _seated.load() || _pkSeated.load() || _bjSeated.load(); }  // sitting at a roulette, poker or blackjack table
-		bool AtCardTable() const { return _pkSeated.load() || _bjSeated.load(); }  // (poker or blackjack: the pointer and the buttons)
+		bool AtATable() const { return _seated.load() || _pkSeated.load() || _bjSeated.load() || _slSeated.load(); }  // sitting at a roulette, poker or blackjack table, or a slot machine
+		bool AtCardTable() const { return _pkSeated.load() || _bjSeated.load() || _slSeated.load(); }  // (poker, blackjack, slots: the pointer and the buttons)
 		void BjAnimate();  // the blackjack table's cards and chips moved, once a frame (the camera's update)
+		void SlAnimate();  // the slot machines' reels and levers turned, once a frame (the camera's update)
 		bool SwallowButton(const RE::ButtonEvent* a_event);  // a menu key that's ours at the poker table (Q, E, the workshop's)
 		bool OnLookMouse(const RE::MouseMoveEvent* a_event);
 		void BeforeFreeCameraUpdate(RE::FreeCameraState* a_free);
@@ -193,6 +194,13 @@ namespace fr
 			float                 bjDealIn{ -1.0f };  // seconds before the cards come out (-1: waiting for a bet)
 			bool                  bjShowHand{ true };   // the SHOW / HIDE HAND button: your hand's panel
 			bool                  bjShowDealer{ true }; // the SHOW / HIDE DEALER button: the dealer's panel
+
+			// at a slot machine (Slots.cpp; poker's status panel, board panel, log and buttons)
+			bool                  slots{ false };
+			int                   slBet{ 1 };          // what a pull costs you
+			bool                  slSpinning{ false };
+			int                   slJackpot{ 0 };
+			int                   slMaxBet{ 25 };      // (the jackpot's at this bet; less pays 100 x the bet)
 		};
 		HudState Hud() const;
 
@@ -692,6 +700,78 @@ namespace fr
 			float                           dealerCool{ 0.0f };  // (seconds before the dealer gestures again)
 			bool                            pointed{ false };    // (the dealer's pointed this round: once a round)
 		};
+		// ------------------------------------------------------------ slot machines (Slots.cpp)
+		// every slot machine in play near you: its reels (turned by the plugin, each frame: the machine's own behaviour
+		// graph is off in our copy of the model), who's at it, and the spin going on
+		struct SlotSpin
+		{
+			std::chrono::steady_clock::time_point start{};
+			bool                                  on{ false };     // a pull going on (till it's paid)
+			std::array<float, 3>                  from{};          // each reel's angle when the pull started (degrees)
+			std::array<float, 3>                  speed{};         // degrees a second, flat out
+			std::array<float, 3>                  stopAt{};        // seconds in: braking starts
+			std::array<float, 3>                  brake{};         // ...and lasts this long
+			std::array<float, 3>                  stopFrom{};      // the angle braking starts at
+			std::array<float, 3>                  travel{};        // ...and how far it goes from there
+			std::array<int, 3>                    result{};        // the symbols on the payline (strip slots)
+			std::array<bool, 3>                   stopped{};       // (the stop's clunk played)
+			int                                   bet{ 0 };
+			bool                                  you{ false };    // your caps on it
+			float                                 done{ 0.0f };    // seconds in: all three still, the pay
+			bool                                  pullSaid{ false };
+		};
+		struct SlotMachine
+		{
+			RE::ObjectRefHandle ref;
+			std::array<float, 3> angle{};  // where the reels are now (degrees, the payline's maths: Slots.cpp)
+			float                lever{ 0.0f };
+			SlotSpin             spin;
+			// a settler playing it (or you)
+			bool                 you{ false };
+			RE::ObjectRefHandle  actor;
+			RE::TESFormID        id{ 0 };
+			std::string          name;
+			Walker               walk;
+			int                  step{ 0 };     // 0 nobody, 1 walking over, 2 sat at it
+			int                  pulls{ 0 };    // pulls left before they get up
+			float                next{ 0.0f };  // seconds to their next pull
+			float                sitCheck{ 0.0f };
+			int                  sitTries{ 0 };
+			int                  sitWas{ -1 };
+			bool                 claimed{ false };
+		};
+		std::vector<SlotMachine> _sl;
+		std::atomic<bool>        _slSeated{ false };
+		int                      _slYou{ -1 };     // the machine you're at
+		int                      _slBet{ 5 };
+		float                    _slFind{ 4.0f };  // seconds to looking for a settler to play
+		float                    _slAge{ 0.0f };
+		std::deque<HudLine>      _slLog;
+		std::string              _slBannerTitle, _slBannerSub;
+		int                      _slBanner{ 0 };
+		float                    _slBannerAge{ 99.0f };
+		bool         SlFrame(int a_i, Frame& a_out) const;
+		bool         SlHasSeat(RE::TESFormID a_id) const;
+		void         SlScan();
+		void         TickSlots(float a_dt);
+		void         SlTickPlayer(int a_i, const Frame& a_frame, float a_dt);
+		void         SlFindPlayer();
+		void         SlRelease(int a_i, const char* a_why);
+		void         SlPull(int a_i, int a_bet, bool a_you);
+		void         SlPay(int a_i);
+		void         SlSitDown(RE::TESObjectREFR* a_machine);
+		void         SlStandUp();
+		void         SlKey(int a_key);
+		void         SlCamera(const Frame& a_frame, float a_dt);
+		void         SlHud(HudState& a_h) const;
+		void         SlSay(const std::string& a_text, int a_tone = 0);
+		void         SlEnd(const char* a_why);
+		void         SlBeforeSave();
+		static int   s_jackpot;  // the jackpot, every machine's (the co-save keeps it)
+		static void  SaveJackpot(const F4SE::SerializationInterface* a_intfc);
+		static void  LoadJackpot(const F4SE::SerializationInterface* a_intfc, std::uint32_t a_version);
+		static constexpr std::uint32_t kJackpotType = 0x504A4C53;  // 'SLJP'
+
 		BlackjackState    _bj;
 		std::atomic<bool> _bjSeated{ false };
 		int               _bjYou{ -1 };

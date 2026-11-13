@@ -19,6 +19,8 @@ namespace fr::Forms
 	inline constexpr std::uint32_t kPokerKitID = 0x846;  // ALCH fo4roulettePokerKit
 	inline constexpr std::uint32_t kBlackjackTableID = 0x84A;  // ACTI fo4rouletteBlackjackTable: Meshes\fo4roulette\BlackjackTable.nif
 	inline constexpr std::uint32_t kBlackjackKitID = 0x84C;    // ALCH fo4rouletteBlackjackKit
+	inline constexpr std::uint32_t kSlotMachineID = 0x84E;     // FURN fo4rouletteSlotMachine: Meshes\fo4roulette\SlotMachine.nif (the
+	                                                           // Vault-Tec Workshop's machine, re-skinned; its sitting animations)
 
 	inline constexpr RE::TESFormID kXMarkerHeading = 0x00000034;
 	inline constexpr RE::TESFormID kCaps = 0x0000000F;
@@ -89,5 +91,27 @@ namespace fr::Forms
 		auto* base = a_ref ? a_ref->GetObjectReference() : nullptr;
 		auto* table = BlackjackTable();
 		return base && table && base == table;
+	}
+	inline RE::TESBoundObject* SlotMachine()
+	{
+		auto* f = Own(kSlotMachineID);
+		return f && f->IsBoundObject() ? static_cast<RE::TESBoundObject*>(f) : nullptr;
+	}
+	inline bool IsSlotMachine(const RE::TESObjectREFR* a_ref)
+	{
+		auto* base = a_ref ? a_ref->GetObjectReference() : nullptr;
+		auto* machine = SlotMachine();
+		return base && machine && base == machine;
+	}
+	// the Vault-Tec Workshop's own: its slot machine's disappointed look (DLC06_SlotMachineDisappointedIdle)
+	inline RE::TESForm* SlotDisappointed()
+	{
+		static RE::TESForm* idle = nullptr;
+		if (!idle) {
+			if (auto* data = RE::TESDataHandler::GetSingleton()) {
+				idle = data->LookupForm(0x00256A, "DLCworkshop03.esm");
+			}
+		}
+		return idle;
 	}
 }

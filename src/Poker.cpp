@@ -1104,7 +1104,7 @@ namespace fr
 					}
 				}
 				if (!Usable(actor) || actor == player || actor->IsChild() || actor->IsInCombat() || (player && actor->GetHostileToActor(player)) ||
-					(npcType && !actor->HasKeywordHelper(npcType, nullptr)) || PkHasSeat(actor->GetFormID()) || BjHasSeat(actor->GetFormID()) || IsCroupier(actor->GetFormID()) ||
+					(npcType && !actor->HasKeywordHelper(npcType, nullptr)) || PkHasSeat(actor->GetFormID()) || SlHasSeat(actor->GetFormID()) || BjHasSeat(actor->GetFormID()) || IsCroupier(actor->GetFormID()) ||
 					std::ranges::any_of(_t.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); }) ||
 					std::ranges::any_of(_other.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); })) {
 					return RE::BSContainer::ForEachResult::kContinue;
