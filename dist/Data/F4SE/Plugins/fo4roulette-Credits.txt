@@ -32,3 +32,7 @@ HUD fonts
   Chakra Petch and Share Tech Mono, SIL Open Font License (their licences are in fo4roulette\hud)
 
 The plugin's code: GPL-3.0 (fo4roulette-LICENSE.txt).
+
+Slot machine
+  Bethesda Game Studios: the Vault-Tec Workshop DLC's slot machine (model, sitting animations, sounds),
+  re-skinned as a casino machine. Requires Vault-Tec Workshop (DLCworkshop03.esm).

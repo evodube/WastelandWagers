@@ -16,6 +16,7 @@ at poker).
 
 - Fallout 4 1.10.163 ("Old Gen"; also built for Next-Gen and Anniversary).
 - F4SE and Address Library for F4SE Plugins.
+- The Vault-Tec Workshop DLC (the slot machine is its machine, re-skinned: `DLCworkshop03.esm` is a master since 0.8.0).
 - [F4SE Menu Framework](https://www.nexusmods.com/fallout4/mods/105090) for the HUD and the settings pages (the game
   works without it; results then come as corner messages).
 
@@ -82,6 +83,15 @@ onto the card boxes once you press DEAL or the betting time runs out.
 
 Winning bets are paid at the usual odds (35 to 1 down to even money). The result is drawn fairly first, and the ball
 is then thrown until it lands there, so every number is exactly as likely as it should be.
+
+### Slot machines
+
+Build one in the workshop (where the Vault-Tec machine is), activate it and play: **1-4** the bet (1, 5, 10 or 25 caps a
+pull), **E** (activate) pulls, **X** gets up; or the buttons. Controller: **A** pulls, **X / Y** the bet down / up,
+**B** gets up. Three reels, one payline: three 7s at 25 a pull win the jackpot (every machine's, growing with every
+pull; at less than 25 they pay 100 times the bet), three BARs 50 times the bet, bells 20, cherries 15, plums 12,
+oranges 10, lemons 8, two cherries 4, one cherry your bet back. Settlers sit down at free machines and play too
+(`[Slots]` in the ini, or the Slots page). The plugin turns the reels itself, so they stop on the drawn symbols.
 
 ### European or American
 
@@ -150,6 +160,8 @@ g++ -std=c++20 -O2 -Isrc tests/layout_test.cpp src/rl/Layout.cpp src/rl/Wheel.cp
 - Playing cards: ["Playing Cards"](https://sketchfab.com/3d-models/playing-cards-2dd7c45bf68a4ce3bf63c995b1bf12bf) by jdastine on Sketchfab, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Changed for the game: the faces packed into one atlas, each card its own mesh.
 - Roulette ball sound: recorded by [Maxwell Dufresne](https://gfxsounds.com/blog/maxwell-dufresne/), [GFXSounds](https://gfxsounds.com) (Standard licence).
 - Card sounds: ["Casino Audio"](https://kenney.nl/assets/casino-audio) by Kenney, CC0.
+- Slot machine: Bethesda's Vault-Tec Workshop machine (its model, sitting animations and sounds; the DLC is required),
+  re-skinned for a casino.
 - HUD fonts: Chakra Petch and Share Tech Mono (SIL Open Font License).
 - CommonLibF4 (Dear-Modding), F4SE, F4SE Menu Framework.
 
