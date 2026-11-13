@@ -104,9 +104,11 @@ namespace fr::Forms
 		auto* machine = SlotMachine();
 		return base && machine && base == machine;
 	}
-	// the workshop menu's Mini Games category (every table's and the slot machine's recipe is in it): put in the Furniture
-	// menu, beside Tables, when the game's data is loaded. The menu's form list isn't overridden in the plugin (that
-	// would undo other mods' changes to it): our category's added to it here, each time the game starts
+	// the workshop menu's Mini Games category (every table's and the slot machine's recipe is in it): a tab of its own
+	// in the workshop menu's top row, beside Furniture and Decorations, when the game's data is loaded. The menu's
+	// form lists aren't overridden in the plugin (that would undo other mods' changes to them): the category's added
+	// here, each time the game starts. The top row is the form list that holds the Furniture menu (the list with
+	// Tables in it)
 	inline void AddWorkshopMenu()
 	{
 		auto* data = RE::TESDataHandler::GetSingleton();
@@ -116,26 +118,30 @@ namespace fr::Forms
 			log::warn("workshop menu: the Mini Games category ({}) or the Tables one ({}) isn't there", ours != nullptr, tables != nullptr);
 			return;
 		}
+		const auto holds = [](RE::BGSListForm* a_list, const RE::TESForm* a_form) {
+			return std::ranges::find(a_list->arrayOfForms, a_form) != a_list->arrayOfForms.end();
+		};
+		std::vector<RE::BGSListForm*> furniture;
+		for (auto* list : data->GetFormArray<RE::BGSListForm>()) {
+			if (list && holds(list, tables)) {
+				furniture.push_back(list);
+			}
+		}
 		int added = 0;
 		for (auto* list : data->GetFormArray<RE::BGSListForm>()) {
-			if (!list) {
+			if (!list || std::ranges::none_of(furniture, [&](RE::BGSListForm* f) { return holds(list, f); })) {
 				continue;
 			}
-			bool hasTables = false, hasOurs = false;
-			for (auto* f : list->arrayOfForms) {
-				hasTables = hasTables || f == tables;
-				hasOurs = hasOurs || f == ours;
-			}
-			if (hasTables && !hasOurs) {
-				// (right after Tables)
-				auto at = std::ranges::find(list->arrayOfForms, tables);
+			if (!holds(list, ours)) {
+				// (right after Furniture)
+				auto at = std::ranges::find_if(list->arrayOfForms, [&](RE::TESForm* f) { return std::ranges::find(furniture, f) != furniture.end(); });
 				list->arrayOfForms.insert(at == list->arrayOfForms.end() ? at : at + 1, ours);
 				++added;
-				log::info("workshop menu: Mini Games added to {:08X} (the menu with Tables in it)", list->GetFormID());
+				log::info("workshop menu: Mini Games added to {:08X} (the menu with Furniture in it)", list->GetFormID());
 			}
 		}
 		if (added == 0) {
-			log::warn("workshop menu: no menu with Tables in it found: the Mini Games category isn't in the workshop menu");
+			log::warn("workshop menu: the top row (the menu with Furniture in it) wasn't found: the Mini Games category isn't in the workshop menu");
 		}
 	}
 
