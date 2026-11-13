@@ -36,6 +36,7 @@ Form IDs (src/Forms.h expects these):
     xx00084F  COBJ workshop_co_fo4rouletteSlotMachine  in the workshop menu
     xx000850  KYWD fo4rouletteWorkshopMenuMiniGames  the workshop menu's Mini Games tab (its top row):
                                            every table's and the slot machine's recipe is in it
+    xx000851  ARTO fo4rouletteWorkshopMenuMiniGamesArt  the tab's picture: its first item (the roulette table)
 
 Record layouts follow Playable Pool's tools/make_esl.py (laid out as Fallout4.esm's own records).
 """
@@ -132,6 +133,21 @@ def menu_keyword(form_id: int, editor_id: str, name: str) -> bytes:
         b"KYWD", 0, form_id,
         subrecord(b"EDID", zstring(editor_id)) + subrecord(b"CNAM", bytes.fromhex("ffffff00")) + subrecord(b"TNAM", struct.pack("<I", 9))
         + subrecord(b"FULL", zstring(name)),
+    )
+
+
+def menu_art(form_id: int, editor_id: str, keyword_id: int, mesh: str, preview: int, bounds: tuple) -> bytes:
+    """the picture on a workshop menu tab: an art object with the tab's keyword (the menu finds a tab's art by its
+    keyword). Ours is the tab's first item, the roulette table, framed as its own workshop preview is"""
+    return record(
+        b"ARTO", 0, form_id,
+        subrecord(b"EDID", zstring(editor_id))
+        + subrecord(b"OBND", struct.pack("<6h", *bounds))
+        + subrecord(b"PTRN", struct.pack("<I", preview))
+        + subrecord(b"KSIZ", struct.pack("<I", 1))
+        + subrecord(b"KWDA", struct.pack("<I", keyword_id))
+        + subrecord(b"MODL", zstring(mesh))
+        + subrecord(b"DNAM", struct.pack("<I", 0)),
     )
 
 
@@ -402,12 +418,16 @@ def build() -> bytes:
                                    [(0x0001FABD, 4), (0x0003D294, 2), (0x0001FAB7, 3), (0x0001FAB0, 2), (0x0001FA9B, 2)],
                                    category=menu, sounds=(0x000196B6, 0x000196BD)))
 
-    count = len(acti) + len(stats) + len(keywords) + len(packages) + len(quests) + len(recipes) + len(potions) + len(furniture)
+    # the Mini Games tab's picture: its first item, the roulette table
+    art = [menu_art(own | (FIRST_ID + 0x51), "fo4rouletteWorkshopMenuMiniGamesArt", menu, "fo4roulette\\RouletteTable.nif",
+                    0x001A03DD, (-118, -62, 0, 118, 62, 81))]
+
+    count = len(acti) + len(stats) + len(keywords) + len(packages) + len(quests) + len(recipes) + len(potions) + len(furniture) + len(art)
     header = record(
         b"TES4",
         FLAG_MASTER | FLAG_LIGHT,
         0,
-        subrecord(b"HEDR", struct.pack("<fiI", 1.0, count, FIRST_ID + 0x51))
+        subrecord(b"HEDR", struct.pack("<fiI", 1.0, count, FIRST_ID + 0x52))
         + subrecord(b"CNAM", zstring("evodube"))
         + subrecord(b"SNAM", zstring("Mini Games: playable roulette, poker and blackjack tables, and slot machines"))
         + subrecord(b"MAST", zstring("Fallout4.esm"))
@@ -425,6 +445,7 @@ def build() -> bytes:
         + group(b"ALCH", b"".join(potions))
         + group(b"QUST", b"".join(quests))
         + group(b"PACK", b"".join(packages))
+        + group(b"ARTO", b"".join(art))
         + group(b"COBJ", b"".join(recipes))
     )
 
