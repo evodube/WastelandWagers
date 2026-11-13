@@ -153,7 +153,7 @@ Bool Function PlayIdleOn(Int aiActor, Int aiIdle)
 EndFunction
 
 ; a slot machine's sitter: their hand on the lever. The machine's pull animation (the DLC's) sends
-; furnitureIdleFlavor1Slave as the lever goes down; each one goes to the plugin (LeverDown), which pulls the lever and
+; furnitureIdleFlavor1Slave as the lever goes down; each one goes to the plugin (fo4rouletteNative.LeverDown), which pulls the lever and
 ; spins the reels then, so they move with the hand
 Bool Function WatchLever(Int aiActor, Bool abOn)
 	Actor akActor = Game.GetForm(aiActor) as Actor
@@ -169,11 +169,9 @@ EndFunction
 
 Event OnAnimationEvent(ObjectReference akSource, String asEventName)
 	if akSource != None && asEventName == "furnitureIdleFlavor1Slave"
-		LeverDown(akSource.GetFormID())
+		fo4rouletteNative.LeverDown(akSource.GetFormID())
 	endif
 EndEvent
-
-Function LeverDown(Int aiActor) Global Native
 
 ; sat down in a chair (a poker table's)
 Bool Function SitOn(Int aiActor, Int aiChair, Int aiLink, Int aiSeatLink)

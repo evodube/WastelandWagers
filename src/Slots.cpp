@@ -237,8 +237,8 @@ namespace fr
 		if (!a_vm) {
 			return false;
 		}
-		a_vm->BindNativeMethod("fo4rouletteQuest", "LeverDown", LeverDown, true);
-		log::info("papyrus: fo4rouletteQuest.LeverDown bound");
+		a_vm->BindNativeMethod("fo4rouletteNative", "LeverDown", LeverDown, true);
+		log::info("papyrus: fo4rouletteNative.LeverDown bound");
 		return true;
 	}
 
