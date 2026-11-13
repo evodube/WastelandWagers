@@ -1,5 +1,6 @@
 #include "Audio.h"
 #include "CameraHook.h"
+#include "Forms.h"
 #include "Game.h"
 #include "Hook.h"
 #include "Hud.h"
