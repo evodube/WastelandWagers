@@ -22,6 +22,7 @@ namespace fr::Forms
 	inline constexpr std::uint32_t kWorkshopMenuID = 0x850;    // KYWD fo4rouletteWorkshopMenuMiniGames: the Mini Games workshop category
 	inline constexpr std::uint32_t kSlotMachineID = 0x84E;     // FURN fo4rouletteSlotMachine: Meshes\fo4roulette\SlotMachine.nif (the
 	                                                           // Vault-Tec Workshop's machine, re-skinned; its sitting animations)
+	inline constexpr std::uint32_t kSlotPullID = 0x852;        // IDLE fo4rouletteSlotPullIdle: sat at the machine, a pull (the DLC's)
 
 	inline constexpr RE::TESFormID kXMarkerHeading = 0x00000034;
 	inline constexpr RE::TESFormID kCaps = 0x0000000F;
@@ -144,6 +145,9 @@ namespace fr::Forms
 			log::warn("workshop menu: the top row (the menu with Furniture in it) wasn't found: the Mini Games category isn't in the workshop menu");
 		}
 	}
+
+	// a pull at the slot machine (the DLC's own pull, played on whoever's sat at it)
+	inline RE::TESForm* SlotPull() { return Own(kSlotPullID); }
 
 	// the Vault-Tec Workshop's own: its slot machine's disappointed look (DLC06_SlotMachineDisappointedIdle)
 	inline RE::TESForm* SlotDisappointed()

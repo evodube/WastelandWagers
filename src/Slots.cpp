@@ -12,6 +12,12 @@
 // (WorkshopSlotMachine01ArmBone) turns to +50 degrees round X and back, as the machine's own Pull animation does.
 // The machine's behaviour graph is switched off in our copy of the model (its BGED renamed): the plugin turns the
 // reels and the lever itself, each frame.
+//
+// A settler's pulls go with their hand: the DLC's sitting animations pull the lever now and then (PoseA_IdleFlavor1,
+// whose annotation furnitureIdleFlavor1Slave, 1.17 seconds in, is where the machine's own graph played its Pull). The
+// quest watches the sitter's animation for it (RegisterForAnimationEvent) and hands it to LeverDown here: the lever goes
+// down and the reels spin from then. When their hand's been idle a while, the pull's played on them
+// (fo4rouletteSlotPullIdle: that same animation) and the pull waits for it.
 
 #include "Game.h"
 
@@ -214,6 +220,16 @@ namespace fr
 		}
 	}
 
+	bool RegisterNatives(RE::BSScript::IVirtualMachine* a_vm)
+	{
+		if (!a_vm) {
+			return false;
+		}
+		a_vm->BindNativeMethod("fo4rouletteQuest", "LeverDown", LeverDown, true);
+		log::info("papyrus: fo4rouletteQuest.LeverDown bound");
+		return true;
+	}
+
 	// ---------------------------------------------------------------- the machines
 
 	bool Game::SlFrame(int a_i, Frame& a_out) const
@@ -325,6 +341,9 @@ namespace fr
 				actor->InitiateGetUpPackage();
 			}
 			Npc::Leave(actor);
+			if (m.watched != 0) {
+				Npc::WatchLever(actor, false);
+			}
 		}
 		Remove(m.walk.marker);
 		if (auto machine = m.ref.get()) {
@@ -340,6 +359,8 @@ namespace fr
 		m.walk = Walker{};
 		m.step = 0;
 		m.sitWas = -1;
+		m.pend = -1.0f;
+		m.watched = 0;
 	}
 
 	// ---------------------------------------------------------------- settlers
@@ -404,6 +425,10 @@ namespace fr
 		m.walk = Walker{};
 		m.pulls = std::uniform_int_distribution<int>(6, 18)(_rng);
 		m.next = 2.0f;
+		m.pend = -1.0f;
+		m.idleHand = 0.0f;
+		m.askAt = std::uniform_real_distribution<float>(3.0f, 6.0f)(_rng);
+		m.watched = 0;
 		m.sitCheck = 0.0f;
 		m.sitTries = 0;
 		m.sitWas = -1;
@@ -458,39 +483,99 @@ namespace fr
 				Npc::SitOn(actor, machine.get());
 			}
 		}
-		if (m.spin.on) {
-			return;
+		// their hand: the quest watching for it on the lever (again now and then: a watch goes with their 3D)
+		m.watchAgain -= a_dt;
+		if (m.watched != m.id || m.watchAgain <= 0.0f) {
+			Npc::WatchLever(actor, true);
+			m.watched = m.id;
+			m.watchAgain = 20.0f;
 		}
-		m.next -= a_dt;
-		if (m.next > 0.0f) {
+		if (m.spin.on || m.pend >= 0.0f) {
 			return;
 		}
 		if (m.pulls <= 0 || Purse(m.id) < 1) {
-			SlRelease(a_i, "done");
+			// played out: up once the last pull's settled
+			m.next -= a_dt;
+			if (m.next <= 0.0f) {
+				SlRelease(a_i, "done");
+			}
 			return;
 		}
-		// a pull: mostly a cap or five, now and then ten
+		// their own idle pulls the lever now and then (SlLever); a while without, a pull's played on them
+		if (actor->DoGetSitSleepState() != RE::SIT_SLEEP_STATE::kIsSitting) {
+			m.idleHand = 0.0f;
+			return;
+		}
+		m.idleHand += a_dt;
+		if (m.idleHand < m.askAt) {
+			return;
+		}
+		m.idleHand = 0.0f;
+		m.askAt = std::uniform_real_distribution<float>(4.0f, 8.0f)(_rng);
+		auto* pull = Forms::SlotPull();
+		if (!pull) {
+			// (an older fo4roulette.esl: no pull idle) the lever on its own
+			if (const int bet = SlNpcBet(a_i); bet > 0) {
+				SlPull(a_i, bet, false, Clock::now());
+			}
+			return;
+		}
+		m.pend = 0.0f;
+		Npc::PlayIdle(actor, pull->GetFormID());
+	}
+
+	int Game::SlNpcBet(int a_i)
+	{
+		// a pull: mostly a cap or five, now and then ten (0: they're done)
+		auto& m = _sl[a_i];
+		if (m.pulls <= 0 || Purse(m.id) < 1) {
+			return 0;
+		}
 		const float roll = std::uniform_real_distribution<float>(0.0f, 1.0f)(_rng);
 		const int   want = roll < 0.45f ? 1 : roll < 0.9f ? 5 : 10;
 		const int   bet = TakePurse(m.id, want);
-		if (bet <= 0) {
-			SlRelease(a_i, "done");
+		if (bet > 0) {
+			--m.pulls;
+			m.next = 2.0f;
+		}
+		return bet;
+	}
+
+	void Game::SlLever(RE::TESFormID a_who, Clock::time_point a_at)
+	{
+		// a settler's hand put a machine's lever down
+		for (int i = 0; i < static_cast<int>(_sl.size()); ++i) {
+			auto& m = _sl[i];
+			if (m.you || m.step != 2 || m.id != a_who) {
+				continue;
+			}
+			m.idleHand = 0.0f;
+			m.pend = -1.0f;
+			if (m.spin.on) {
+				m.dry = a_at;  // (the reels still going: the lever goes with their hand, nothing more)
+				m.dryOn = true;
+				return;
+			}
+			if (const int bet = SlNpcBet(i); bet > 0) {
+				SlPull(i, bet, false, a_at);
+			} else {
+				m.dry = a_at;  // (played out: the lever goes with their hand, nothing on it)
+				m.dryOn = true;
+			}
 			return;
 		}
-		--m.pulls;
-		SlPull(a_i, bet, false);
-		m.next = std::uniform_real_distribution<float>(2.5f, 6.0f)(_rng);
 	}
 
 	// ---------------------------------------------------------------- a pull
 
-	void Game::SlPull(int a_i, int a_bet, bool a_you)
+	void Game::SlPull(int a_i, int a_bet, bool a_you, Clock::time_point a_at)
 	{
 		auto& m = _sl[a_i];
 		auto& sp = m.spin;
 		sp = SlotSpin{};
 		sp.on = true;
-		sp.start = Clock::now();
+		sp.start = std::min(a_at, Clock::now());
+		m.dryOn = false;
 		sp.bet = a_bet;
 		sp.you = a_you;
 		std::discrete_distribution<int> reel(kWeights.begin(), kWeights.end());
@@ -606,12 +691,37 @@ namespace fr
 			_slFind = std::uniform_real_distribution<float>(8.0f, 16.0f)(_rng);
 			SlFindPlayer();
 		}
+		// the hands on levers since the last tick
+		std::vector<std::pair<RE::TESFormID, Clock::time_point>> levers;
+		{
+			std::scoped_lock lock(g_leverLock);
+			levers.swap(g_levers);
+		}
+		for (const auto& [who, at] : levers) {
+			SlLever(who, at);
+		}
 		const auto now = Clock::now();
 		for (int i = 0; i < static_cast<int>(_sl.size()); ++i) {
 			auto& m = _sl[i];
 			Frame frame;
 			if (!SlFrame(i, frame)) {
 				continue;
+			}
+			// a pull asked for whose hand never came (the idle didn't play): the lever on its own
+			if (m.pend >= 0.0f) {
+				m.pend += a_dt;
+				if (m.pend > 2.5f) {
+					m.pend = -1.0f;
+					if (!m.spin.on && m.step == 2 && !m.you) {
+						log::info("slots: {}'s pull idle didn't put the lever down: pulled anyway", m.name);
+						if (const int bet = SlNpcBet(i); bet > 0) {
+							SlPull(i, bet, false, now);
+						}
+					}
+				}
+			}
+			if (m.dryOn && std::chrono::duration<float>(now - m.dry).count() > 1.0f) {
+				m.dryOn = false;
 			}
 			SlTickPlayer(i, frame, a_dt);
 			auto& sp = m.spin;
@@ -656,10 +766,13 @@ namespace fr
 				}
 				lever = LeverAt(t);
 			}
+			if (m.dryOn) {
+				lever = std::max(lever, LeverAt(std::chrono::duration<float>(now - m.dry).count()));
+			}
 			for (int r = 0; r < 3; ++r) {
 				Turn(root, kReelNodes[r], a[r], !m.spin.on);
 			}
-			Turn(root, kArmNode, lever, !m.spin.on);
+			Turn(root, kArmNode, lever, !m.spin.on && !m.dryOn);
 		}
 	}
 
@@ -780,7 +893,7 @@ namespace fr
 					return;
 				}
 				_slBanner = 0;
-				SlPull(_slYou, _slBet, true);
+				SlPull(_slYou, _slBet, true, Clock::now());
 				return;
 			}
 		case 95:

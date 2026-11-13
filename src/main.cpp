@@ -78,6 +78,10 @@ extern "C" __declspec(dllexport) bool F4SEAPI F4SEPlugin_Load(const F4SE::LoadIn
 		return false;
 	}
 
+	if (auto* papyrus = F4SE::GetPapyrusInterface(); !papyrus || !papyrus->Register(fr::RegisterNatives)) {
+		fr::log::warn("could not register the quest's natives: settlers' slot machine pulls won't go with their hands");
+	}
+
 	if (auto* serialization = F4SE::GetSerializationInterface()) {
 		serialization->SetUniqueID(0x46524C54);  // 'FRLT'
 		serialization->SetSaveCallback(fr::Game::Save);

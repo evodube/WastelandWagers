@@ -8,6 +8,10 @@
 
 namespace fr
 {
+	// the quest's natives (fo4rouletteQuest.LeverDown: a slot machine sitter's hand on the lever), bound with F4SE's
+	// Papyrus interface
+	bool RegisterNatives(RE::BSScript::IVirtualMachine* a_vm);
+
 	// The roulette table in play: the one nearest you (within [Table] fActiveDistance). Its wheel turns, the ball
 	// comes to it, settlers come over to bet, and you sit down at it by activating it.
 	//
@@ -739,6 +743,15 @@ namespace fr
 			int                  sitTries{ 0 };
 			int                  sitWas{ -1 };
 			bool                 claimed{ false };
+			// a settler's hand on the lever: their pulls go when their pull animation puts the lever down (Slots.cpp
+			// SlLever), their sitting idle's own pulls or one asked for (the pull idle played on them)
+			float                pend{ -1.0f };     // seconds since a pull was asked for (< 0: none)
+			float                idleHand{ 0.0f };  // seconds since their hand last went to the lever
+			float                askAt{ 6.0f };     // ...asked for a pull when it's been this long
+			std::chrono::steady_clock::time_point dry{};  // the lever pulled with nothing on it
+			bool                 dryOn{ false };
+			RE::TESFormID        watched{ 0 };      // whose hand the quest's watching
+			float                watchAgain{ 0.0f };
 		};
 		std::vector<SlotMachine> _sl;
 		std::atomic<bool>        _slSeated{ false };
@@ -757,7 +770,9 @@ namespace fr
 		void         SlTickPlayer(int a_i, const Frame& a_frame, float a_dt);
 		void         SlFindPlayer();
 		void         SlRelease(int a_i, const char* a_why);
-		void         SlPull(int a_i, int a_bet, bool a_you);
+		void         SlPull(int a_i, int a_bet, bool a_you, std::chrono::steady_clock::time_point a_at);
+		void         SlLever(RE::TESFormID a_who, std::chrono::steady_clock::time_point a_at);
+		int          SlNpcBet(int a_i);
 		void         SlPay(int a_i);
 		void         SlSitDown(RE::TESObjectREFR* a_machine);
 		void         SlStandUp();

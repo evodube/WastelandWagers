@@ -39,6 +39,10 @@ namespace fr::Npc
 	// a vanilla idle (Fallout4.esm IDLE form ID) through the quest's PlayIdleOn
 	void PlayIdle(RE::Actor* a_actor, RE::TESFormID a_idle);
 
+	// the quest watching a_actor's animation for their hand pulling a slot machine's lever (furnitureIdleFlavor1Slave):
+	// each one comes back through the quest's native LeverDown (Slots.cpp). Off again with a_on false
+	void WatchLever(RE::Actor* a_actor, bool a_on);
+
 	// a line of the game's: the custom-subtype topic with that keyword (Fallout4.esm form ID)
 	void Say(RE::Actor* a_actor, RE::TESFormID a_keyword);
 

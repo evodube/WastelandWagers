@@ -321,6 +321,16 @@ namespace fr::Npc
 		CallQuest("PlayIdleOn", what, logged, FormArg(a_actor), static_cast<std::int32_t>(a_idle));
 	}
 
+	void WatchLever(RE::Actor* a_actor, bool a_on)
+	{
+		if (!a_actor || !Ready()) {
+			return;
+		}
+		const std::string what = std::format("{} {}", What(a_actor, "WatchLever"), a_on);
+		const RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> logged{ new LogResult(what) };
+		CallQuest("WatchLever", what, logged, FormArg(a_actor), a_on);
+	}
+
 	void Say(RE::Actor* a_actor, RE::TESFormID a_keyword)
 	{
 		if (!a_actor || !Ready()) {
