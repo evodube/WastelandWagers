@@ -138,7 +138,8 @@ namespace fr
 		}
 
 		// a reel's angle t seconds into a pull
-		float ReelAt(const Game::SlotSpin& a_s, int a_i, float a_t)
+		template <class Spin>  // (Game::SlotSpin: private to Game)
+		float ReelAt(const Spin& a_s, int a_i, float a_t)
 		{
 			if (a_t <= kSpinUp) {
 				return a_s.from[a_i];
