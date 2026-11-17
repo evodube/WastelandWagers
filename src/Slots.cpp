@@ -1085,11 +1085,12 @@ namespace fr
 	void Game::SlCamera(const Frame& a_frame, float a_dt)
 	{
 		(void)a_dt;
-		// the cursor; and the free camera from your eyes on the stool (just in front of your face), at the reels, turned
-		// a touch to the right when you're sat: your hand coming in to the lever there
+		// the cursor; and the free camera. Sat: just over your left shoulder, close (from in front of your face the hand
+		// on the lever looked off it, the view so near it), at the reels and the lever. Standing (in power armour): from
+		// the stool, a little above the reels
 		const bool   sat = _slSits;
-		const double ex = 0.0, ey = -34.0, ez = 113.0;
-		const double tx = sat ? 3.0 : 0.0, ty = -1.0, tz = 101.0;
+		const double ex = sat ? -22.0 : 0.0, ey = sat ? -72.0 : -34.0, ez = sat ? 128.0 : 113.0;
+		const double tx = sat ? 4.0 : 0.0, ty = sat ? 3.8 : -1.0, tz = sat ? 100.0 : 101.0;
 		const auto   eye = ToWorld(a_frame, ex, ey, ez);
 		std::scoped_lock lock(_camMutex);
 		float sw, sh;
