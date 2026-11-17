@@ -188,7 +188,11 @@ Bool Function StandPlayerUp()
 	if akExit == None
 		return false
 	endif
-	return Game.GetPlayer().PlayIdleAction(akExit)
+	Actor akPlayer = Game.GetPlayer()
+	; (out of the plugin's looping sitting idle first, back to the furniture's own loop, which the get-up leaves from)
+	Debug.SendAnimationEvent(akPlayer, "idleStop")
+	Utility.Wait(0.2)
+	return akPlayer.PlayIdleAction(akExit)
 EndFunction
 
 ; sat down in a chair (a poker table's)

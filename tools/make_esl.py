@@ -37,6 +37,8 @@ Form IDs (src/Forms.h expects these):
     xx000850  KYWD fo4rouletteWorkshopMenuMiniGames  the workshop menu's Mini Games tab (its top row):
                                            every table's and the slot machine's recipe is in it
     xx000851  ARTO fo4rouletteWorkshopMenuMiniGamesArt  the tab's picture: its first item (the roulette table)
+    xx000853  IDLE fo4rouletteSlotHoldIdle  you sat at a slot machine, still: its sitting loop on its own (looping),
+                                           so the furniture's idle doesn't pull the lever for you now and then
     xx000852  IDLE fo4rouletteSlotPullIdle  sat at a slot machine: the hand to the lever and a pull (the DLC's own
                                            pull, PoseA_IdleFlavor1: its furnitureIdleFlavor1Slave is the lever going down)
 
@@ -345,20 +347,20 @@ def quest(form_id: int, editor_id: str, package: int, sit: int, priority: int = 
     return record(b"QUST", 0, form_id, body)
 
 
-def slot_pull_idle(form_id: int) -> bytes:
-    """A pull at the slot machine, played on whoever's sat at it (PlayIdle): laid out as the DLC's own
-    DLC06_SlotMachineDisappointedIdle (a dyn_Flavor in the machine's furniture, while sitting), with the DLC's pull
-    flavour as its animation"""
+def slot_idle(form_id: int, editor_id: str, event: str, clip: str) -> bytes:
+    """An idle played on whoever's sat at the slot machine (PlayIdle): laid out as the DLC's own
+    DLC06_SlotMachineDisappointedIdle (a dynamic idle in the machine's furniture, while sitting), with one of the DLC's
+    slot machine sitting animations"""
     sitting = (struct.pack("<B3xf", 0x00, 3.0) + struct.pack("<H2x", 159)  # GetSitting == 3
                + struct.pack("<IIiIi", 0, 0, 0, 0, -1))
     return record(b"IDLE", 0, form_id,
-        subrecord(b"EDID", zstring("fo4rouletteSlotPullIdle"))
+        subrecord(b"EDID", zstring(editor_id))
         + subrecord(b"CTDA", sitting)
         + subrecord(b"DNAM", zstring("actors\\Character\\Behaviors\\RaiderRootBehavior.hkx"))
-        + subrecord(b"ENAM", zstring("dyn_Flavor"))
+        + subrecord(b"ENAM", zstring(event))
         + subrecord(b"ANAM", struct.pack("<II", 0, 0))
         + subrecord(b"DATA", bytes([0, 0, 1, 0x53, 0, 0]))
-        + subrecord(b"GNAM", zstring("Actors\\DLC06\\Character\\Animations\\SlotMachine\\PoseA_IdleFlavor1.hkx")))
+        + subrecord(b"GNAM", zstring("Actors\\DLC06\\Character\\Animations\\SlotMachine\\" + clip)))
 
 
 def build() -> bytes:
@@ -441,7 +443,10 @@ def build() -> bytes:
                     0x001A03DD, (-118, -62, 0, 118, 62, 81))]
 
     # a pull at the machine (the DLC's: the hand to the lever)
-    idles = [slot_pull_idle(own | (FIRST_ID + 0x52))]
+    # ...and you sat still at it: its plain sitting loop, looping (a dyn_FlavorLooping, as Fallout4.esm's
+    # IdleFlavorLoopingFurniture): the furniture's own idle loop picks flavours now and then, most of them a pull
+    idles = [slot_idle(own | (FIRST_ID + 0x52), "fo4rouletteSlotPullIdle", "dyn_Flavor", "PoseA_IdleFlavor1.hkx"),
+             slot_idle(own | (FIRST_ID + 0x53), "fo4rouletteSlotHoldIdle", "dyn_FlavorLooping", "PoseA_Idle1.hkx")]
 
     count = (len(acti) + len(stats) + len(keywords) + len(packages) + len(quests) + len(recipes) + len(potions)
              + len(furniture) + len(art) + len(idles))
@@ -449,7 +454,7 @@ def build() -> bytes:
         b"TES4",
         FLAG_MASTER | FLAG_LIGHT,
         0,
-        subrecord(b"HEDR", struct.pack("<fiI", 1.0, count, FIRST_ID + 0x53))
+        subrecord(b"HEDR", struct.pack("<fiI", 1.0, count, FIRST_ID + 0x54))
         + subrecord(b"CNAM", zstring("evodube"))
         + subrecord(b"SNAM", zstring("Mini Games: playable roulette, poker and blackjack tables, and slot machines"))
         + subrecord(b"MAST", zstring("Fallout4.esm"))

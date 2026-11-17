@@ -23,6 +23,7 @@ namespace fr::Forms
 	inline constexpr std::uint32_t kSlotMachineID = 0x84E;     // FURN fo4rouletteSlotMachine: Meshes\fo4roulette\SlotMachine.nif (the
 	                                                           // Vault-Tec Workshop's machine, re-skinned; its sitting animations)
 	inline constexpr std::uint32_t kSlotPullID = 0x852;        // IDLE fo4rouletteSlotPullIdle: sat at the machine, a pull (the DLC's)
+	inline constexpr std::uint32_t kSlotHoldID = 0x853;        // IDLE fo4rouletteSlotHoldIdle: sat at it, still (its sitting loop, looping)
 
 	inline constexpr RE::TESFormID kXMarkerHeading = 0x00000034;
 	inline constexpr RE::TESFormID kCaps = 0x0000000F;
@@ -148,6 +149,8 @@ namespace fr::Forms
 
 	// a pull at the slot machine (the DLC's own pull, played on whoever's sat at it)
 	inline RE::TESForm* SlotPull() { return Own(kSlotPullID); }
+	// ...sat still at it (the sitting loop alone: no idle flavours, so no pulls of its own)
+	inline RE::TESForm* SlotHold() { return Own(kSlotHoldID); }
 
 	// the Vault-Tec Workshop's own: its slot machine's disappointed look (DLC06_SlotMachineDisappointedIdle)
 	inline RE::TESForm* SlotDisappointed()

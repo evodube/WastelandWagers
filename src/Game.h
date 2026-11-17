@@ -765,6 +765,8 @@ namespace fr
 		bool                     _slCamOn{ false };  // the free camera on (standing at it: power armour, or the sit never came)
 		bool                     _slWas3rd{ false }; // (in third person when you sat: back to it once you're up)
 		float                    _slLookIn{ -1.0f }; // sat: seconds until your eyes are turned to the reels
+		float                    _slHoldIn{ -1.0f }; // sat: seconds until you're held still (the hold idle: no pulls of
+		                                             // the sitting idle's own)
 		int                      _slBet{ 5 };
 		float                    _slFind{ 4.0f };  // seconds to looking for a settler to play
 		float                    _slAge{ 0.0f };

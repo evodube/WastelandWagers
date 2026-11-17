@@ -575,9 +575,11 @@ namespace fr
 				m.pend = -1.0f;
 				SlPull(_slYou, m.pendBet, true, a_at);
 			} else {
-				m.dry = a_at;  // (your sitting idle's own pull, or one mid-spin: the lever goes with your hand, nothing more)
+				log::info("slots: your hand pulled the lever unasked (the sitting idle's own): the lever only");
+				m.dry = a_at;  // (the lever goes with your hand, nothing more)
 				m.dryOn = true;
 			}
+			_slHoldIn = 1.9f;  // (held still again once the pull's animation is done: 3 s long, the lever at 1.17)
 			return;
 		}
 		// a settler's hand put a machine's lever down
@@ -804,6 +806,17 @@ namespace fr
 		if (sitting) {
 			if (!_slSat) {
 				_slLookIn = 0.4f;  // (once the sit's settled)
+				_slHoldIn = 0.3f;
+			}
+			// held still: the sitting loop on its own, so your hand only goes to the lever when you pull (again after
+			// each pull, the pull's animation done: the furniture's own loop back for a moment)
+			if (_slHoldIn >= 0.0f && m.pend < 0.0f) {
+				_slHoldIn -= a_dt;
+				if (_slHoldIn < 0.0f) {
+					if (auto* hold = Forms::SlotHold()) {
+						Npc::PlayIdle(player, hold->GetFormID());
+					}
+				}
 			}
 			_slSat = true;
 			if (_slLookIn >= 0.0f) {
@@ -844,6 +857,7 @@ namespace fr
 		if ((m.pendSent > 0 && m.pend > 3.4f) || (m.pendSent == 0 && m.pend > 6.0f)) {
 			log::info("slots: your hand never got to the lever: pulled anyway");
 			m.pend = -1.0f;
+			_slHoldIn = 0.5f;
 			SlPull(_slYou, m.pendBet, true, Clock::now());
 		}
 	}
@@ -969,6 +983,7 @@ namespace fr
 		_slCamOn = false;
 		_slWas3rd = false;
 		_slLookIn = -1.0f;
+		_slHoldIn = -1.0f;
 		if (_slSits) {
 			// sat in it in first person: the game's own camera, your eyes turned to the reels once you're sat (no free
 			// camera: the furniture puts back the camera it found as you sat when you get up)
