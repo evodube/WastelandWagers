@@ -20,8 +20,8 @@
 // (fo4rouletteSlotPullIdle: that same animation) and the pull waits for it (asked again if it didn't play): a
 // settler's reels only ever spin with their hand on the lever.
 //
-// You sit in it too (its activation's default processing, past the block that keeps passers-by off it), in first
-// person (the game's own camera, your eyes turned to the reels): your pull plays that same animation on you and waits for your hand the same way. Getting up
+// You sit in it too (its activation's default processing, past the block that keeps passers-by off it), the view
+// the free camera at your eyes once you're sat (so the furniture's get-up goes back to your own camera): your pull plays that same animation on you and waits for your hand the same way. Getting up
 // is the game's own get-up (ActionInteractionExit), asked for again if it doesn't take, never a move off it. In power
 // armour you can't sit: you play it standing, as before, the lever on its own.
 
@@ -777,6 +777,7 @@ namespace fr
 
 	void Game::SlTickYou(const Frame& a_frame, float a_dt)
 	{
+		(void)a_frame;
 		auto* player = RE::PlayerCharacter::GetSingleton();
 		if (!player || !_slSits) {
 			return;
@@ -784,19 +785,18 @@ namespace fr
 		auto&      m = _sl[_slYou];
 		const auto sit = player->DoGetSitSleepState();
 		const bool sitting = sit == RE::SIT_SLEEP_STATE::kIsSitting;
-		if (sitting) {
-			if (!_slSat) {
-				_slLookIn = 0.4f;  // (once the sit's settled)
-			}
-			_slSat = true;
-			if (_slLookIn >= 0.0f) {
-				_slLookIn -= a_dt;
-				if (_slLookIn < 0.0f) {
-					// at the reels, a little down, a touch to the right (the lever)
-					player->data.angle.z = HeadingOf(a_frame, 0.06, 1.0);
-					player->data.angle.x = 0.2f;
+		// the free camera at the reels once you're sat (or a while on, if the sit never came)
+		if (!_slCamOn && (sitting || _slAge > 6.0f)) {
+			if (auto* camera = RE::PlayerCamera::GetSingleton()) {
+				if (!InFreeCamera()) {
+					camera->ToggleFreeCameraMode(false);
 				}
+				_slCamOn = true;
+				log::info("slots: {}: the view at the reels", sitting ? "sat" : "never sat");
 			}
+		}
+		if (sitting) {
+			_slSat = true;
 		} else if (_slSat && sit == RE::SIT_SLEEP_STATE::kNormal) {
 			// up out of it some other way (combat, a script): you've left the machine
 			log::info("slots: you're not sat at the machine any more: up");
@@ -849,18 +849,10 @@ namespace fr
 		if (sit == RE::SIT_SLEEP_STATE::kNormal) {
 			log::info("slots: you're up ({:.1f}s)", _slGetUp + _slGetUpTries * 2.5f);
 			_slGetUp = -1.0f;
-			if (auto* camera = RE::PlayerCamera::GetSingleton(); camera && !AtATable()) {
-				if (InFreeCamera()) {
-					log::info("slots: up in the free camera: out of it");
-					camera->ToggleFreeCameraMode(false);
-				}
-				if (_slWas3rd && camera->QCameraEquals(RE::CameraState::kFirstPerson)) {
-					if (auto* third = camera->cameraStates[RE::CameraStates::k3rdPerson].get()) {
-						camera->SetState(third);
-					}
-				}
+			if (auto* camera = RE::PlayerCamera::GetSingleton(); camera && !AtATable() && InFreeCamera()) {
+				log::info("slots: up in the free camera: out of it");
+				camera->ToggleFreeCameraMode(false);
 			}
-			_slWas3rd = false;
 			return;
 		}
 		if (sit == RE::SIT_SLEEP_STATE::kIsSitting && _slGetUp > 2.5f) {
@@ -943,21 +935,17 @@ namespace fr
 		_slSits = !RE::PowerArmor::ActorInPowerArmor(*player);
 		_slSat = false;
 		_slGetUp = -1.0f;
-		_slWas3rd = false;
-		_slLookIn = -1.0f;
+		_slCamOn = false;
 		if (_slSits) {
-			// sat in it in first person: your own eyes on the reels, the game's own camera (no free camera: the
-			// furniture's get-up put back whatever camera it found when you sat, and that left you in the free one)
-			if (camera->QCameraEquals(RE::CameraState::k3rdPerson)) {
-				if (auto* first = camera->cameraStates[RE::CameraStates::kFirstPerson].get()) {
-					camera->SetState(first);
-					_slWas3rd = true;
-				}
-			}
+			// sat in it first, the free camera only once you're sat (SlTickYou): the furniture keeps the camera it
+			// found as you sat, to go back to as you get up. Had that been the free camera, getting up left you in it
 			Npc::SitPlayerIn(a_machine);
 			Npc::WatchLever(player, true);
-		} else if (!InFreeCamera()) {
-			camera->ToggleFreeCameraMode(false);
+		} else {
+			if (!InFreeCamera()) {
+				camera->ToggleFreeCameraMode(false);
+			}
+			_slCamOn = true;
 		}
 		_entryYaw = player->data.angle.z;
 		_entryPitch = player->data.angle.x;
@@ -1002,6 +990,11 @@ namespace fr
 				m.pend = -1.0f;
 				GivePlayer(m.pendBet);  // (a pull still waiting on your hand: your caps back)
 			}
+			// the free camera off first (back to the furniture's own camera), then the get-up (the furniture going back
+			// to the camera it found as you sat)
+			if (auto* camera = RE::PlayerCamera::GetSingleton(); camera && InFreeCamera()) {
+				camera->ToggleFreeCameraMode(false);
+			}
 			if (_slSits) {
 				if (auto* player = RE::PlayerCharacter::GetSingleton()) {
 					Npc::WatchLever(player, false);
@@ -1015,6 +1008,7 @@ namespace fr
 		}
 		_slSits = false;
 		_slSat = false;
+		_slCamOn = false;
 		_slYou = -1;
 		_camPitch = -1.0f;
 		HoldPlayerView();
@@ -1084,10 +1078,11 @@ namespace fr
 	void Game::SlCamera(const Frame& a_frame, float a_dt)
 	{
 		(void)a_dt;
-		// the cursor; and standing at it (in power armour, no sitting), the free camera from the stool, at the reels
+		// the cursor; and the free camera from your eyes on the stool (just in front of your face), at the reels, turned
+		// a touch to the right when you're sat: your hand coming in to the lever there
 		const bool   sat = _slSits;
 		const double ex = 0.0, ey = -34.0, ez = 113.0;
-		const double tx = 0.0, ty = -1.0, tz = 101.0;
+		const double tx = sat ? 3.0 : 0.0, ty = -1.0, tz = 101.0;
 		const auto   eye = ToWorld(a_frame, ex, ey, ez);
 		std::scoped_lock lock(_camMutex);
 		float sw, sh;
@@ -1108,9 +1103,6 @@ namespace fr
 		_pkPtrX = std::clamp(_pkPtrX + _mouseDX * k, 0.0, static_cast<double>(sw - 1.0f));
 		_pkPtrY = std::clamp(_pkPtrY + _mouseDY * k, 0.0, static_cast<double>(sh - 1.0f));
 		_mouseDX = _mouseDY = 0.0;
-		if (sat) {
-			return;  // (sat: the game's first person camera, your own eyes)
-		}
 		_camWant = eye;
 		_camYaw = HeadingOf(a_frame, tx - ex, ty - ey);
 		_camPitch = static_cast<float>(std::atan2(ez - tz, std::hypot(tx - ex, ty - ey)));
