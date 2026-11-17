@@ -579,7 +579,12 @@ namespace fr
 				m.dry = a_at;  // (the lever goes with your hand, nothing more)
 				m.dryOn = true;
 			}
-			_slHoldIn = 1.9f;  // (held still again once the pull's animation is done: 3 s long, the lever at 1.17)
+			// held still again once the pull's animation is done (3 s long, the lever 1.17 s in: done 1.83 s after the
+			// lever). Asked for while it's still ending, the hold didn't take and the furniture's own loop came back
+			// with its pulls: so 0.8 s after it's done, and again 1.6 s after that (well before the loop's first
+			// flavour, 5.3 s into it)
+			_slHoldIn = 2.6f;
+			_slHoldAgainIn = 4.2f;
 			return;
 		}
 		// a settler's hand put a machine's lever down
@@ -810,11 +815,13 @@ namespace fr
 			}
 			// held still: the sitting loop on its own, so your hand only goes to the lever when you pull (again after
 			// each pull, the pull's animation done: the furniture's own loop back for a moment)
-			if (_slHoldIn >= 0.0f && m.pend < 0.0f) {
-				_slHoldIn -= a_dt;
-				if (_slHoldIn < 0.0f) {
-					if (auto* hold = Forms::SlotHold()) {
-						Npc::PlayIdle(player, hold->GetFormID());
+			for (float* timer : { &_slHoldIn, &_slHoldAgainIn }) {
+				if (*timer >= 0.0f && m.pend < 0.0f) {
+					*timer -= a_dt;
+					if (*timer < 0.0f) {
+						if (auto* hold = Forms::SlotHold()) {
+							Npc::PlayIdle(player, hold->GetFormID());
+						}
 					}
 				}
 			}
@@ -858,6 +865,7 @@ namespace fr
 			log::info("slots: your hand never got to the lever: pulled anyway");
 			m.pend = -1.0f;
 			_slHoldIn = 0.5f;
+			_slHoldAgainIn = 2.0f;
 			SlPull(_slYou, m.pendBet, true, Clock::now());
 		}
 	}
@@ -984,6 +992,7 @@ namespace fr
 		_slWas3rd = false;
 		_slLookIn = -1.0f;
 		_slHoldIn = -1.0f;
+		_slHoldAgainIn = -1.0f;
 		if (_slSits) {
 			// sat in it in first person: the game's own camera, your eyes turned to the reels once you're sat (no free
 			// camera: the furniture puts back the camera it found as you sat when you get up)
@@ -1123,6 +1132,7 @@ namespace fr
 					m.pend = 0.0f;
 					m.pendBet = _slBet;
 					m.pendSent = 0;
+					_slHoldIn = _slHoldAgainIn = -1.0f;  // (the pull's own animation now; held again after it)
 				} else {
 					SlPull(_slYou, _slBet, true, Clock::now());
 				}
