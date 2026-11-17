@@ -762,6 +762,8 @@ namespace fr
 		bool                     _slSat{ false };   // (seen sitting in it: up again some other way, you've left it)
 		float                    _slGetUp{ -1.0f }; // seconds since you were got up out of it (< 0: not)
 		int                      _slGetUpTries{ 0 };
+		bool                     _slWas3rd{ false }; // (in third person when you sat: back to it once you're up)
+		float                    _slLookIn{ -1.0f }; // sat: seconds until your eyes are turned to the reels
 		int                      _slBet{ 5 };
 		float                    _slFind{ 4.0f };  // seconds to looking for a settler to play
 		float                    _slAge{ 0.0f };
