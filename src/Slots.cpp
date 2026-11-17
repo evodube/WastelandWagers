@@ -20,8 +20,8 @@
 // (fo4rouletteSlotPullIdle: that same animation) and the pull waits for it (asked again if it didn't play): a
 // settler's reels only ever spin with their hand on the lever.
 //
-// You sit in it too (its activation's default processing, past the block that keeps passers-by off it), the view over
-// your left shoulder: your pull plays that same animation on you and waits for your hand the same way. Getting up
+// You sit in it too (its activation's default processing, past the block that keeps passers-by off it), the view
+// your own eyes: your pull plays that same animation on you and waits for your hand the same way. Getting up
 // is the game's own get-up (ActionInteractionExit), asked for again if it doesn't take, never a move off it. In power
 // armour you can't sit: you play it standing, as before, the lever on its own.
 
@@ -1053,11 +1053,11 @@ namespace fr
 	void Game::SlCamera(const Frame& a_frame, float a_dt)
 	{
 		(void)a_dt;
-		// sat on the stool: over your left shoulder, at the reels and the lever (your right hand on it); standing (in
-		// power armour), from the stool, a little above the reels
-		const bool   over = _slSits;
-		const double ex = over ? -30.0 : 0.0, ey = over ? -82.0 : -36.0, ez = over ? 136.0 : 113.0;
-		const double tx = over ? 2.0 : 0.0, ty = over ? 3.8 : -1.0, tz = over ? 100.0 : 101.0;
+		// your own eyes on the stool (just in front of your face, so it's not in the way), at the reels, turned a touch
+		// to the right: your hand coming in to the lever there
+		const bool   sat = _slSits;
+		const double ex = 0.0, ey = -34.0, ez = 113.0;
+		const double tx = sat ? 3.0 : 0.0, ty = -1.0, tz = 101.0;
 		const auto   eye = ToWorld(a_frame, ex, ey, ez);
 		std::scoped_lock lock(_camMutex);
 		float sw, sh;
