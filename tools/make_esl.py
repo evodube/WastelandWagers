@@ -270,8 +270,8 @@ def slot_machine(form_id: int) -> bytes:
     its furniture marker model), no workshop power, no scripts, not a relaxation object (settlers don't wander over to it
     on their own: the plugin sits them at it). Its marker data copied as it is in the DLC."""
     keywords = [0x000BA2F6,           # FurnitureCantWait (no Wait prompt sat at it)
-                0x000A56D8,           # FurnitureForce3rdPerson (its sitting animations are third person ones)
-                DLC06 | 0x001A5C]     # AnimFurnSlotMachine
+                DLC06 | 0x001A5C]     # AnimFurnSlotMachine (not the DLC's FurnitureForce3rdPerson: you play it in
+                                      # first person, your own eyes on the reels)
     return record(
         b"FURN",
         0,
