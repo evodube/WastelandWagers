@@ -761,7 +761,7 @@ namespace fr
 		bool                     _slSits{ false };  // ...sat in it (not in power armour): your pulls go with your hand
 		bool                     _slSat{ false };   // (seen sitting in it: up again some other way, you've left it)
 		float                    _slGetUp{ -1.0f }; // seconds since you were got up out of it (< 0: not)
-		RE::ObjectRefHandle      _slGetUpFrom;
+		int                      _slGetUpTries{ 0 };
 		int                      _slBet{ 5 };
 		float                    _slFind{ 4.0f };  // seconds to looking for a settler to play
 		float                    _slAge{ 0.0f };

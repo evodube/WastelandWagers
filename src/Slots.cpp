@@ -21,7 +21,8 @@
 // settler's reels only ever spin with their hand on the lever.
 //
 // You sit in it too (its activation's default processing, past the block that keeps passers-by off it), the view over
-// your left shoulder: your pull plays that same animation on you and waits for your hand the same way. In power
+// your left shoulder: your pull plays that same animation on you and waits for your hand the same way. Getting up
+// is the game's own get-up (ActionInteractionExit), asked for again if it doesn't take, never a move off it. In power
 // armour you can't sit: you play it standing, as before, the lever on its own.
 
 #include "Game.h"
@@ -822,28 +823,40 @@ namespace fr
 
 	void Game::SlTickGetUp(float a_dt)
 	{
-		// got up out of the machine: the game's own get-up asked for; still in it a while on, moved off it
+		// got up out of the machine: the game's own get-up (its animation takes a few seconds: the sit state goes
+		// sitting -> wants to stand -> normal). Still plain sitting a while on, it's asked for again; never a move
+		// (a MoveTo is a loading screen, and mid-get-up it left the view black)
 		if (_slGetUp < 0.0f) {
 			return;
 		}
 		_slGetUp += a_dt;
 		auto* player = RE::PlayerCharacter::GetSingleton();
-		if (!player || player->DoGetSitSleepState() == RE::SIT_SLEEP_STATE::kNormal) {
+		if (!player) {
 			_slGetUp = -1.0f;
 			return;
 		}
-		if (_slGetUp < 2.5f) {
+		const auto sit = player->DoGetSitSleepState();
+		if (sit == RE::SIT_SLEEP_STATE::kNormal) {
+			log::info("slots: you're up ({:.1f}s)", _slGetUp + _slGetUpTries * 2.5f);
+			_slGetUp = -1.0f;
 			return;
 		}
-		_slGetUp = -1.0f;
-		auto machine = _slGetUpFrom.get();
-		Frame frame;
-		if (!machine || !machine->Get3D() || !FrameOf(machine.get(), frame)) {
+		if (sit == RE::SIT_SLEEP_STATE::kIsSitting && _slGetUp > 2.5f) {
+			if (_slGetUpTries >= 2) {
+				log::info("slots: the get-up didn't take; you're still sat (your own controls get you up)");
+				_slGetUp = -1.0f;
+				return;
+			}
+			++_slGetUpTries;
+			log::info("slots: the get-up didn't take (still sat): asked again");
+			Npc::StandPlayerUp();
+			_slGetUp = 0.0f;
 			return;
 		}
-		const auto spot = ToWorld(frame, 0.0, kStandY - 12.0, 0.0);
-		log::info("slots: the get-up didn't take: moved off the machine");
-		Npc::MovePlayerOff(machine.get(), spot.x - machine->data.location.x, spot.y - machine->data.location.y);
+		if (_slGetUp > 10.0f) {
+			log::info("slots: still getting up 10s on (sit state {}): left to it", std::to_underlying(sit));
+			_slGetUp = -1.0f;
+		}
 	}
 
 	void Game::SlAnimate()
@@ -964,7 +977,7 @@ namespace fr
 					if (player->DoGetSitSleepState() != RE::SIT_SLEEP_STATE::kNormal) {
 						Npc::StandPlayerUp();
 						_slGetUp = 0.0f;
-						_slGetUpFrom = m.ref;
+						_slGetUpTries = 0;
 					}
 				}
 			}

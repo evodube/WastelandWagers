@@ -351,16 +351,6 @@ namespace fr::Npc
 		CallQuest("StandPlayerUp", what, logged);
 	}
 
-	void MovePlayerOff(RE::TESObjectREFR* a_furniture, float a_dx, float a_dy)
-	{
-		if (!a_furniture || !Ready()) {
-			return;
-		}
-		const std::string what = std::format("MovePlayerOff {:08X} ({:.0f}, {:.0f})", a_furniture->GetFormID(), a_dx, a_dy);
-		const RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> logged{ new LogResult(what) };
-		CallQuest("MovePlayerOff", what, logged, FormArg(a_furniture), a_dx, a_dy);
-	}
-
 	void Say(RE::Actor* a_actor, RE::TESFormID a_keyword)
 	{
 		if (!a_actor || !Ready()) {

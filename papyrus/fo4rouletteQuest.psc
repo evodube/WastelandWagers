@@ -191,19 +191,6 @@ Bool Function StandPlayerUp()
 	return Game.GetPlayer().PlayIdleAction(akExit)
 EndFunction
 
-; ...and if the get-up didn't take: moved off it, to a spot that far from it (world units), facing the way you were
-Bool Function MovePlayerOff(Int aiFurniture, Float afX, Float afY)
-	ObjectReference akFurniture = Game.GetForm(aiFurniture) as ObjectReference
-	if akFurniture == None
-		return false
-	endif
-	Actor akPlayer = Game.GetPlayer()
-	Float angle = akPlayer.GetAngleZ()
-	akPlayer.MoveTo(akFurniture, afX, afY, 0.0, false)
-	akPlayer.SetAngle(0.0, 0.0, angle)
-	return true
-EndFunction
-
 ; sat down in a chair (a poker table's)
 Bool Function SitOn(Int aiActor, Int aiChair, Int aiLink, Int aiSeatLink)
 	Actor akActor = Game.GetForm(aiActor) as Actor

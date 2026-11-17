@@ -43,11 +43,10 @@ namespace fr::Npc
 	// each one comes back through the quest's native LeverDown (Slots.cpp). Off again with a_on false
 	void WatchLever(RE::Actor* a_actor, bool a_on);
 
-	// you sat in a slot machine (its activation's default processing, past its block), up out of it again (the game's
-	// get-up: ActionInteractionExit), and moved off it to a_dx, a_dy (world units) from it if that didn't take
+	// you sat in a slot machine (its activation's default processing, past its block), and up out of it again (the
+	// game's get-up: ActionInteractionExit)
 	void SitPlayerIn(RE::TESObjectREFR* a_furniture);
 	void StandPlayerUp();
-	void MovePlayerOff(RE::TESObjectREFR* a_furniture, float a_dx, float a_dy);
 
 	// a line of the game's: the custom-subtype topic with that keyword (Fallout4.esm form ID)
 	void Say(RE::Actor* a_actor, RE::TESFormID a_keyword);
