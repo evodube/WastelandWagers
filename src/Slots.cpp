@@ -871,9 +871,10 @@ namespace fr
 					log::info("slots: up in the free camera: out of it");
 					camera->ToggleFreeCameraMode(false);
 				}
-				if (_slWas3rd && camera->QCameraEquals(RE::CameraState::kFirstPerson)) {
-					if (auto* third = camera->cameraStates[RE::CameraStates::k3rdPerson].get()) {
-						camera->SetState(third);
+				// back to the view you sat down in (the get-up was in third person)
+				if (!_slWas3rd && camera->QCameraEquals(RE::CameraState::k3rdPerson)) {
+					if (auto* first = camera->cameraStates[RE::CameraStates::kFirstPerson].get()) {
+						camera->SetState(first);
 					}
 				}
 			}
@@ -888,6 +889,11 @@ namespace fr
 			}
 			++_slGetUpTries;
 			log::info("slots: the get-up didn't take (still sat): asked again");
+			if (auto* camera = RE::PlayerCamera::GetSingleton(); camera && !camera->QCameraEquals(RE::CameraState::k3rdPerson)) {
+				if (auto* third = camera->cameraStates[RE::CameraStates::k3rdPerson].get()) {
+					camera->SetState(third);
+				}
+			}
 			Npc::StandPlayerUp();
 			_slGetUp = 0.0f;
 			return;
@@ -1031,6 +1037,14 @@ namespace fr
 				if (auto* player = RE::PlayerCharacter::GetSingleton()) {
 					Npc::WatchLever(player, false);
 					if (player->DoGetSitSleepState() != RE::SIT_SLEEP_STATE::kNormal) {
+						// the get-up's animation is a third person one: in first person it never played and you were
+						// left sat (unable to move). Third person for it, back to first once you're up
+						if (auto* camera = RE::PlayerCamera::GetSingleton(); camera && !camera->QCameraEquals(RE::CameraState::k3rdPerson)) {
+							if (auto* third = camera->cameraStates[RE::CameraStates::k3rdPerson].get()) {
+								camera->SetState(third);
+								log::info("slots: third person for the get-up");
+							}
+						}
 						Npc::StandPlayerUp();
 						_slGetUp = 0.0f;
 						_slGetUpTries = 0;
