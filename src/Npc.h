@@ -54,6 +54,8 @@ namespace fr::Npc
 	// Papyrus Actor.SnapIntoInteraction: sat down in a chair
 	// into a poker chair: off the walk, onto the Sit package with the chair as its furniture (the quest's Sitters), and
 	// put in it; the chair theirs while they're in it
+	// ...walked over and sat down the furniture's own way (its sit-down animation), not snapped into it
+	void SitDown(RE::Actor* a_actor, RE::TESObjectREFR* a_chair);
 	void SitOn(RE::Actor* a_actor, RE::TESObjectREFR* a_chair);
 	void ClaimChair(RE::TESObjectREFR* a_chair);  // a chair kept for the game: yours, so nobody else sits in it
 

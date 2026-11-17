@@ -372,6 +372,17 @@ namespace fr::Npc
 			FormArg(Forms::SeatKeyword()));
 	}
 
+	void SitDown(RE::Actor* a_actor, RE::TESObjectREFR* a_chair)
+	{
+		if (!a_actor || !a_chair || !Ready()) {
+			return;
+		}
+		const std::string what = std::format("{} {:08X}", What(a_actor, "SitDown"), a_chair->GetFormID());
+		const RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> logged{ new LogResult(what) };
+		CallQuest("SitDown", what, logged, FormArg(a_actor), static_cast<std::int32_t>(a_chair->GetFormID()), FormArg(Forms::LinkKeyword()),
+			FormArg(Forms::SeatKeyword()));
+	}
+
 	void ClaimChair(RE::TESObjectREFR* a_chair)
 	{
 		if (!a_chair || !Ready()) {

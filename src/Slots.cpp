@@ -473,14 +473,16 @@ namespace fr
 			const float heading = HeadingOf(a_frame, 0.0, 1.0);
 			const auto  spot = ToWorld(a_frame, 0.0, kStandY, 0.0);
 			if (Distance2D(actor->data.location, spot) < 60.0f || WalkTo(actor, m.walk, a_frame, spot, heading, a_dt, false, 15.0f)) {
+				// the Sit package walks them the last bit and sits them the furniture's way (no snapping onto it)
 				m.step = 2;
-				m.sitCheck = 0.0f;
+				m.sitCheck = 6.0f;
 				m.sitTries = 0;
-				Npc::SitOn(actor, machine.get());
+				Npc::SitDown(actor, machine.get());
 			}
 			return;
 		}
-		// sat at it: kept there (the quest's Sit package, the machine as its furniture), sat again if they're up
+		// sat at it: kept there (the quest's Sit package, the machine as its furniture), sat again if they're up: the
+		// furniture's way again first, snapped into it the next time, moved onto it after that
 		TrackSit("slots", m.name, actor, machine.get(), m.sitWas);
 		m.sitCheck -= a_dt;
 		if (m.sitCheck <= 0.0f) {
@@ -491,14 +493,19 @@ namespace fr
 			if (down) {
 				m.sitTries = 0;
 			} else {
-				if (++m.sitTries > 2) {
+				++m.sitTries;
+				if (m.sitTries > 2) {
 					log::info("[sit] slots: {} still isn't at their machine (sit state {}): moved onto it and sat", m.name, static_cast<int>(sit));
 					Npc::MoveTo(actor, machine.get());
+					Npc::SitOn(actor, machine.get());
 					m.sitTries = 0;
+				} else if (m.sitTries == 2) {
+					log::info("[sit] slots: {} isn't at their machine (sit state {}): put in it", m.name, static_cast<int>(sit));
+					Npc::SitOn(actor, machine.get());
 				} else {
 					log::info("[sit] slots: {} isn't at their machine (sit state {}): sat down again", m.name, static_cast<int>(sit));
+					Npc::SitDown(actor, machine.get());
 				}
-				Npc::SitOn(actor, machine.get());
 			}
 		}
 		// their hand: the quest watching for it on the lever (again now and then: a watch goes with their 3D)

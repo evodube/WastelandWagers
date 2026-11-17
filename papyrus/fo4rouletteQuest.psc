@@ -219,6 +219,32 @@ Bool Function SitOn(Int aiActor, Int aiChair, Int aiLink, Int aiSeatLink)
 	return true
 EndFunction
 
+; the same, but walked over to it and sat down the furniture's own way (its sit-down animation), not snapped into it:
+; a slot machine's stool
+Bool Function SitDown(Int aiActor, Int aiChair, Int aiLink, Int aiSeatLink)
+	Actor akActor = Game.GetForm(aiActor) as Actor
+	ObjectReference akChair = Game.GetForm(aiChair) as ObjectReference
+	Keyword akLink = Game.GetForm(aiLink) as Keyword
+	Keyword akSeatLink = Game.GetForm(aiSeatLink) as Keyword
+	if akActor == None || akChair == None
+		return false
+	endif
+	akChair.SetActorOwner(akActor.GetActorBase())
+	if akSeatLink
+		akActor.SetLinkedRef(akChair, akSeatLink)
+	endif
+	Dealers.RemoveRef(akActor)
+	Bettors.RemoveRef(akActor)
+	if Sitters.Find(akActor) < 0
+		Sitters.AddRef(akActor)
+	endif
+	if akLink
+		akActor.SetLinkedRef(None, akLink)
+	endif
+	akActor.EvaluatePackage()
+	return true
+EndFunction
+
 ; a poker chair kept for the game: owned by you while nobody's playing in it, so settlers passing by don't sit in it
 ; (the players are put in it all the same)
 Bool Function ClaimChair(Int aiChair)
