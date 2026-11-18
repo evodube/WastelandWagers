@@ -115,6 +115,24 @@ namespace fr
 		return keep;
 	}
 
+	bool Game::RosterHolds(RE::TESFormID a_id)
+	{
+		// (a settler the save had dealing blackjack was picked as a roulette bettor before blackjack's turn came to
+		// bring her back, then put back as the dealer too: two places at once, the roulette walk resent every few
+		// seconds to someone held at the blackjack table, stepping round and back on the spot)
+		if (a_id == 0 || s_roster.empty() || std::chrono::steady_clock::now() - s_rosterLoaded > std::chrono::minutes(2)) {
+			return false;
+		}
+		return std::ranges::any_of(s_roster, [&](const RosterEntry& e) { return e.actor == a_id; });
+	}
+
+	bool Game::HasAnyPlace(RE::TESFormID a_id) const
+	{
+		return a_id != 0 && (IsCroupier(a_id) || BjHasSeat(a_id) || PkHasSeat(a_id) || SlHasSeat(a_id) ||
+		                        std::ranges::any_of(_t.seats, [&](const Seat& st) { return st.id == a_id; }) ||
+		                        std::ranges::any_of(_other.seats, [&](const Seat& st) { return st.id == a_id; }));
+	}
+
 	RE::Actor* Game::RosterNext(std::uint8_t a_kind, RE::TESFormID a_table, std::int32_t& a_seat, bool a_dealer)
 	{
 		if (s_roster.empty()) {
@@ -134,6 +152,10 @@ namespace fr
 			auto* actor = RE::TESForm::GetFormByID<RE::Actor>(e.actor);
 			if (!actor || actor->IsDisabled() || actor->IsDead(false) || !actor->Get3D()) {
 				log::info("roster: {:08X} (seat {}) isn't about: not back", e.actor, e.seat);
+				return RosterNext(a_kind, a_table, a_seat, a_dealer);
+			}
+			if (HasAnyPlace(e.actor)) {
+				log::info("roster: {} ({:08X}) already has a place somewhere else: not put back at seat {} too", actor->GetDisplayFullName(), e.actor, e.seat);
 				return RosterNext(a_kind, a_table, a_seat, a_dealer);
 			}
 			a_seat = e.seat;

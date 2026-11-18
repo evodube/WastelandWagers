@@ -446,7 +446,7 @@ namespace fr
 				if (!Usable(actor) || actor == player || actor->IsChild() || actor->IsInCombat() || Npc::Busy(actor) || Npc::AtPool(actor) ||
 					(player && actor->GetHostileToActor(player)) || (npcType && !actor->HasKeywordHelper(npcType, nullptr)) ||
 					SlHasSeat(actor->GetFormID()) || BjHasSeat(actor->GetFormID()) || PkHasSeat(actor->GetFormID()) ||
-					IsCroupier(actor->GetFormID()) ||
+					IsCroupier(actor->GetFormID()) || RosterHolds(actor->GetFormID()) ||
 					std::ranges::any_of(_t.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); }) ||
 					std::ranges::any_of(_other.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); })) {
 					return RE::BSContainer::ForEachResult::kContinue;

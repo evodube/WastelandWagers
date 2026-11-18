@@ -257,6 +257,7 @@ namespace fr
 			float               best{ 1.0e9f };  // the closest they've got
 			float               stall{ 0.0f };   // seconds without getting closer
 			float               getUp{ 0.0f };   // seconds before trying to get them out of a chair again
+			bool                heldWarned{ false };  // (logged once: held in place by something else, no walk resent)
 			std::chrono::steady_clock::time_point last{};  // (the walk's timers in real seconds: the tick's are capped)
 		};
 
@@ -830,6 +831,8 @@ namespace fr
 		static void                                  LoadRoster(const F4SE::SerializationInterface* a_intfc, std::uint32_t a_version);
 		static std::vector<std::int32_t>             RosterKeep();  // everyone in it (kept in the quest through a load's clear)
 		RE::Actor*   RosterNext(std::uint8_t a_kind, RE::TESFormID a_table, std::int32_t& a_seat, bool a_dealer);  // the next one there, taken
+		static bool  RosterHolds(RE::TESFormID a_id);  // someone the co-save is still bringing back somewhere: not to be picked for anything else
+		bool         HasAnyPlace(RE::TESFormID a_id) const;  // dealing or playing anywhere already
 		void         PkSeatIn(int a_seat, RE::Actor* a_actor);
 		void         BjSeatIn(int a_seat, RE::Actor* a_actor);
 		void         BjDealerIn(RE::Actor* a_actor);

@@ -285,6 +285,17 @@ namespace fr
 			a_walk.getUp = 3.0f;
 			a_actor->InitiateGetUpPackage();
 		}
+		const bool heldElsewhere = static_cast<const RE::ActorState*>(a_actor)->lifeState == static_cast<std::uint32_t>(RE::LIFE_STATE::kRestrained);
+		if (a_walk.stall > kStallResend && heldElsewhere) {
+			// held in place by something else (another table, another mod): can't walk, and a walk sent with its AI
+			// reset only turns them on the spot and back, every few seconds. Left be
+			if (!a_walk.heldWarned) {
+				a_walk.heldWarned = true;
+				log::info("{}: held in place by something else, {:.0f} from the table: not sending the walk again", a_actor->GetDisplayFullName(), d);
+			}
+			a_walk.stall = 0.0f;
+			a_walk.best = d;
+		}
 		if (a_walk.stall > kStallResend) {
 			log::info("{}: no closer to the table in {:.0f}s ({:.0f} away, package {}); sending the walk again", a_actor->GetDisplayFullName(),
 				a_walk.stall, d, Npc::PackageName(a_actor));
@@ -305,7 +316,9 @@ namespace fr
 				return true;
 			}
 			log::info("{}: still {:.0f} from the table; walking again", a_actor->GetDisplayFullName(), d);
-			if (Npc::Joined(a_actor)) {
+			if (heldElsewhere) {
+				// (see above: no walk with an AI reset for someone held in place)
+			} else if (Npc::Joined(a_actor)) {
 				Npc::Walk(a_actor, marker.get(), true);
 			} else {
 				a_walk.joinSent = false;
@@ -358,7 +371,7 @@ namespace fr
 					auto* actor = a_ref ? a_ref->As<RE::Actor>() : nullptr;
 					if (!Usable(actor) || actor == player || actor->IsChild() || actor->IsInCombat() || Npc::Busy(actor) ||
 						(player && actor->GetHostileToActor(player)) || (npcType && !actor->HasKeywordHelper(npcType, nullptr)) ||
-						IsCroupier(actor->GetFormID()) || BjHasSeat(actor->GetFormID()) || PkHasSeat(actor->GetFormID()) || SlHasSeat(actor->GetFormID()) ||
+						IsCroupier(actor->GetFormID()) || RosterHolds(actor->GetFormID()) || BjHasSeat(actor->GetFormID()) || PkHasSeat(actor->GetFormID()) || SlHasSeat(actor->GetFormID()) ||
 						std::ranges::any_of(_t.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); }) ||
 						std::ranges::any_of(_other.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); })) {
 						return RE::BSContainer::ForEachResult::kContinue;
@@ -610,7 +623,7 @@ namespace fr
 					(npcType && !actor->HasKeywordHelper(npcType, nullptr)) ||
 					std::ranges::any_of(_t.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); }) ||
 					std::ranges::any_of(_other.seats, [&](const Seat& st) { return st.id == actor->GetFormID(); }) ||  // (at the other table)
-					PkHasSeat(actor->GetFormID()) || SlHasSeat(actor->GetFormID()) || BjHasSeat(actor->GetFormID()) || IsCroupier(actor->GetFormID()) ||                          // (playing poker, dealing)
+					PkHasSeat(actor->GetFormID()) || SlHasSeat(actor->GetFormID()) || BjHasSeat(actor->GetFormID()) || IsCroupier(actor->GetFormID()) || RosterHolds(actor->GetFormID()) ||                          // (playing poker, dealing)
 					std::ranges::any_of(found, [&](const auto& f) { return f.second == actor; })) {
 					return RE::BSContainer::ForEachResult::kContinue;
 				}
