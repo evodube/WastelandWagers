@@ -271,7 +271,9 @@ namespace fr
 		// (close, and no closer for a moment: there. The walk sent again with its AI reset, as it was, made them skip in
 		// place every few seconds, 12 from their spot: the caller puts them on it)
 		// (a dealer: right up to their spot, nothing put them on it after. Close enough, or no closer for a while)
-		if (a_dealer ? (d < 15.0f || (d < kAtSpot && a_walk.stall > 4.0f)) : (d < kAtSpot && a_walk.stall > 1.5f)) {
+		// (stuck a few seconds anywhere near the table, chairs in the way say: there too, and put on their spot by the
+		// caller, once)
+		if (a_dealer ? (d < 15.0f || (d < 250.0f && a_walk.stall > 4.0f)) : (d < kAtSpot && a_walk.stall > 1.5f)) {
 			return true;
 		}
 		// sat down somewhere on the way (their sandbox's doing): up
