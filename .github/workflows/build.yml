@@ -82,6 +82,7 @@ jobs:
       - name: Build
         run: |
           xmake build -y WastelandWagers
+          if ($LASTEXITCODE -ne 0) { xmake build -y -v -D WastelandWagers; exit 1 }  # (a failure: again with the compiler's own words)
 
       - name: Remember what was built
         shell: pwsh
