@@ -72,7 +72,7 @@ jobs:
             Get-Content build/src-hashes.txt | ForEach-Object { $p = $_ -split ' ', 2; $built[$p[1]] = $p[0] }
           }
           $same = 0
-          foreach ($f in @(git ls-files src retired xmake.lua)) {
+          foreach ($f in @(git ls-files src xmake.lua)) {
             if ($built[$f] -and $built[$f] -eq (Get-FileHash $f -Algorithm SHA1).Hash) { (Get-Item $f).LastWriteTime = $old; $same++ }
           }
           "$same of our files unchanged since the cached build"
@@ -82,12 +82,11 @@ jobs:
       - name: Build
         run: |
           xmake build -y WastelandWagers
-          xmake build -y fo4roulette
 
       - name: Remember what was built
         shell: pwsh
         run: |
-          git ls-files src retired xmake.lua | ForEach-Object { "$((Get-FileHash $_ -Algorithm SHA1).Hash) $_" } | Set-Content build/src-hashes.txt
+          git ls-files src xmake.lua | ForEach-Object { "$((Get-FileHash $_ -Algorithm SHA1).Hash) $_" } | Set-Content build/src-hashes.txt
 
       # ---------------- Papyrus (WastelandWagers.esl's quest scripts) ----------------
       - name: Vanilla script sources
@@ -166,10 +165,6 @@ jobs:
           Copy-Item LICENSE "$stage/Data/F4SE/Plugins/WastelandWagers-LICENSE.txt" -ErrorAction SilentlyContinue
           python tools/make_esl.py "$stage/Data/WastelandWagers.esl"
           if ($LASTEXITCODE -ne 0) { throw "make_esl failed" }
-          # the old name's plugin and esl, retired: stand-ins over the old ones (nothing to delete by hand)
-          Copy-Item build/out/retired/fo4roulette.dll "$stage/Data/F4SE/Plugins/"
-          python tools/make_retired.py "$stage/Data/fo4roulette.esl"
-          if ($LASTEXITCODE -ne 0) { throw "make_retired failed" }
           Get-ChildItem -Recurse $stage | Select-Object FullName
 
       - uses: actions/upload-artifact@v4

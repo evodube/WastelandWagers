@@ -63,13 +63,3 @@ target("WastelandWagers", function()
     set_optimize("fastest")
     set_targetdir("build/out/F4SE/Plugins")
 end)
-
--- fo4roulette.dll, retired (the mod's old name): a stand-in that tells F4SE not to load it, shipped so the new version
--- installed over the old one leaves nothing of the old plugin running (retired/retired.cpp)
-target("fo4roulette", function()
-    set_kind("shared")
-    add_files("retired/retired.cpp")
-    set_runtimes("MD")
-    set_symbols("none")
-    set_targetdir("build/out/retired")
-end)
