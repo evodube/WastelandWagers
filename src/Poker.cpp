@@ -1301,7 +1301,7 @@ namespace fr
 	{
 		const auto& s = Settings::Get();
 		// the dealer: on the chip tray's side, between the two seats there, facing the table; just stands there
-		TickCroupier(_pk.croupier, a_frame, kRailR + kDealerOff, 0.0, -1.0, 0.0, a_dt, "poker");
+		TickCroupier(_pk.croupier, a_frame, kRailR + kDealerOff, 0.0, -1.0, 0.0, a_dt, "poker", true);  // (facing the middle)
 		_pk.seatTimer -= a_dt;
 		if (_pk.seatTimer <= 0.0f) {
 			_pk.seatTimer = s.bettorEvery * std::uniform_real_distribution<float>(0.6f, 1.2f)(_rng);

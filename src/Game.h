@@ -410,6 +410,8 @@ namespace fr
 		bool         WalkTo(RE::Actor* a_actor, Walker& a_walk, const Frame& a_frame, const RE::NiPoint3& a_spot, float a_heading, float a_dt,
 					bool a_dealer, float a_timeout);  // true: there
 		void         FaceTowards(RE::Actor* a_actor, float a_heading);
+		// a standing dealer turned (smoothly: a quarter turn in half a second, no snapping) to face a_x, a_y (world)
+		void         TurnToFace(RE::Actor* a_actor, float a_x, float a_y, float a_dt);
 		// the dealers (Npcs.cpp): found, walked to their place (table space, facing the way given) and stood there
 		bool         IsCroupier(RE::TESFormID a_id) const;  // dealing at one of the tables (blackjack's too)
 		void         Voice(RE::Actor* a_actor, int a_how);
@@ -418,7 +420,7 @@ namespace fr
 		void         TrackSit(const char* a_table, const std::string& a_name, RE::Actor* a_actor, RE::TESObjectREFR* a_chair, int& a_was);  // a settler's cheer / laugh (a_how > 0) or groan (< 0), now and then
 		void         RlDealer(Gesture a_g, bool a_now = false);  // the roulette dealer's gesture (Npcs.cpp: where they stand)
 		void         TickCroupier(Croupier& a_c, const Frame& a_frame, double a_x, double a_y, double a_faceX, double a_faceY, float a_dt,
-					const char* a_table);
+					const char* a_table, bool a_faceMiddle = false);
 		void         ReleaseCroupier(Croupier& a_c, const char* a_why);
 		void         UnholdCroupier(Croupier& a_c);  // (a save: let go, held again after)
 		// a gesture by a dealer standing at (a_x, a_y) facing (a_fx, a_fy), table space; kPoint at (a_tx, a_ty)
@@ -867,6 +869,7 @@ namespace fr
 			float                             phaseTime{ 0.0f };
 			float                             bettingTime{ 0.0f };
 			float                             spinIn{ -1.0f };  // seconds to the wheel spinning itself (-1: no bets yet)
+			bool                              reached{ false }; // the dealer's reach for the spin already made (a second before it)
 			rl::SpinPlan                      plan;
 			std::future<rl::SpinPlan>         planFuture;
 			bool                              planning{ false };  // the throw's being worked out

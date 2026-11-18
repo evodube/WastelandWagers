@@ -209,6 +209,20 @@ namespace fr
 		(void)a_heading;
 	}
 
+	void Game::TurnToFace(RE::Actor* a_actor, float a_x, float a_y, float a_dt)
+	{
+		if (!a_actor) {
+			return;
+		}
+		const float want = std::atan2(a_x - a_actor->data.location.x, a_y - a_actor->data.location.y);
+		const float diff = util::AngleDiff(want, a_actor->data.angle.z);
+		if (std::abs(diff) < 0.04f) {
+			return;  // (within 2 degrees: left be)
+		}
+		const float step = std::min(std::abs(diff), 3.1f * std::clamp(a_dt, 0.0f, 0.1f));
+		a_actor->SetHeading(a_actor->data.angle.z + (diff < 0.0f ? -step : step));
+	}
+
 	bool Game::WalkTo(RE::Actor* a_actor, Walker& a_walk, const Frame& a_frame, const RE::NiPoint3& a_spot, float a_heading, float a_dt,
 		bool a_dealer, float a_timeout)
 	{
@@ -256,7 +270,8 @@ namespace fr
 		}
 		// (close, and no closer for a moment: there. The walk sent again with its AI reset, as it was, made them skip in
 		// place every few seconds, 12 from their spot: the caller puts them on it)
-		if (d < kAtSpot && a_walk.stall > 1.5f) {
+		// (a dealer: right up to their spot, nothing put them on it after. Close enough, or no closer for a while)
+		if (a_dealer ? (d < 15.0f || (d < kAtSpot && a_walk.stall > 4.0f)) : (d < kAtSpot && a_walk.stall > 1.5f)) {
 			return true;
 		}
 		// sat down somewhere on the way (their sandbox's doing): up
@@ -304,7 +319,7 @@ namespace fr
 	}
 
 	void Game::TickCroupier(Croupier& a_c, const Frame& a_frame, double a_x, double a_y, double a_faceX, double a_faceY, float a_dt,
-		const char* a_table)
+		const char* a_table, bool a_faceMiddle)
 	{
 		const auto* you = RE::PlayerCharacter::GetSingleton();
 		a_c.cool -= a_dt;
@@ -367,7 +382,13 @@ namespace fr
 		if (a_c.held) {
 			// there: they just stand where their walk ended. (Put back on the exact spot every few seconds, as they
 			// were, they jumped back and forth: the table's edge pushed them off it again.) Well off it (pushed away),
-			// they walk back
+			// they walk back. Turned to the table's middle (poker), or the way given (roulette: the wheel)
+			if (a_faceMiddle) {
+				TurnToFace(actor, a_frame.origin.x, a_frame.origin.y, a_dt);
+			} else {
+				const auto ahead = ToWorld(a_frame, a_x + a_faceX * 100.0, a_y + a_faceY * 100.0, 0.0);
+				TurnToFace(actor, ahead.x, ahead.y, a_dt);
+			}
 			a_c.snapIn -= a_dt;
 			if (a_c.snapIn <= 0.0f) {
 				a_c.snapIn = 3.0f;
@@ -446,7 +467,7 @@ namespace fr
 			_t.croupier.cool = 0.0f;
 		}
 		using namespace rl::table;
-		const double x = -kHalfLength - 28.0, y = kWheelY;
+		const double x = -kHalfLength - 20.0, y = kWheelY;
 		CroupierGesture(_t.croupier, a_g, x, y, 1.0, 0.0, kWheelX, kWheelY);  // (points at the wheel)
 	}
 
@@ -609,7 +630,7 @@ namespace fr
 		{
 			// the dealer: at the wheel's end of the table, behind the wheel, facing down the table
 			using namespace rl::table;
-			TickCroupier(_t.croupier, a_frame, -kHalfLength - 28.0, kWheelY, 1.0, 0.0, a_dt, "roulette");  // (RlDealer: the same)
+			TickCroupier(_t.croupier, a_frame, -kHalfLength - 20.0, kWheelY, 1.0, 0.0, a_dt, "roulette");  // (RlDealer: the same)
 		}
 		_t.seatTimer -= a_dt;
 		if (_t.seatTimer <= 0.0f) {

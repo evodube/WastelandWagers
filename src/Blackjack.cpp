@@ -680,7 +680,9 @@ namespace fr
 				_bj.dealerActor = {};
 				_bj.dealerId = 0;
 				_bj.dealerHeld = false;
-			} else if (!_bj.dealerHeld) {
+			} else if (_bj.dealerHeld) {
+				TurnToFace(actor, a_frame.origin.x, a_frame.origin.y, a_dt);  // (facing the table's middle)
+			} else {
 				const float heading = HeadingOf(a_frame, 0.0, -1.0);
 				const auto  spot = ToWorld(a_frame, 0.0, kDealerStand, 0.0);
 				if (WalkTo(actor, _bj.dealerWalk, a_frame, spot, heading, a_dt, true, 15.0f)) {

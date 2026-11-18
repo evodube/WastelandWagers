@@ -845,10 +845,16 @@ namespace fr
 			// the wheel spins itself a while after the round's first bet (yours or anyone's)
 			if (_t.stakes.empty()) {
 				_t.spinIn = -1.0f;
+				_t.reached = false;
 			} else if (_t.spinIn < 0.0f) {
 				_t.spinIn = Settings::Get().spinDelay;
 			} else {
 				_t.spinIn -= a_dt;
+				// the dealer's reach out over the wheel a second before the spin: their hand goes as the ball's sent round
+				if (!_t.reached && _t.spinIn <= 1.0f) {
+					_t.reached = true;
+					RlDealer(Gesture::kDeal, true);
+				}
 				if (_t.spinIn <= 0.0f) {
 					StartSpin(false);
 				}
@@ -1042,7 +1048,10 @@ namespace fr
 		});
 		_t.plan = {};
 		_t.planning = true;
-		RlDealer(Gesture::kDeal, true);  // (a reach out over the wheel: sending the ball round)
+		if (!_t.reached) {
+			RlDealer(Gesture::kDeal, true);  // (a reach out over the wheel: sending the ball round; a second early, when timed)
+		}
+		_t.reached = false;
 		_t.phase = Phase::kSpinning;
 		_t.phaseTime = 0.0f;
 		_t.playT = -kPlanLead;
