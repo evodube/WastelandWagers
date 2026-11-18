@@ -274,6 +274,7 @@ namespace fr
 			float               snapIn{ 0.0f };  // seconds before checking they're on their spot
 			float               goneFor{ 0.0f }; // seconds they've looked gone (a moment isn't gone)
 			float               idleIn{ 8.0f };  // seconds to their next standing fidget
+			float               putBackIn{ 0.0f }; // seconds before they can be put back on their spot again
 		};
 		// what a dealer does now and then (Npcs.cpp): point at whose turn it is, wave the table in to bet, hand the
 		// cards out, say their piece (the game's gestures that play on the spot: no stepping round to line up)
@@ -709,6 +710,7 @@ namespace fr
 			bool                            dealerHeld{ false };
 			float                           dealerFaceIn{ 0.0f };  // seconds to the next turn to the table's middle
 			float                           dealerIdleIn{ 8.0f };  // seconds to their next standing fidget
+			float                           dealerPutBackIn{ 0.0f }; // seconds before they can be put back on their spot again
 			float                           sitWait{ 0.0f };       // seconds the deal's waited for someone sitting down
 			float                           dealerLook{ 0.0f };
 			int                             lifted{ 0 };       // your bets back in your pocket over a save

@@ -1399,9 +1399,8 @@ namespace fr
 					}
 					st.held = true;  // (for the idles: they're where they should be)
 					// (their time at the table counts once they're sat: they're dealt in sitting down)
-					if (actor->DoGetSitSleepState() == RE::SIT_SLEEP_STATE::kIsSitting) {
-						st.atSpot += a_dt;
-					}
+					// (out of the chair again, or not in it yet: back to nothing, and nothing goes down in front of them)
+					st.atSpot = !chair || actor->DoGetSitSleepState() == RE::SIT_SLEEP_STATE::kIsSitting ? st.atSpot + a_dt : 0.0f;
 					break;
 				}
 				if (!st.held) {
@@ -2136,7 +2135,9 @@ namespace fr
 		for (int i = 0; i < kPkSeats; ++i) {
 			const auto& st = _pk.seats[i];
 			int         have = 0;
-			if (st.used && !st.away && (st.you || st.step == Seat::Step::kPlaying)) {
+			// (a settler's chips go down once they're sat in their chair, or at their spot with no chairs: not while
+			// they're still walking up or sitting down. In a hand they stay down)
+			if (st.used && !st.away && (st.you || (st.step == Seat::Step::kPlaying && (st.atSpot > 0.0f || (_pk.inHand && st.hi >= 0))))) {
 				have = _pk.inHand && st.hi >= 0 ? _pk.hand.players[st.hi].stack : st.stack;
 			}
 			if (_pk.potHold > 0.0f && _pk.phase == PkPhase::kShowdown) {

@@ -728,17 +728,20 @@ namespace fr
 					}
 				}
 				// now and then turned to the table's middle
+				_bj.dealerPutBackIn -= a_dt;
 				_bj.dealerFaceIn -= a_dt;
 				if (_bj.dealerFaceIn <= 0.0f) {
 					_bj.dealerFaceIn = 3.0f;
 					TurnToFace(actor, a_frame.origin.x, a_frame.origin.y);
-					// well off their spot: far (gone home over a load, say), put back on it; pushed away, walking back
+					// off their spot by more than a step (pushed away, or gone home over a load): put back on it, at most
+					// every 20 s (a few units off is left alone: that was the back and forth)
 					const auto  spot = ToWorld(a_frame, 0.0, kDealerStand, 0.0);
 					const float off = Distance2D(actor->data.location, spot);
-					if (auto marker = _bj.dealerWalk.marker.get(); marker && off > 300.0f) {
+					if (auto marker = _bj.dealerWalk.marker.get(); marker && off > 20.0f && (off > 300.0f || _bj.dealerPutBackIn <= 0.0f)) {
 						log::info("blackjack: dealer {:.0f} off their spot: put back on it", off);
 						Npc::MoveTo(actor, marker.get());
-					} else if (off > 60.0f) {
+						_bj.dealerPutBackIn = 20.0f;
+					} else if (!marker && off > 60.0f) {
 						log::info("blackjack: dealer {:.0f} off their spot: walking back", off);
 						Npc::SetRestrained(actor, false);
 						_bj.dealerHeld = false;
@@ -752,7 +755,7 @@ namespace fr
 				if (WalkTo(actor, _bj.dealerWalk, a_frame, spot, heading, a_dt, true, 15.0f)) {
 					// their walk ended short of the spot (more than 15 off): put on it, once (never again while they
 					// stand there: put back over and over, they jumped back and forth)
-					if (auto marker = _bj.dealerWalk.marker.get(); marker && Distance2D(actor->data.location, spot) > 15.0f) {
+					if (auto marker = _bj.dealerWalk.marker.get(); marker && Distance2D(actor->data.location, spot) > 8.0f) {
 						log::info("blackjack: dealer stopped {:.0f} short of their spot: put on it", Distance2D(actor->data.location, spot));
 						Npc::MoveTo(actor, marker.get());
 					}
@@ -818,9 +821,8 @@ namespace fr
 				}
 				st.held = true;
 				// (their time at the table counts once they're sat: they bet, and are dealt in, sitting down)
-				if (actor->DoGetSitSleepState() == RE::SIT_SLEEP_STATE::kIsSitting) {
-					st.atSpot += a_dt;
-				}
+				// (out of the chair again, or not in it yet: back to nothing, and no bet goes down in front of them)
+				st.atSpot = !chair || actor->DoGetSitSleepState() == RE::SIT_SLEEP_STATE::kIsSitting ? st.atSpot + a_dt : 0.0f;
 			} else {
 				if (!st.held) {
 					st.held = Npc::SetRestrained(actor, true);

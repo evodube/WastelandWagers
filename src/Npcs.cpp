@@ -409,6 +409,7 @@ namespace fr
 					Npc::PlayIdle(actor, kStandIdles[std::uniform_int_distribution<std::size_t>(0, kStandIdles.size() - 1)(_rng)]);
 				}
 			}
+			a_c.putBackIn -= a_dt;
 			a_c.snapIn -= a_dt;
 			if (a_c.snapIn <= 0.0f) {
 				a_c.snapIn = 3.0f;
@@ -418,11 +419,14 @@ namespace fr
 					const auto ahead = ToWorld(a_frame, a_x + a_faceX * 100.0, a_y + a_faceY * 100.0, 0.0);
 					TurnToFace(actor, ahead.x, ahead.y);
 				}
-				if (auto marker = a_c.walk.marker.get(); marker && off > 300.0f) {
-					// far off (gone home over a load, say): out of sight, put back on their spot
+				// off their spot by more than a step (pushed back past the chairs, or gone home over a load): put back on
+				// it. Not every check: at most every 20 s, so a nudge from the table's edge isn't a jump back and forth
+				// (a few units off is left alone: that was the blackjack dealer's back and forth)
+				if (auto marker = a_c.walk.marker.get(); marker && off > 20.0f && (off > 300.0f || a_c.putBackIn <= 0.0f)) {
 					log::info("{}: dealer {} {:.0f} off their spot: put back on it", a_table, a_c.name, off);
 					Npc::MoveTo(actor, marker.get());
-				} else if (off > 60.0f) {
+					a_c.putBackIn = 20.0f;
+				} else if (!marker && off > 60.0f) {
 					log::info("{}: dealer {} {:.0f} off their spot: walking back", a_table, a_c.name, off);
 					Npc::SetRestrained(actor, false);
 					a_c.held = false;
@@ -436,7 +440,8 @@ namespace fr
 			// their walk ended short of the spot (more than 15 off: the table or someone in the way): put on it, once.
 			// (Never again while they stand there: put back every few seconds, the table's edge pushed them off each
 			// time and they jumped back and forth)
-			if (auto marker = a_c.walk.marker.get(); marker && off > 15.0f) {
+			// (more than 8 off: the poker dealer stopped 11-12 short, behind the chairs)
+			if (auto marker = a_c.walk.marker.get(); marker && off > 8.0f) {
 				log::info("{}: dealer {} stopped {:.0f} short of their spot: put on it", a_table, a_c.name, off);
 				Npc::MoveTo(actor, marker.get());
 			}
