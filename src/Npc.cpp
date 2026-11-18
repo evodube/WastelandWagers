@@ -307,6 +307,16 @@ namespace fr::Npc
 		return {};
 	}
 
+	void PlayIdleAfterStop(RE::Actor* a_actor, RE::TESFormID a_idle)
+	{
+		if (!a_actor || !Ready()) {
+			return;
+		}
+		const std::string what = std::format("{} {:08X}", What(a_actor, "PlayIdleAfterStop"), a_idle);
+		const RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> logged{ new LogResult(what) };
+		CallQuest("PlayIdleAfterStop", what, logged, FormArg(a_actor), static_cast<std::int32_t>(a_idle));
+	}
+
 	void PlayIdle(RE::Actor* a_actor, RE::TESFormID a_idle)
 	{
 		if (!a_actor || !Ready()) {

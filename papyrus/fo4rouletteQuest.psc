@@ -152,6 +152,21 @@ Bool Function PlayIdleOn(Int aiActor, Int aiIdle)
 	return akActor.PlayIdle(akIdle)
 EndFunction
 
+; ...out of a looping idle first (IdleStop: you held still at a slot machine, its pull wanted)
+Bool Function PlayIdleAfterStop(Int aiActor, Int aiIdle)
+	Actor akActor = Game.GetForm(aiActor) as Actor
+	Idle akIdle = Game.GetForm(aiIdle) as Idle
+	Idle akStop = Game.GetForm(0x000E9855) as Idle  ; IdleStop
+	if akActor == None || akIdle == None
+		return false
+	endif
+	if akStop
+		akActor.PlayIdle(akStop)
+		Utility.Wait(0.1)
+	endif
+	return akActor.PlayIdle(akIdle)
+EndFunction
+
 ; a slot machine's sitter: their hand on the lever. The machine's pull animation (the DLC's) sends
 ; furnitureIdleFlavor1Slave as the lever goes down; each one goes to the plugin (fo4rouletteNative.LeverDown), which pulls the lever and
 ; spins the reels then, so they move with the hand
