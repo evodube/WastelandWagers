@@ -686,7 +686,13 @@ namespace fr
 				const float heading = HeadingOf(a_frame, 0.0, -1.0);
 				const auto  spot = ToWorld(a_frame, 0.0, kDealerStand, 0.0);
 				if (WalkTo(actor, _bj.dealerWalk, a_frame, spot, heading, a_dt, true, 15.0f)) {
-					_bj.dealerHeld = Npc::SetRestrained(actor, true);  // (where their walk ended: no step-put, a jump)
+					// their walk ended short of the spot (more than 15 off): put on it, once (never again while they
+					// stand there: put back over and over, they jumped back and forth)
+					if (auto marker = _bj.dealerWalk.marker.get(); marker && Distance2D(actor->data.location, spot) > 15.0f) {
+						log::info("blackjack: dealer stopped {:.0f} short of their spot: put on it", Distance2D(actor->data.location, spot));
+						Npc::MoveTo(actor, marker.get());
+					}
+					_bj.dealerHeld = Npc::SetRestrained(actor, true);
 				}
 			}
 		}

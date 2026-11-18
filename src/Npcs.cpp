@@ -403,6 +403,13 @@ namespace fr
 			return;
 		}
 		if (WalkTo(actor, a_c.walk, a_frame, spot, heading, a_dt, true, 15.0f)) {
+			// their walk ended short of the spot (more than 15 off: the table or someone in the way): put on it, once.
+			// (Never again while they stand there: put back every few seconds, the table's edge pushed them off each
+			// time and they jumped back and forth)
+			if (auto marker = a_c.walk.marker.get(); marker && off > 15.0f) {
+				log::info("{}: dealer {} stopped {:.0f} short of their spot: put on it", a_table, a_c.name, off);
+				Npc::MoveTo(actor, marker.get());
+			}
 			log::info("{}: dealer {} at their spot ({:.0f} off it)", a_table, a_c.name, off);
 			a_c.held = Npc::SetRestrained(actor, true);
 			a_c.snapIn = 3.0f;
