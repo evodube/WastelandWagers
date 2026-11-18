@@ -228,14 +228,65 @@ namespace fr
 		// asked for over and over (Sally 73, Maisie and Sophie 67 degrees), feet stepping round and snapping back
 		// every two or three seconds. The marker turned to wherever they face now: nothing left to turn to.
 		// (Only its heading: its place is still their spot, where they're put back to.)
+		if (!a_actor) {
+			return;
+		}
+		UnstickTurn(a_actor);
 		auto marker = a_walk.marker.get();
-		if (!marker || !a_actor) {
+		if (!marker) {
 			return;
 		}
 		const float facing = a_actor->data.angle.z;
 		if (std::abs(util::AngleDiff(marker->data.angle.z, facing)) > 0.01f) {
 			marker->data.angle.z = facing;
 		}
+	}
+
+	void Game::UnstickTurn(RE::Actor* a_actor)
+	{
+		// A held NPC caught in the turn-on-the-spot loop: their graph asks for the same turn every two or three
+		// seconds (fo4idlefix's log: Sally 73 degrees, Maisie and Sophie 67, from the moment a save loads, before
+		// anything here touched them), they can't make it, the feet step round and snap back, over and over. A
+		// full-body idle breaks it: Maisie's stopped for good after her dealer's reach over the table
+		// (DialogueGiveItem). So: two turn requests within 8 s while held, and out of whatever's looping (IdleStop)
+		// into that reach, once; again at most every 20 s if it comes back
+		static const RE::BSFixedString kTurnDelta{ "TurnDelta" };
+		constexpr RE::TESFormID        kGiveItem = 0x000CEA8D;
+		struct Watch
+		{
+			bool                                  asking{ false };
+			int                                   requests{ 0 };
+			std::chrono::steady_clock::time_point first{};
+			std::chrono::steady_clock::time_point kicked{};
+			int                                   kicks{ 0 };
+		};
+		static std::unordered_map<RE::TESFormID, Watch> watches;
+
+		float turn = 0.0f;
+		if (!a_actor || !a_actor->GetGraphVariableImplFloat(kTurnDelta, turn)) {
+			return;
+		}
+		auto&      w = watches[a_actor->GetFormID()];
+		const auto now = std::chrono::steady_clock::now();
+		const bool asking = std::abs(turn) > 1.0f;
+		if (asking && !w.asking) {
+			if (w.requests == 0 || now - w.first > std::chrono::seconds(8)) {
+				w.requests = 0;
+				w.first = now;
+			}
+			++w.requests;
+		}
+		w.asking = asking;
+		if (w.requests < 2 || (w.kicks > 0 && now - w.kicked < std::chrono::seconds(20))) {
+			return;
+		}
+		w.requests = 0;
+		w.kicked = now;
+		++w.kicks;
+		log::info("{} ({:08X}): turning on the spot and back (asked {:.0f}, held, can't): out of it with a reach ({}{})",
+			a_actor->GetDisplayFullName() ? a_actor->GetDisplayFullName() : "?", a_actor->GetFormID(), turn, w.kicks,
+			w.kicks == 1 ? "st time" : " times");
+		Npc::PlayIdleAfterStop(a_actor, kGiveItem);
 	}
 
 	void Game::TurnToFace(RE::Actor* a_actor, float a_x, float a_y)

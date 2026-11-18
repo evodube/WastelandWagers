@@ -418,6 +418,7 @@ namespace fr
 					bool a_dealer, float a_timeout);  // true: there
 		void         FaceTowards(RE::Actor* a_actor, float a_heading, float& a_faceIn, float a_dt);
 		void         HoldFacing(Walker& a_walk, RE::Actor* a_actor);  // a held NPC's walk marker turned the way they face
+		void         UnstickTurn(RE::Actor* a_actor);                  // a held NPC turning on the spot and back over and over: out of it
 		// a standing dealer turned to face a_x, a_y (world), if they're more than 12 degrees off it (SetAngle: once)
 		void         TurnToFace(RE::Actor* a_actor, float a_x, float a_y);
 		// the dealers (Npcs.cpp): found, walked to their place (table space, facing the way given) and stood there

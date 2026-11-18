@@ -10,7 +10,7 @@ Since 0.7.0, a **blackjack table**: you and up to six settlers against the deale
 Every table has a dealer: a settler walks over and stands behind it (at roulette they spin the wheel, by the chip tray
 at poker).
 
-**Status: 1.0.10.**
+**Status: 1.0.11.**
 
 ## Requirements
 
