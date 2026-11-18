@@ -86,7 +86,9 @@ jobs:
           # (the compile-time PDB the cache brought back: a stale one made cl.exe fail at once, with no words)
           Remove-Item -ErrorAction SilentlyContinue build/out/F4SE/Plugins/compile.WastelandWagers.pdb
           xmake build -y WastelandWagers
-          if ($LASTEXITCODE -ne 0) { xmake build -y -v -D WastelandWagers; exit 1 }  # (a failure: again with the compiler's own words)
+          # (now and then the first compile fails at once with no words, and the same build again goes through: once
+          # more, verbose, and only a second failure fails the job)
+          if ($LASTEXITCODE -ne 0) { "first build failed: once more"; xmake build -y -v WastelandWagers; if ($LASTEXITCODE -ne 0) { exit 1 } }
 
       - name: Remember what was built
         shell: pwsh
