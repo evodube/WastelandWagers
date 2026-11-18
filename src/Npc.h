@@ -42,6 +42,9 @@ namespace fr::Npc
 	// not more than every couple of seconds for anyone
 	void KeepFromPool(RE::Actor* a_actor);
 
+	// a load's ClearAll still under way (the quest stopped and restarted): nobody's to be sent anywhere yet
+	bool Clearing();
+
 	// turned to face a heading (radians, the game's: 0 north, clockwise), set once (SetAngle)
 	void FaceAngle(RE::Actor* a_actor, float a_heading);
 

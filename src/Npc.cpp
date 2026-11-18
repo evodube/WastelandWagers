@@ -45,6 +45,29 @@ namespace fr::Npc
 		std::mutex                        g_joinedMutex;
 		std::unordered_set<RE::TESFormID> g_joined;
 
+		// a load's ClearAll under way (it stops and restarts the quest: a second or two): nobody's sent anywhere till
+		// it's done, or what's sent is cleared with the rest (a dealer joined as it ran walked home, 3000 away)
+		std::atomic<bool>                     g_clearing{ false };
+		std::chrono::steady_clock::time_point g_clearSent{};
+
+		class ClearDone final : public RE::BSScript::IStackCallbackFunctor
+		{
+		public:
+			void CallQueued() override {}
+			void CallCanceled() override
+			{
+				log::info("papyrus ClearAll: canceled");
+				g_clearing = false;
+			}
+			void StartMultiDispatch() override {}
+			void EndMultiDispatch() override {}
+			void operator()(RE::BSScript::Variable) override
+			{
+				log::info("papyrus ClearAll -> done");
+				g_clearing = false;
+			}
+		};
+
 		// Join's answer: "in ..." if the collection holds them
 		class JoinDone final : public RE::BSScript::IStackCallbackFunctor
 		{
@@ -214,8 +237,19 @@ namespace fr::Npc
 		if (!Ready()) {
 			return;
 		}
-		const RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> logged{ new LogResult("ClearAll") };
-		CallQuest("ClearAll", "WastelandWagersQuest.ClearAll", logged, FormArg(Forms::LinkKeyword()));
+		g_clearing = true;
+		g_clearSent = std::chrono::steady_clock::now();
+		const RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> done{ new ClearDone() };
+		CallQuest("ClearAll", "WastelandWagersQuest.ClearAll", done, FormArg(Forms::LinkKeyword()));
+	}
+
+	bool Clearing()
+	{
+		if (g_clearing && std::chrono::steady_clock::now() - g_clearSent > std::chrono::seconds(15)) {
+			log::warn("ClearAll: no answer in 15 s: carrying on");
+			g_clearing = false;
+		}
+		return g_clearing;
 	}
 
 	bool MoveTo(RE::Actor* a_actor, RE::TESObjectREFR* a_target)

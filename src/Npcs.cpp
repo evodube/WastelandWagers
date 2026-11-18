@@ -29,6 +29,9 @@ namespace fr
 		[[maybe_unused]] constexpr RE::TESFormID                kPlaceIdle = 0x001A8A0D;  // IdlePlaceEnvelopeOnTable
 		constexpr std::array<RE::TESFormID, 2> kWinIdles{ 0x0010BA3A, 0x0010F9C0 };  // cheering, fight winner
 		[[maybe_unused]] constexpr RE::TESFormID                kLoseIdle = 0x00038C7A;               // HeadShakeNo
+		// standing about: the game's own unarmed standing fidgets and talking hands (dyn_Flavor, so played where they
+		// stand: no step and turn to line up first, as the activation idles did)
+		constexpr std::array<RE::TESFormID, 2> kStandIdles{ 0x002179C7, 0x002179CA };  // RaiderIdleFlavorMT_PoseARootDefault, RaiderIdleDialogueMT_PoseADefault
 		constexpr float kStepBack = 32.0f;       // where people stand: this far out from the table's edge
 
 		float Distance2D(const RE::NiPoint3& a, const RE::NiPoint3& b) { return std::hypot(a.x - b.x, a.y - b.y); }
@@ -385,6 +388,14 @@ namespace fr
 			// there: they just stand where their walk ended. (Put back on the exact spot every few seconds, as they
 			// were, they jumped back and forth: the table's edge pushed them off it again.) Well off it (pushed away),
 			// they walk back. Now and then turned to the table's middle (poker), or the way given (roulette: the wheel)
+			// and a standing fidget of their own between their gestures
+			a_c.idleIn -= a_dt;
+			if (a_c.idleIn <= 0.0f) {
+				a_c.idleIn = std::uniform_real_distribution<float>(10.0f, 20.0f)(_rng);
+				if (a_c.cool <= 0.0f) {
+					Npc::PlayIdle(actor, kStandIdles[std::uniform_int_distribution<std::size_t>(0, kStandIdles.size() - 1)(_rng)]);
+				}
+			}
 			a_c.snapIn -= a_dt;
 			if (a_c.snapIn <= 0.0f) {
 				a_c.snapIn = 3.0f;
@@ -773,6 +784,7 @@ namespace fr
 		// (only the cheers: the thinking, the chips-down and the head shake are the game's activation idles, which
 		// step and turn them to line up first: the shuffle round on the spot between bets, every few seconds)
 		switch (a_kind) {
+		case 0: idle = pick(kStandIdles); break;  // (now and then while they play)
 		case 2: idle = pick(kWinIdles); break;
 		default: break;
 		}

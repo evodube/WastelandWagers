@@ -505,6 +505,9 @@ namespace fr
 			_clearNpcs = false;
 			Npc::ClearAll();  // a load: whoever was in the quest's collections in that save goes back to their own business
 		}
+		if (Npc::Clearing()) {
+			return;  // (the tables wait for it: dealers and players picked meanwhile were cleared with the rest)
+		}
 		if (_kitPlacing) {
 			TickKitPlacement();
 		}

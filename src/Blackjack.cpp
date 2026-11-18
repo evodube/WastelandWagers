@@ -681,6 +681,16 @@ namespace fr
 				_bj.dealerId = 0;
 				_bj.dealerHeld = false;
 			} else if (_bj.dealerHeld) {
+				// a standing fidget of their own between their gestures (the game's unarmed standing fidgets and
+				// talking hands: dyn_Flavor, played where they stand)
+				_bj.dealerIdleIn -= a_dt;
+				if (_bj.dealerIdleIn <= 0.0f) {
+					_bj.dealerIdleIn = std::uniform_real_distribution<float>(10.0f, 20.0f)(_rng);
+					if (_bj.dealerCool <= 0.0f) {
+						static constexpr RE::TESFormID kStand[] = { 0x002179C7, 0x002179CA };
+						Npc::PlayIdle(actor, kStand[std::uniform_int_distribution<int>(0, 1)(_rng)]);
+					}
+				}
 				// now and then turned to the table's middle
 				_bj.dealerFaceIn -= a_dt;
 				if (_bj.dealerFaceIn <= 0.0f) {
