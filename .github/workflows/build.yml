@@ -49,7 +49,12 @@ jobs:
       - name: CommonLibF4 version
         id: clib
         shell: bash
-        run: echo "sha=$(git -C lib/commonlibf4 rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+        # (the runner image's version too: ${{ env.ImageVersion }} was always empty, the runner's own variables aren't in
+        # the env context. A build folder cached on another image kept its compiler's path, a Visual Studio build that
+        # image doesn't have, and cl.exe failed at once, with no words)
+        run: |
+          echo "sha=$(git -C lib/commonlibf4 rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "image=${ImageOS}-${ImageVersion}" >> "$GITHUB_OUTPUT"
 
       - name: Cache the build folder
         uses: actions/cache@v4
@@ -57,10 +62,9 @@ jobs:
           path: |
             build
             .xmake
-          # (the runner's image in the key: a cached precompiled header from another compiler version made cl.exe
-          # fail at once, with no words)
-          key: xmake-build-${{ runner.os }}-${{ env.ImageVersion }}-${{ steps.clib.outputs.sha }}-${{ github.sha }}
-          restore-keys: xmake-build-${{ runner.os }}-${{ env.ImageVersion }}-${{ steps.clib.outputs.sha }}-
+          # (the runner's image in the key: a build folder from another image made cl.exe fail at once, with no words)
+          key: xmake-build-${{ runner.os }}-${{ steps.clib.outputs.image }}-${{ steps.clib.outputs.sha }}-${{ github.sha }}
+          restore-keys: xmake-build-${{ runner.os }}-${{ steps.clib.outputs.image }}-${{ steps.clib.outputs.sha }}-
 
       # anything unchanged since the cached build is dated in the past, so xmake skips it: CommonLibF4 (keyed on its
       # version), and each of our files whose contents match what the cached build compiled (build/src-hashes.txt)
