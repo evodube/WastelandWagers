@@ -360,7 +360,7 @@ def slot_idle(form_id: int, editor_id: str, event: str, clip: str) -> bytes:
         + subrecord(b"ENAM", zstring(event))
         + subrecord(b"ANAM", struct.pack("<II", 0, 0))
         + subrecord(b"DATA", bytes([0, 0, 1, 0x53, 0, 0]))
-        + subrecord(b"GNAM", zstring("Actors\\DLC06\\Character\\Animations\\SlotMachine\\" + clip)))
+        + subrecord(b"GNAM", zstring(clip if "\\" in clip else "Actors\\DLC06\\Character\\Animations\\SlotMachine\\" + clip)))
 
 
 def build() -> bytes:
@@ -444,9 +444,11 @@ def build() -> bytes:
 
     # a pull at the machine (the DLC's: the hand to the lever)
     # ...and you sat still at it: its plain sitting loop, looping (a dyn_FlavorLooping, as Fallout4.esm's
-    # IdleFlavorLoopingFurniture): the furniture's own idle loop picks flavours now and then, most of them a pull
+    # IdleFlavorLoopingFurniture): the furniture's own idle loop picks flavours now and then, most of them a pull. Our
+    # copy of the loop (tools/make_slot_hold.py): the DLC's own has the IdleFlavor in it that picks them
     idles = [slot_idle(own | (FIRST_ID + 0x52), "fo4rouletteSlotPullIdle", "dyn_Flavor", "PoseA_IdleFlavor1.hkx"),
-             slot_idle(own | (FIRST_ID + 0x53), "fo4rouletteSlotHoldIdle", "dyn_FlavorLooping", "PoseA_Idle1.hkx")]
+             slot_idle(own | (FIRST_ID + 0x53), "fo4rouletteSlotHoldIdle", "dyn_FlavorLooping",
+                       "Actors\\Character\\Animations\\fo4roulette\\SlotMachineHold.hkx")]
 
     count = (len(acti) + len(stats) + len(keywords) + len(packages) + len(quests) + len(recipes) + len(potions)
              + len(furniture) + len(art) + len(idles))
