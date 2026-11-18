@@ -246,8 +246,32 @@ namespace fr::Npc
 
 	bool AtPool(RE::Actor* a_actor)
 	{
-		const char* why = Busy(a_actor);
-		return why && std::strcmp(why, "at the pool table") == 0;
+		// Playable Pool's (fo4pool.esl): in one of its quest's aliases, or linked with one of its keywords. Looked for
+		// on its own: going by Busy() as it did, someone sat in a chair here was "in furniture" first, never "at the
+		// pool table", so pool's watch package got them up out of their chairs
+		auto* extra = a_actor ? a_actor->extraList.get() : nullptr;
+		if (!extra) {
+			return false;
+		}
+		const auto pool = [](const RE::TESForm* a_form) {
+			auto* file = a_form ? a_form->GetFile(0) : nullptr;
+			return file && _stricmp(std::string(file->GetFilename()).c_str(), "fo4pool.esl") == 0;
+		};
+		if (auto* links = extra->GetByType<RE::ExtraLinkedRef>()) {
+			for (const auto& l : links->linkedRefs) {
+				if (l.REFR && pool(l.keyword)) {
+					return true;
+				}
+			}
+		}
+		if (auto* aliases = extra->GetByType<RE::ExtraAliasInstanceArray>()) {
+			for (const auto& a : aliases->aliasArray) {
+				if (pool(a.quest)) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	const char* Busy(RE::Actor* a_actor)
