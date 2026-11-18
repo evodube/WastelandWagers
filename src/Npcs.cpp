@@ -324,10 +324,23 @@ namespace fr
 	}
 
 	void Game::TickCroupier(Croupier& a_c, const Frame& a_frame, double a_x, double a_y, double a_faceX, double a_faceY, float a_dt,
-		const char* a_table, bool a_faceMiddle)
+		const char* a_table, bool a_faceMiddle, std::uint8_t a_kind, RE::TESFormID a_tableRef)
 	{
 		const auto* you = RE::PlayerCharacter::GetSingleton();
 		a_c.cool -= a_dt;
+		if (a_c.id == 0 && a_tableRef != 0) {
+			// after a load: who was dealing here when it was saved, back at it straight away (Roster.cpp)
+			std::int32_t rs = -1;
+			if (auto* back = RosterNext(a_kind, a_tableRef, rs, true)) {
+				a_c.actor = back->GetHandle();
+				a_c.id = back->GetFormID();
+				a_c.name = back->GetDisplayFullName();
+				a_c.walk = Walker{};
+				a_c.held = false;
+				log::info("{}: {} ({:08X}) back to deal (as when the game was saved)", a_table, a_c.name, a_c.id);
+				return;
+			}
+		}
 		if (a_c.id == 0) {
 			// nobody dealing: the nearest free settler comes over, now and then
 			a_c.lookIn -= a_dt;
@@ -566,6 +579,15 @@ namespace fr
 		if (const auto* you = RE::PlayerCharacter::GetSingleton(); you && you->IsInCombat()) {
 			return;  // (nobody sits down in a fight)
 		}
+		// after a load: who was playing here when it was saved, back at their spot first (Roster.cpp)
+		if (auto tbl = _t.table.get()) {
+			std::int32_t rs = -1;
+			while (auto* back = RosterNext(kRosterRoulette, tbl->GetFormID(), rs, false)) {
+				if (rs >= 0 && rs < kSpots && std::ranges::none_of(_t.seats, [&](const Seat& st) { return st.spot == rs; })) {
+					RlSeatIn(rs, back);
+				}
+			}
+		}
 		const auto& s = Settings::Get();
 		if (!s.bettors || static_cast<int>(_t.seats.size()) >= s.maxBettors || _t.phase != Phase::kBetting) {
 			return;
@@ -627,6 +649,13 @@ namespace fr
 		if (spot < 0) {
 			return;
 		}
+		RlSeatIn(spot, actor);
+	}
+
+	void Game::RlSeatIn(int spot, RE::Actor* actor)
+	{
+		const auto& s = Settings::Get();
+		(void)s;
 		Seat seat;
 		seat.actor = actor->GetHandle();
 		seat.id = actor->GetFormID();
@@ -654,7 +683,8 @@ namespace fr
 		{
 			// the dealer: at the wheel's end of the table, behind the wheel, facing down the table
 			using namespace rl::table;
-			TickCroupier(_t.croupier, a_frame, -kHalfLength - 20.0, kWheelY, 1.0, 0.0, a_dt, "roulette");  // (RlDealer: the same)
+			TickCroupier(_t.croupier, a_frame, -kHalfLength - 20.0, kWheelY, 1.0, 0.0, a_dt, "roulette", false, kRosterRoulette,
+				_t.table.get() ? _t.table.get()->GetFormID() : 0);  // (RlDealer: the same)
 		}
 		_t.seatTimer -= a_dt;
 		if (_t.seatTimer <= 0.0f) {

@@ -400,6 +400,23 @@ namespace fr
 		if (!s.slSettlers) {
 			return;
 		}
+		// after a load: whoever was sat at a machine when it was saved, back at it first (Roster.cpp)
+		for (int k = 0; k < static_cast<int>(_sl.size()); ++k) {
+			auto machine = _sl[k].ref.get();
+			std::int32_t rs = -1;
+			if (_sl[k].step == 0 && !_sl[k].you && machine) {
+				if (auto* back = RosterNext(kRosterSlots, machine->GetFormID(), rs, false)) {
+					SlSitIn(k, back);
+					// (still sat at it, as the save had them: no walk over, straight to playing)
+					auto* proc = back->currentProcess;
+					if (proc && proc->GetOccupiedFurniture().get().get() == machine.get()) {
+						_sl[k].step = 2;
+						_sl[k].sitCheck = 6.0f;
+						_sl[k].sitTries = 0;
+					}
+				}
+			}
+		}
 		if (const auto* you = RE::PlayerCharacter::GetSingleton(); you && you->IsInCombat()) {
 			return;
 		}
@@ -446,6 +463,13 @@ namespace fr
 		}
 		std::ranges::sort(found, {}, &std::pair<float, RE::Actor*>::first);
 		auto* actor = found[std::uniform_int_distribution<std::size_t>(0, std::min<std::size_t>(found.size(), 4) - 1)(_rng)].second;
+		SlSitIn(i, actor);
+	}
+
+	void Game::SlSitIn(int i, RE::Actor* actor)
+	{
+		const auto& s = Settings::Get();
+		(void)s;
 		auto& m = _sl[i];
 		m.actor = actor->GetHandle();
 		m.id = actor->GetFormID();
@@ -502,7 +526,14 @@ namespace fr
 			const auto sit = actor->DoGetSitSleepState();
 			const bool down = sit == RE::SIT_SLEEP_STATE::kWantToSit || sit == RE::SIT_SLEEP_STATE::kWaitingForSitAnim ||
 			                  sit == RE::SIT_SLEEP_STATE::kIsSitting;
-			if (down) {
+			// (on their way and not sat for three checks running, walking into the chair from behind, say: put
+			// in it, once)
+			m.notSat = sit == RE::SIT_SLEEP_STATE::kIsSitting ? 0 : m.notSat + 1;
+			if (m.notSat >= 3) {
+				m.notSat = 0;
+				log::info("[sit] slots: {} not sat in 9 s (sit state {}): put in their machine", m.name, static_cast<int>(sit));
+				Npc::SitOn(actor, machine.get());
+			} else if (down) {
 				m.sitTries = 0;
 			} else {
 				// (walked over and sat down the machine's way again: never snapped in or moved onto it, a jump)

@@ -375,7 +375,12 @@ namespace fr
 					const auto at = AtR(i, kEdgeR + kChairOut);
 					const auto o = Out(i);
 					if (form) {
-						h = Spawn(form, ToWorld(frame, at.x, at.y, 0.0), HeadingOf(frame, -o.x, -o.y));
+						// (the one kept through a save, if it's there: else a new one)
+						const auto pos = ToWorld(frame, at.x, at.y, 0.0);
+						h = FindPlaced(form, pos, 8.0f);
+						if (!h.get()) {
+							h = Spawn(form, pos, HeadingOf(frame, -o.x, -o.y));
+						}
 						if (auto c = h.get()) {
 							Npc::ClaimChair(c.get());  // (yours till someone plays in it: nobody passing by sits in it)
 						}
@@ -469,6 +474,15 @@ namespace fr
 		if (const auto* you = RE::PlayerCharacter::GetSingleton(); you && you->IsInCombat()) {
 			return;
 		}
+		// after a load: who was sat here when it was saved, back in their place first (Roster.cpp)
+		if (auto tbl = _bj.table.get()) {
+			std::int32_t rs = -1;
+			while (auto* back = RosterNext(kRosterBlackjack, tbl->GetFormID(), rs, false)) {
+				if (rs >= 0 && rs < kBjSeats && !_bj.seats[rs].used) {
+					BjSeatIn(rs, back);
+				}
+			}
+		}
 		const auto& s = Settings::Get();
 		int         npcs = 0;
 		for (const auto& st : _bj.seats) {
@@ -527,6 +541,13 @@ namespace fr
 			return;
 		}
 		const int seat = free[std::uniform_int_distribution<std::size_t>(0, free.size() - 1)(_rng)];
+		BjSeatIn(seat, actor);
+	}
+
+	void Game::BjSeatIn(int seat, RE::Actor* actor)
+	{
+		const auto& s = Settings::Get();
+		(void)s;
 		auto&     st = _bj.seats[seat];
 		st = BjSeat{};
 		st.used = true;
@@ -542,6 +563,14 @@ namespace fr
 	{
 		if (_bj.dealerId != 0) {
 			return;
+		}
+		// after a load: who was dealing here when it was saved, back at it first (Roster.cpp)
+		if (auto tbl = _bj.table.get()) {
+			std::int32_t rs = -1;
+			if (auto* back = RosterNext(kRosterBlackjack, tbl->GetFormID(), rs, true)) {
+				BjDealerIn(back);
+				return;
+			}
 		}
 		const auto& s = Settings::Get();
 		auto*       player = RE::PlayerCharacter::GetSingleton();
@@ -569,6 +598,13 @@ namespace fr
 		if (!best) {
 			return;
 		}
+		BjDealerIn(best);
+	}
+
+	void Game::BjDealerIn(RE::Actor* best)
+	{
+		const auto& s = Settings::Get();
+		(void)s;
 		_bj.dealerActor = best->GetHandle();
 		_bj.dealerId = best->GetFormID();
 		_bj.dealerName = best->GetDisplayFullName();
@@ -764,7 +800,14 @@ namespace fr
 					const auto sit = actor->DoGetSitSleepState();
 					const bool down = sit == RE::SIT_SLEEP_STATE::kWantToSit || sit == RE::SIT_SLEEP_STATE::kWaitingForSitAnim ||
 					                  sit == RE::SIT_SLEEP_STATE::kIsSitting;
-					if (down) {
+					// (on their way and not sat for three checks running, walking into the chair from behind, say: put
+					// in it, once)
+					st.notSat = sit == RE::SIT_SLEEP_STATE::kIsSitting ? 0 : st.notSat + 1;
+					if (st.notSat >= 3) {
+						st.notSat = 0;
+						log::info("[sit] blackjack: {} not sat in 9 s (sit state {}): put in their chair", st.name, static_cast<int>(sit));
+						Npc::SitOn(actor, chair.get());
+					} else if (down) {
 						st.sitTries = 0;
 					} else {
 						// (walked over and sat down the chair's way: never snapped in or moved onto it, a jump)
@@ -2019,21 +2062,13 @@ namespace fr
 				Remove(h);
 			}
 			st.insChips.clear();
-			if (!st.you && st.held) {
-				if (auto ref = st.actor.get(); ref && ref->As<RE::Actor>()) {
-					Npc::SetRestrained(ref->As<RE::Actor>(), false);
-				}
-				st.held = false;
-				st.sitCheck = 0.0f;
-			}
 			if (!st.you && st.bet > 0) {
 				AddToPurse(st.id, st.bet);
 				st.bet = 0;
 			}
 		}
-		for (auto& h : _bj.chairs) {
-			Remove(h);  // (back on the next tick, and whoever was in one sits again)
-		}
+		// (the chairs, the dealer and the players stay as they are: taken off for the save, as they were, everyone
+		// sat in a chair was got up out of it and the dealer let go. Who's where goes in the co-save: SaveRoster)
 		for (auto& c : _bj.cards) {
 			Remove(c.ref);
 		}
@@ -2047,12 +2082,6 @@ namespace fr
 		_bj.phase = BjPhase::kBetting;
 		_bj.dealIn = -1.0f;
 		_bj.turnSeat = -1;
-		if (_bj.dealerHeld) {
-			if (auto ref = _bj.dealerActor.get(); ref && ref->As<RE::Actor>()) {
-				Npc::SetRestrained(ref->As<RE::Actor>(), false);
-			}
-			_bj.dealerHeld = false;
-		}
 	}
 
 	void Game::BjAfterSave()

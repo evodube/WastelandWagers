@@ -869,7 +869,12 @@ namespace fr
 					RE::NiPoint3 facing;
 					const auto   at = ChairSpot(i, facing);
 					if (chairForm) {
-						h = Spawn(chairForm, ToWorld(frame, at.x, at.y, 0.0), HeadingOf(frame, facing.x, facing.y));
+						// (the one kept through a save, if it's there: else a new one)
+						const auto pos = ToWorld(frame, at.x, at.y, 0.0);
+						h = FindPlaced(chairForm, pos, 8.0f);
+						if (!h.get()) {
+							h = Spawn(chairForm, pos, HeadingOf(frame, facing.x, facing.y));
+						}
 						if (auto c = h.get()) {
 							Npc::ClaimChair(c.get());  // (yours till someone plays in it: nobody passing by sits in it)
 						}
@@ -1082,6 +1087,15 @@ namespace fr
 		if (const auto* you = RE::PlayerCharacter::GetSingleton(); you && you->IsInCombat()) {
 			return;  // (nobody sits down in a fight)
 		}
+		// after a load: who was sat here when it was saved, back in their seat first (Roster.cpp)
+		if (auto tbl = _pk.table.get()) {
+			std::int32_t rs = -1;
+			while (auto* back = RosterNext(kRosterPoker, tbl->GetFormID(), rs, false)) {
+				if (rs >= 0 && rs < kPkSeats && !_pk.seats[rs].used) {
+					PkSeatIn(rs, back);
+				}
+			}
+		}
 		const auto& s = Settings::Get();
 		int         npcs = 0;
 		for (const auto& st : _pk.seats) {
@@ -1175,6 +1189,12 @@ namespace fr
 			}
 			seat = best[std::uniform_int_distribution<std::size_t>(0, best.size() - 1)(_rng)];
 		}
+		PkSeatIn(seat, actor);
+	}
+
+	void Game::PkSeatIn(int seat, RE::Actor* actor)
+	{
+		const auto& s = Settings::Get();
 		auto&     st = _pk.seats[seat];
 		st = PkSeat{};
 		st.used = true;
@@ -1301,7 +1321,8 @@ namespace fr
 	{
 		const auto& s = Settings::Get();
 		// the dealer: on the chip tray's side, between the two seats there, facing the table; just stands there
-		TickCroupier(_pk.croupier, a_frame, kRailR + kDealerOff, 0.0, -1.0, 0.0, a_dt, "poker", true);  // (facing the middle)
+		TickCroupier(_pk.croupier, a_frame, kRailR + kDealerOff, 0.0, -1.0, 0.0, a_dt, "poker", true, kRosterPoker,
+			_pk.table.get() ? _pk.table.get()->GetFormID() : 0);  // (facing the middle)
 		_pk.seatTimer -= a_dt;
 		if (_pk.seatTimer <= 0.0f) {
 			_pk.seatTimer = s.bettorEvery * std::uniform_real_distribution<float>(0.6f, 1.2f)(_rng);
@@ -1360,7 +1381,14 @@ namespace fr
 						const auto sit = actor->DoGetSitSleepState();
 						const bool down = sit == RE::SIT_SLEEP_STATE::kWantToSit || sit == RE::SIT_SLEEP_STATE::kWaitingForSitAnim ||
 						                  sit == RE::SIT_SLEEP_STATE::kIsSitting;
-						if (down) {
+						// (on their way and not sat for three checks running, walking into the chair from behind, say: put
+						// in it, once)
+						st.notSat = sit == RE::SIT_SLEEP_STATE::kIsSitting ? 0 : st.notSat + 1;
+						if (st.notSat >= 3) {
+							st.notSat = 0;
+							log::info("[sit] poker: {} not sat in 9 s (sit state {}): put in their chair", st.name, static_cast<int>(sit));
+							Npc::SitOn(actor, chair.get());
+						} else if (down) {
 							st.sitTries = 0;
 						} else {
 							// (walked over and sat down the chair's way: never snapped in or moved onto it, a jump)
@@ -2734,22 +2762,13 @@ namespace fr
 			}
 			v.clear();
 		}
-		for (auto& h : _pk.chairs) {
-			Remove(h);  // (back on the next tick, and whoever was in one sits again)
-		}
 		for (auto& m : _pk.moves) {
 			Remove(m.ref);
 		}
 		_pk.moves.clear();
-		UnholdCroupier(_pk.croupier);
-		for (auto& st : _pk.seats) {
-			if (st.used && !st.you && st.held) {
-				if (auto ref = st.actor.get(); ref && ref->As<RE::Actor>()) {
-					Npc::SetRestrained(ref->As<RE::Actor>(), false);
-				}
-				st.held = false;
-			}
-		}
+		// (the chairs, the dealer and the players stay as they are: taken off for the save and put back after, as
+		// they were, everyone sat in a chair was got up out of it and the dealer let go. Who's where goes in the
+		// co-save: after a load they're back in their places, SaveRoster)
 	}
 
 	void Game::PkAfterSave()

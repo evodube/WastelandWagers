@@ -503,7 +503,9 @@ namespace fr
 		}
 		if (_clearNpcs && Npc::Ready()) {
 			_clearNpcs = false;
-			Npc::ClearAll();  // a load: whoever was in the quest's collections in that save goes back to their own business
+			// a load: whoever was in the quest's collections in that save goes back to their own business, but for who
+			// was at a table when it was saved (the co-save's roster: back in their places, Roster.cpp)
+			Npc::ClearAll(RosterKeep());
 		}
 		if (Npc::Clearing()) {
 			return;  // (the tables wait for it: dealers and players picked meanwhile were cleared with the rest)
@@ -685,6 +687,25 @@ namespace fr
 	{
 		const auto w = a_frame.rot.Transpose() * RE::NiPoint3{ static_cast<float>(a_dx), static_cast<float>(a_dy), 0.0f };
 		return std::atan2(w.x, w.y);
+	}
+
+	RE::ObjectRefHandle Game::FindPlaced(RE::TESBoundObject* a_form, const RE::NiPoint3& a_pos, float a_within) const
+	{
+		RE::ObjectRefHandle found;
+		if (!a_form) {
+			return found;
+		}
+		util::ForEachLoadedCell([&](RE::TESObjectCELL* a_cell) {
+			a_cell->ForEachReferenceInRange(a_pos, a_within + 60.0f, [&](RE::TESObjectREFR* a_ref) {
+				if (a_ref && a_ref->GetObjectReference() == a_form && !a_ref->IsDisabled() && !a_ref->IsDeleted() &&
+					std::hypot(a_ref->data.location.x - a_pos.x, a_ref->data.location.y - a_pos.y) < a_within) {
+					found = a_ref->GetHandle();
+					return RE::BSContainer::ForEachResult::kStop;
+				}
+				return RE::BSContainer::ForEachResult::kContinue;
+			});
+		});
+		return found;
 	}
 
 	RE::ObjectRefHandle Game::Spawn(RE::TESBoundObject* a_form, const RE::NiPoint3& a_pos, float a_angle) const
@@ -1609,16 +1630,8 @@ namespace fr
 			DespawnStake(st);
 		}
 		Remove(_t.ball);
-		UnholdCroupier(_t.croupier);
-		for (auto& seat : _t.seats) {
-			Remove(seat.walk.marker);
-			if (seat.held) {
-				if (auto actor = seat.actor.get()) {
-					Npc::SetRestrained(actor->As<RE::Actor>(), false);
-				}
-				seat.held = false;
-			}
-		}
+		// (the dealer and the players stay where they are, held: let go for the save, as they were, they walked off.
+		// Who's where goes in the co-save: SaveRoster)
 		log::info("before save: our objects off, {} caps back to you for the save", _t.liftedCaps);
 	}
 

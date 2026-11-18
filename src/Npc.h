@@ -20,7 +20,7 @@ namespace fr::Npc
 	// out of both collections, unlinked: their own AI again
 	void Leave(RE::Actor* a_actor);
 	// everyone out (a save loaded: whoever the collections hold, the plugin doesn't know)
-	void ClearAll();
+	void ClearAll(const std::vector<std::int32_t>& a_keep = {});  // a_keep: who stays in the quest (back at a table after the load)
 
 	// Papyrus ObjectReference.MoveTo: put exactly on a_target, facing its way
 	bool MoveTo(RE::Actor* a_actor, RE::TESObjectREFR* a_target);

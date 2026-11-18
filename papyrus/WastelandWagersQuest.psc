@@ -106,30 +106,42 @@ Function Leave(Int aiActor, Int aiLink)
 EndFunction
 
 ; everyone out (a save loaded: the plugin doesn't know who's in them)
-Function ClearAll(Int aiLink)
+; (aiKeep: who stays as they are, in the collections and their places: at a table when the game was saved, put back
+; by the plugin)
+Function ClearAll(Int aiLink, Int[] aiKeep)
 	Keyword akLink = Game.GetForm(aiLink) as Keyword
-	ClearCollection(Dealers, akLink)
-	ClearCollection(Bettors, akLink)
-	ClearCollection(Sitters, akLink)
-	; (a fresh start of the quest, empty: a save from before the Sitters collection gets it this way)
-	if IsRunning()
-		Stop()
-		Int tries = 0
-		while IsStopping() && tries < 50
-			Utility.Wait(0.1)
-			tries += 1
-		endwhile
+	ClearCollection(Dealers, akLink, aiKeep)
+	ClearCollection(Bettors, akLink, aiKeep)
+	if Sitters
+		ClearCollection(Sitters, akLink, aiKeep)
+	else
+		; (a save from before the Sitters collection: a fresh start of the quest, empty, gets it)
+		if IsRunning()
+			Stop()
+			Int tries = 0
+			while IsStopping() && tries < 50
+				Utility.Wait(0.1)
+				tries += 1
+			endwhile
+		endif
+		StartAndWait()
 	endif
-	StartAndWait()
 EndFunction
 
-Function ClearCollection(RefCollectionAlias akCollection, Keyword akLink)
+Function ClearCollection(RefCollectionAlias akCollection, Keyword akLink, Int[] aiKeep)
+	if akCollection == None
+		return
+	endif
 	Int i = akCollection.GetCount()
 	while i > 0
 		i -= 1
 		ObjectReference r = akCollection.GetAt(i)
 		Actor a = r as Actor
-		akCollection.RemoveRef(r)
+		if r && aiKeep != None && aiKeep.Find(r.GetFormID()) >= 0
+			a = None  ; (kept)
+		else
+			akCollection.RemoveRef(r)
+		endif
 		if a
 			if akLink
 				a.SetLinkedRef(None, akLink)

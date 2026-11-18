@@ -228,7 +228,7 @@ namespace fr::Npc
 		CallQuest("Leave", what, logged, FormArg(a_actor), FormArg(Forms::LinkKeyword()));
 	}
 
-	void ClearAll()
+	void ClearAll(const std::vector<std::int32_t>& a_keep)
 	{
 		{
 			std::scoped_lock lock(g_joinedMutex);
@@ -240,7 +240,7 @@ namespace fr::Npc
 		g_clearing = true;
 		g_clearSent = std::chrono::steady_clock::now();
 		const RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> done{ new ClearDone() };
-		CallQuest("ClearAll", "WastelandWagersQuest.ClearAll", done, FormArg(Forms::LinkKeyword()));
+		CallQuest("ClearAll", "WastelandWagersQuest.ClearAll", done, FormArg(Forms::LinkKeyword()), a_keep);
 	}
 
 	bool Clearing()

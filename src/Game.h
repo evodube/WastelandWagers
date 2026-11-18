@@ -325,6 +325,9 @@ namespace fr
 		RE::NiPoint3       ToWorld(const Frame& a_frame, double a_x, double a_y, double a_z) const;
 		rl::Vec2           ToLocal(const Frame& a_frame, const RE::NiPoint3& a_world) const;
 		RE::ObjectRefHandle Spawn(RE::TESBoundObject* a_form, const RE::NiPoint3& a_pos, float a_angle) const;
+		// a placed a_form already there (within a_within of a_pos, any height): a chair kept through a save, adopted
+		// after the load instead of a second one put beside it
+		RE::ObjectRefHandle FindPlaced(RE::TESBoundObject* a_form, const RE::NiPoint3& a_pos, float a_within) const;
 		static void        Remove(RE::ObjectRefHandle& a_handle);
 		static void        PlaceNode(RE::TESObjectREFR* a_ref, const RE::NiPoint3& a_pos, float a_yaw, bool a_hidden);
 		void               StartSession(RE::TESObjectREFR* a_table);
@@ -421,7 +424,7 @@ namespace fr
 		void         TrackSit(const char* a_table, const std::string& a_name, RE::Actor* a_actor, RE::TESObjectREFR* a_chair, int& a_was);  // a settler's cheer / laugh (a_how > 0) or groan (< 0), now and then
 		void         RlDealer(Gesture a_g, bool a_now = false);  // the roulette dealer's gesture (Npcs.cpp: where they stand)
 		void         TickCroupier(Croupier& a_c, const Frame& a_frame, double a_x, double a_y, double a_faceX, double a_faceY, float a_dt,
-					const char* a_table, bool a_faceMiddle = false);
+					const char* a_table, bool a_faceMiddle = false, std::uint8_t a_kind = 0, RE::TESFormID a_tableRef = 0);
 		void         ReleaseCroupier(Croupier& a_c, const char* a_why);
 		void         UnholdCroupier(Croupier& a_c);  // (a save: let go, held again after)
 		// a gesture by a dealer standing at (a_x, a_y) facing (a_fx, a_fy), table space; kPoint at (a_tx, a_ty)
@@ -454,6 +457,7 @@ namespace fr
 			float               nextIdle{ 8.0f };
 			float               sitCheck{ 0.0f };  // (chairs) seconds before checking they're still sat down
 			int                 sitTries{ 0 };     // (chairs) told to sit, and not sitting, in a row
+			int                 notSat{ 0 };       // checks in a row not sat (walking into the chair, say): 3, put in it
 			int                 sitWas{ -1 };      // (their sit state last tick: changes logged, [sit])
 			double              tilt{ 0.0 };       // steaming after a bad beat (cools off hand by hand)
 			int                 handStart{ 0 };    // their caps when this hand began
@@ -662,6 +666,7 @@ namespace fr
 			float               nextIdle{ 8.0f };
 			float               sitCheck{ 0.0f };  // (chairs) seconds before checking they're still sat down
 			int                 sitTries{ 0 };
+			int                 notSat{ 0 };
 			int                 sitWas{ -1 };
 		};
 		enum class BjPhase
@@ -748,6 +753,7 @@ namespace fr
 			float                next{ 0.0f };  // seconds to their next pull
 			float                sitCheck{ 0.0f };
 			int                  sitTries{ 0 };
+			int                  notSat{ 0 };
 			int                  sitWas{ -1 };
 			bool                 claimed{ false };
 			// a settler's hand on the lever: their pulls go when their pull animation puts the lever down (Slots.cpp
@@ -804,6 +810,27 @@ namespace fr
 		void         SlEnd(const char* a_why);
 		void         SlBeforeSave();
 		static int   s_jackpot;  // the jackpot, every machine's (the co-save keeps it)
+		// who was where when the game was saved (the co-save's 'RSTR': Roster.cpp), so a load puts them back: the
+		// kind of table, the table (or machine), the seat (-1: the dealer), who
+		struct RosterEntry
+		{
+			std::uint8_t  kind{ 0 };
+			RE::TESFormID table{ 0 };
+			std::int32_t  seat{ -1 };
+			RE::TESFormID actor{ 0 };
+		};
+		static constexpr std::uint8_t kRosterRoulette = 0, kRosterPoker = 1, kRosterBlackjack = 2, kRosterSlots = 3;
+		static std::vector<RosterEntry>              s_roster;
+		static std::chrono::steady_clock::time_point s_rosterLoaded;
+		static void                                  SaveRoster(const F4SE::SerializationInterface* a_intfc);
+		static void                                  LoadRoster(const F4SE::SerializationInterface* a_intfc, std::uint32_t a_version);
+		static std::vector<std::int32_t>             RosterKeep();  // everyone in it (kept in the quest through a load's clear)
+		RE::Actor*   RosterNext(std::uint8_t a_kind, RE::TESFormID a_table, std::int32_t& a_seat, bool a_dealer);  // the next one there, taken
+		void         PkSeatIn(int a_seat, RE::Actor* a_actor);
+		void         BjSeatIn(int a_seat, RE::Actor* a_actor);
+		void         BjDealerIn(RE::Actor* a_actor);
+		void         SlSitIn(int a_i, RE::Actor* a_actor);
+		void         RlSeatIn(int a_spot, RE::Actor* a_actor);
 		static void  SaveJackpot(const F4SE::SerializationInterface* a_intfc);
 		static void  LoadJackpot(const F4SE::SerializationInterface* a_intfc, std::uint32_t a_version);
 		static constexpr std::uint32_t kJackpotType = 0x504A4C53;  // 'SLJP'
