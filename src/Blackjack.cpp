@@ -817,7 +817,10 @@ namespace fr
 					}
 				}
 				st.held = true;
-				st.atSpot += a_dt;
+				// (their time at the table counts once they're sat: they bet, and are dealt in, sitting down)
+				if (actor->DoGetSitSleepState() == RE::SIT_SLEEP_STATE::kIsSitting) {
+					st.atSpot += a_dt;
+				}
 			} else {
 				if (!st.held) {
 					st.held = Npc::SetRestrained(actor, true);
@@ -1509,7 +1512,14 @@ namespace fr
 				}
 				if (_bj.dealIn >= 0.0f) {
 					_bj.dealIn -= a_dt;
-					if (_bj.dealIn <= 0.0f) {
+					// (someone at the table still sitting down: the cards wait for them, a while: 20 s)
+					const bool sitting = std::ranges::any_of(_bj.seats, [](const BjSeat& st) {
+						return st.used && !st.you && st.bet == 0 && st.rounds > 0 && st.atSpot < 1.0f;
+					});
+					if (_bj.dealIn <= 0.0f && sitting && _bj.sitWait < 20.0f) {
+						_bj.sitWait += a_dt;
+					} else if (_bj.dealIn <= 0.0f) {
+						_bj.sitWait = 0.0f;
 						BjStartDeal();
 					}
 				}

@@ -558,6 +558,7 @@ namespace fr
 			PkSession                                              session;
 			Croupier                                               croupier;  // the dealer, by the chip tray
 			float                                                  dealerWait{ 0.0f };  // seconds a hand's waited for them
+			float                                                  sitWait{ 0.0f };     // ...and for someone sitting down
 			int                                                    pointed{ -1 };  // (who the dealer pointed at this hand: once a hand)
 		};
 		PokerState        _pk;
@@ -708,6 +709,7 @@ namespace fr
 			bool                            dealerHeld{ false };
 			float                           dealerFaceIn{ 0.0f };  // seconds to the next turn to the table's middle
 			float                           dealerIdleIn{ 8.0f };  // seconds to their next standing fidget
+			float                           sitWait{ 0.0f };       // seconds the deal's waited for someone sitting down
 			float                           dealerLook{ 0.0f };
 			int                             lifted{ 0 };       // your bets back in your pocket over a save
 			std::array<RE::ObjectRefHandle, kBjSeats> chairs;  // (the chairs option) one at each place

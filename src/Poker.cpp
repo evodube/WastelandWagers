@@ -1398,7 +1398,10 @@ namespace fr
 						}
 					}
 					st.held = true;  // (for the idles: they're where they should be)
-					st.atSpot += a_dt;
+					// (their time at the table counts once they're sat: they're dealt in sitting down)
+					if (actor->DoGetSitSleepState() == RE::SIT_SLEEP_STATE::kIsSitting) {
+						st.atSpot += a_dt;
+					}
 					break;
 				}
 				if (!st.held) {
@@ -1568,8 +1571,17 @@ namespace fr
 					_pk.dealerWait += 1.0f;
 					return;
 				}
+				// (someone come to sit in and still sitting down: the hand waits for them, a while: 20 s)
+				const bool sitting = std::ranges::any_of(_pk.seats, [&](const PkSeat& st) {
+					return st.used && !st.you && st.atSpot <= kSettleIn && st.stack >= s.pkBigBlind;
+				});
+				if (ready >= 2 && sitting && _pk.sitWait < 20.0f) {
+					_pk.sitWait += 1.0f;
+					return;
+				}
 				if (ready >= 2) {
 					_pk.dealerWait = 0.0f;
+					_pk.sitWait = 0.0f;
 					PkStartHand();
 				}
 				return;
