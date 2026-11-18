@@ -86,6 +86,8 @@ namespace fr
 		keyPackUp = key(L"iPackUp", keyPackUp);
 		keyTurnLeft = key(L"iTurnLeft", keyTurnLeft);
 		keyTurnRight = key(L"iTurnRight", keyTurnRight);
+		keyLookUp = key(L"iLookUp", keyLookUp);
+		keyLookDown = key(L"iLookDown", keyLookDown);
 		keyZoom = key(L"iZoom", keyZoom);
 		keyChip[0] = key(L"iChip1", keyChip[0]);
 		keyChip[1] = key(L"iChip5", keyChip[1]);

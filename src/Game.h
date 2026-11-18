@@ -844,6 +844,7 @@ namespace fr
 		int               _bjYou{ -1 };
 		bool              _bjTopView{ false };
 		float             _bjLookYaw{ 0.0f };
+		float             _bjLookPitch{ 0.0f };  // looking up and down from your blackjack seat (under _camMutex)
 		bool              _bjShowHand{ true };    // your hand on the HUD (the SHOW / HIDE HAND button)
 		int               _bjPrompt{ 0 };         // what the table's waiting on you for (the chime when it changes)
 		bool              _pkTurnWas{ false };    // (poker: your turn last tick: the chime when it comes)

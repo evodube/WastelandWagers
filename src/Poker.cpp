@@ -987,7 +987,10 @@ namespace fr
 			const bool  left = focus && ks.keyTurnLeft > 0 && (::GetAsyncKeyState(ks.keyTurnLeft) & 0x8000);
 			const bool  right = focus && ks.keyTurnRight > 0 && (::GetAsyncKeyState(ks.keyTurnRight) & 0x8000);
 			const int   turn = std::clamp((right ? 1 : 0) - (left ? 1 : 0) + _padTurn.load(), -1, 1);
-			PkHoldMenuKeys(left || right);
+			const bool  lookUp = focus && ks.keyLookUp > 0 && (::GetAsyncKeyState(ks.keyLookUp) & 0x8000);
+			const bool  lookDown = focus && ks.keyLookDown > 0 && (::GetAsyncKeyState(ks.keyLookDown) & 0x8000);
+			const int   tilt = (lookDown ? 1 : 0) - (lookUp ? 1 : 0);
+			PkHoldMenuKeys(left || right || lookUp || lookDown);
 			float yaw, pitch;
 			{
 				std::scoped_lock lock(_camMutex);
@@ -1009,6 +1012,8 @@ namespace fr
 				_pkPtrX = std::clamp(_pkPtrX + _mouseDX * k, 0.0, static_cast<double>(sw - 1.0f));
 				_pkPtrY = std::clamp(_pkPtrY + _mouseDY * k, 0.0, static_cast<double>(sh - 1.0f));
 				_pkLookYaw = std::clamp(_pkLookYaw + turn * 1.6f * a_dt, -1.4f, 1.4f);
+				// the look keys tilt it: from a little above level (the dealer, the room) to steeply down (your cards)
+				_pkLookPitch = std::clamp(_pkLookPitch + tilt * 1.0f * a_dt, -0.5f - basePitch, 1.2f - basePitch);
 				_mouseDX = _mouseDY = 0.0;
 				yaw = baseYaw + _pkLookYaw + _pk.driftYaw;
 				pitch = basePitch + _pkLookPitch;

@@ -510,7 +510,7 @@ namespace fr
 		}
 		(void)a_before;
 		Component(a_free, _yawIndex) = _camYaw;
-		Component(a_free, 1 - _yawIndex) = _pitchSign * (_camPitch >= 0.0f ? _camPitch : kDownPitch);
+		Component(a_free, 1 - _yawIndex) = _pitchSign * (_camPitch > -0.95f ? _camPitch : kDownPitch);  // (-1: straight down)
 	}
 
 	void Game::OnFreeCameraUpdate(RE::FreeCameraState* a_free)
@@ -540,7 +540,7 @@ namespace fr
 			_camMapped = true;
 		}
 		Component(a_free, _yawIndex) = _camYaw;
-		Component(a_free, 1 - _yawIndex) = _pitchSign * (_camPitch >= 0.0f ? _camPitch : kDownPitch);
+		Component(a_free, 1 - _yawIndex) = _pitchSign * (_camPitch > -0.95f ? _camPitch : kDownPitch);  // (-1: straight down)
 		// glide to where the view should be (the layout, the wheel)
 		const auto  now = std::chrono::steady_clock::now();
 		const float dt = _haveCamPos ? std::min(0.1f, std::chrono::duration<float>(now - _lastCam).count()) : 0.0f;

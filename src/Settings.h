@@ -26,6 +26,8 @@ namespace fr
 		int keyPackUp{ 0x50 };   // P: at a table set up from a kit, pack it back into the kit
 		int keyTurnLeft{ 0x51 };  // Q: turn the view left at the poker table
 		int keyTurnRight{ 0x45 }; // E
+		int keyLookUp{ 0x57 };    // W: look up at the poker and blackjack tables
+		int keyLookDown{ 0x53 };  // S: ...and down
 		int keyZoom{ 0x5A };      // Z: poker, held: zooms in where you look (the button keeps it)
 		std::array<int, 4> keyChip{ 0x31, 0x32, 0x33, 0x34 };  // 1-4: the 1, 5, 25 and 100 chips
 

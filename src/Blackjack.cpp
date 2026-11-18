@@ -1693,7 +1693,7 @@ namespace fr
 			} else {
 				_haveCamPos = false;
 			}
-			_bjLookYaw = 0.0f;
+			_bjLookYaw = _bjLookPitch = 0.0f;
 			_mouseDX = _mouseDY = 0.0;
 		}
 		_bjTopView = false;
@@ -1845,7 +1845,10 @@ namespace fr
 		const bool  left = focus && cs.keyTurnLeft > 0 && (::GetAsyncKeyState(cs.keyTurnLeft) & 0x8000);
 		const bool  right = focus && cs.keyTurnRight > 0 && (::GetAsyncKeyState(cs.keyTurnRight) & 0x8000);
 		const int   turn = std::clamp((right ? 1 : 0) - (left ? 1 : 0) + _padTurn.load(), -1, 1);
-		PkHoldMenuKeys(left || right);
+		const bool  lookUp = focus && cs.keyLookUp > 0 && (::GetAsyncKeyState(cs.keyLookUp) & 0x8000);
+		const bool  lookDown = focus && cs.keyLookDown > 0 && (::GetAsyncKeyState(cs.keyLookDown) & 0x8000);
+		const int   tilt = (lookDown ? 1 : 0) - (lookUp ? 1 : 0);
+		PkHoldMenuKeys(left || right || lookUp || lookDown);
 		// from behind your place, over your card box, across to the dealer's cards
 		const float up = cs.pkSeatHeight;
 		const auto  eyeAt = AtR(_bjYou, kCardBoxR + cs.pkSeatBack);
@@ -1870,6 +1873,8 @@ namespace fr
 		_pkPtrY = std::clamp(_pkPtrY + _mouseDY * k, 0.0, static_cast<double>(sh - 1.0f));
 		_mouseDX = _mouseDY = 0.0;
 		_bjLookYaw = std::clamp(_bjLookYaw + turn * 1.6f * a_dt, -1.4f, 1.4f);
+		// the look keys tilt it: from a little above level (the dealer, the room) to steeply down (your cards)
+		_bjLookPitch = std::clamp(_bjLookPitch + tilt * 1.0f * a_dt, -0.5f - basePitch, 1.2f - basePitch);
 		if (_bjTopView) {
 			_camWant = ToWorld(a_frame, 0.0, kArcY - 14.0, kFeltZ + cs.pkTopHeight * 1.15f);
 			_camYaw = baseYaw + _bjLookYaw;
@@ -1877,7 +1882,7 @@ namespace fr
 		} else {
 			_camWant = eye;
 			_camYaw = baseYaw + _bjLookYaw;
-			_camPitch = basePitch;
+			_camPitch = basePitch + _bjLookPitch;
 		}
 	}
 
