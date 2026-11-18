@@ -57,8 +57,10 @@ jobs:
           path: |
             build
             .xmake
-          key: xmake-build-${{ runner.os }}-${{ steps.clib.outputs.sha }}-${{ github.sha }}
-          restore-keys: xmake-build-${{ runner.os }}-${{ steps.clib.outputs.sha }}-
+          # (the runner's image in the key: a cached precompiled header from another compiler version made cl.exe
+          # fail at once, with no words)
+          key: xmake-build-${{ runner.os }}-${{ env.ImageVersion }}-${{ steps.clib.outputs.sha }}-${{ github.sha }}
+          restore-keys: xmake-build-${{ runner.os }}-${{ env.ImageVersion }}-${{ steps.clib.outputs.sha }}-
 
       # anything unchanged since the cached build is dated in the past, so xmake skips it: CommonLibF4 (keyed on its
       # version), and each of our files whose contents match what the cached build compiled (build/src-hashes.txt)
