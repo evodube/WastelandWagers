@@ -1411,6 +1411,7 @@ namespace fr
 				if (!st.held) {
 					st.held = Npc::SetRestrained(actor, true);
 				}
+				HoldFacing(st.walk, actor);
 				FaceTowards(actor, heading);
 				st.atSpot = Distance2D(actor->data.location, spot) < kArrived + 10.0f ? st.atSpot + a_dt : 0.0f;
 				// now and then, while it isn't their turn: a look over the table

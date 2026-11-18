@@ -212,6 +212,24 @@ namespace fr
 		(void)a_heading;
 	}
 
+	void Game::HoldFacing(Walker& a_walk, RE::Actor* a_actor)
+	{
+		// Held where they stand, their walk package stays on, linked to their spot's marker. The marker kept the
+		// heading it was made with while they stood however they'd ended up (and were turned to the table after),
+		// and the package went on asking for a turn to it they couldn't make: the idle-turn log showed the same turn
+		// asked for over and over (Sally 73, Maisie and Sophie 67 degrees), feet stepping round and snapping back
+		// every two or three seconds. The marker turned to wherever they face now: nothing left to turn to.
+		// (Only its heading: its place is still their spot, where they're put back to.)
+		auto marker = a_walk.marker.get();
+		if (!marker || !a_actor) {
+			return;
+		}
+		const float facing = a_actor->data.angle.z;
+		if (std::abs(util::AngleDiff(marker->data.angle.z, facing)) > 0.01f) {
+			marker->data.angle.z = facing;
+		}
+	}
+
 	void Game::TurnToFace(RE::Actor* a_actor, float a_x, float a_y)
 	{
 		if (!a_actor) {
@@ -411,6 +429,7 @@ namespace fr
 		const auto  spot = ToWorld(a_frame, a_x, a_y, 0.0);
 		const float off = std::hypot(actor->data.location.x - spot.x, actor->data.location.y - spot.y);
 		if (a_c.held) {
+			HoldFacing(a_c.walk, actor);
 			// there: they just stand where their walk ended. (Put back on the exact spot every few seconds, as they
 			// were, they jumped back and forth: the table's edge pushed them off it again.) Well off it (pushed away),
 			// they walk back. Now and then turned to the table's middle (poker), or the way given (roulette: the wheel)
@@ -740,6 +759,7 @@ namespace fr
 				if (!seat.held) {
 					seat.held = Npc::SetRestrained(actor, true);
 				}
+				HoldFacing(seat.walk, actor);
 				FaceTowards(actor, heading);
 				// standing at their spot for a moment before they play (not while still coming up to it)
 				if (Distance2D(actor->data.location, spot) < kAtSpot) {

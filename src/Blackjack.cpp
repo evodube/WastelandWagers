@@ -717,6 +717,7 @@ namespace fr
 				_bj.dealerId = 0;
 				_bj.dealerHeld = false;
 			} else if (_bj.dealerHeld) {
+				HoldFacing(_bj.dealerWalk, actor);
 				// a standing fidget of their own between their gestures (the game's unarmed standing fidgets and
 				// talking hands: dyn_Flavor, played where they stand)
 				_bj.dealerIdleIn -= a_dt;
@@ -827,6 +828,7 @@ namespace fr
 				if (!st.held) {
 					st.held = Npc::SetRestrained(actor, true);
 				}
+				HoldFacing(st.walk, actor);
 				st.atSpot = Distance2D(actor->data.location, spot) < kArrived + 10.0f ? st.atSpot + a_dt : 0.0f;
 			}
 			// between hands: out of caps, or had enough
