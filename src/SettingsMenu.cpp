@@ -1,4 +1,4 @@
-// Every fo4roulette.ini setting on pages in F4SE Menu Framework's menu (Wasteland Wagers > Table, Camera, ...).
+// Every WastelandWagers.ini setting on pages in F4SE Menu Framework's menu (Wasteland Wagers > Table, Camera, ...).
 //
 // One table below drives it: each row is an INI key, the Settings field it sets, a label, a range and a line of
 // help. Changes apply straight away and are written to the INI as soon as they're made.
@@ -14,8 +14,8 @@ namespace fr::SettingsMenu
 	{
 		using namespace ImGuiMCP;
 
-		// (what you change here goes to its own file, read before fo4roulette.ini: a new version's INI doesn't undo it)
-		constexpr auto kIniPath = L"Data\\F4SE\\Plugins\\fo4roulette_user.ini";
+		// (what you change here goes to its own file, read before WastelandWagers.ini: a new version's INI doesn't undo it)
+		constexpr auto kIniPath = L"Data\\F4SE\\Plugins\\WastelandWagers_user.ini";
 
 		enum class Kind
 		{
@@ -192,7 +192,7 @@ namespace fr::SettingsMenu
 				break;
 			}
 			// (the file made first if it isn't there: the INI functions wouldn't make a new one under a mod manager's
-			// virtual Data folder, and the setting was lost, read back from fo4roulette.ini the next time it was loaded)
+			// virtual Data folder, and the setting was lost, read back from WastelandWagers.ini the next time it was loaded)
 			wchar_t full[MAX_PATH]{};
 			const auto* path = ::GetFullPathNameW(kIniPath, MAX_PATH, full, nullptr) ? full : kIniPath;
 			if (const HANDLE f = ::CreateFileW(path, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -200,11 +200,11 @@ namespace fr::SettingsMenu
 				::CloseHandle(f);
 			}
 			if (!::WritePrivateProfileStringW(a_e.section, a_e.key, value.c_str(), path)) {
-				// (no luck: into fo4roulette.ini itself, as before)
-				if (!::WritePrivateProfileStringW(a_e.section, a_e.key, value.c_str(), L"Data\\F4SE\\Plugins\\fo4roulette.ini")) {
+				// (no luck: into WastelandWagers.ini itself, as before)
+				if (!::WritePrivateProfileStringW(a_e.section, a_e.key, value.c_str(), L"Data\\F4SE\\Plugins\\WastelandWagers.ini")) {
 					log::warn("settings menu: could not write [{}] to the INI", static_cast<int>(a_e.kind));
 				} else {
-					log::warn("settings menu: fo4roulette_user.ini couldn't be written: saved to fo4roulette.ini");
+					log::warn("settings menu: WastelandWagers_user.ini couldn't be written: saved to WastelandWagers.ini");
 				}
 			}
 		}
@@ -405,7 +405,7 @@ namespace fr::SettingsMenu
 				}
 			}
 			(void)rackNote;
-			TextDisabled("Saved to Data\\F4SE\\Plugins\\fo4roulette_user.ini as you change them (kept over updates).");
+			TextDisabled("Saved to Data\\F4SE\\Plugins\\WastelandWagers_user.ini as you change them (kept over updates).");
 		}
 
 		template <std::size_t... I>

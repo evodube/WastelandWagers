@@ -7,7 +7,7 @@ order of CARDS, the back in cell 52), the faces un-mirrored (the model's UVs fli
 
     python make_cards.py playing_cards.glb <Data dir> [--size N] [--table <poker table textures dir>]
 
-Writes Textures\\fo4roulette\\cards_d.dds and card_s.dds (and a preview png next to this script with --preview);
+Writes Textures\\WastelandWagers\\cards_d.dds and card_s.dds (and a preview png next to this script with --preview);
 with --table, the table's too (Pieter Ferreira's "Poker Table", CC BY 4.0): poker_d / poker_n / poker_s, 1024, BC7.
 """
 
@@ -83,7 +83,7 @@ def main():
         args = [a for a in args if a != str(size)]
     glb, data = args[0], args[1]
     img = atlas(glb, size)
-    out = os.path.join(data, "Textures", "fo4roulette")
+    out = os.path.join(data, "Textures", "WastelandWagers")
     os.makedirs(out, exist_ok=True)
     save_dds(img, os.path.join(out, "cards_d.dds"), "BC7")
     if "--preview" in sys.argv:

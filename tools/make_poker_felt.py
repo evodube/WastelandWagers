@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Writes the poker table's felt (Data/Textures/fo4roulette/pokerfelt_d.dds, pokerfelt_n.dds): green baize with a
+"""Writes the poker table's felt (Data/Textures/WastelandWagers/pokerfelt_d.dds, pokerfelt_n.dds): green baize with a
 line round it, a card suit where the line turns round each end; and pokerprint_d.dds, the TEXAS HOLD'EM plaques
 (laid on the line as shapes of their own, once facing the players' side and once the dealer's, so the lettering's
 sharp).
@@ -117,7 +117,7 @@ def print_tex() -> Image.Image:
 
 
 def main() -> int:
-    out = os.path.join(sys.argv[1], "Textures", "fo4roulette")
+    out = os.path.join(sys.argv[1], "Textures", "WastelandWagers")
     os.makedirs(out, exist_ok=True)
     big = felt()
     d = big.resize((W, H), Image.LANCZOS)

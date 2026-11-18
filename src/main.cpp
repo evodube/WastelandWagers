@@ -9,7 +9,7 @@
 
 namespace
 {
-	constexpr auto kName = "fo4roulette";
+	constexpr auto kName = "WastelandWagers";
 
 	void OnMessage(F4SE::MessagingInterface::Message* a_msg)
 	{
@@ -69,7 +69,7 @@ extern "C" __declspec(dllexport) bool F4SEAPI F4SEPlugin_Load(const F4SE::LoadIn
 {
 	F4SE::Init(a_f4se, { .log = true, .logName = kName, .logRotate = 3, .trampoline = false });
 
-	fr::log::info("fo4roulette loading on runtime {} ({})", a_f4se->RuntimeVersion().string(),
+	fr::log::info("WastelandWagers loading on runtime {} ({})", a_f4se->RuntimeVersion().string(),
 		REX::FModule::IsRuntimeOG() ? "OG" : REX::FModule::IsRuntimeNG() ? "NG" : "AE");
 
 	auto* messaging = F4SE::GetMessagingInterface();

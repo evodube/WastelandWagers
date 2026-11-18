@@ -80,14 +80,14 @@ jobs:
         run: xmake f -m releasedbg -y
 
       - name: Build
-        run: xmake build -y fo4roulette
+        run: xmake build -y WastelandWagers
 
       - name: Remember what was built
         shell: pwsh
         run: |
           git ls-files src xmake.lua | ForEach-Object { "$((Get-FileHash $_ -Algorithm SHA1).Hash) $_" } | Set-Content build/src-hashes.txt
 
-      # ---------------- Papyrus (fo4roulette.esl's quest scripts) ----------------
+      # ---------------- Papyrus (WastelandWagers.esl's quest scripts) ----------------
       - name: Vanilla script sources
         run: git clone --depth 1 https://github.com/rux616/modding-fo4-scripts-vanilla.git vanilla
 
@@ -143,12 +143,12 @@ jobs:
           # from inside papyrus/, so the scripts are top level (from the repo root Caprica puts them in a
           # 'papyrus' namespace: out/Scripts/papyrus/, and the wrong script names)
           Push-Location papyrus
-          ../caprica-bin/Caprica.exe -g fallout4 -i "../vanilla-base;." -f ../vanilla-base/Institute_Papyrus_Flags.flg -o ../out/Scripts fo4rouletteNative.psc fo4rouletteQuest.psc fo4rouletteGroupAlias.psc
+          ../caprica-bin/Caprica.exe -g fallout4 -i "../vanilla-base;." -f ../vanilla-base/Institute_Papyrus_Flags.flg -o ../out/Scripts WastelandWagersNative.psc WastelandWagersQuest.psc WastelandWagersGroupAlias.psc
           $code = $LASTEXITCODE
           Pop-Location
           if ($code -ne 0) { throw "Caprica failed" }
           Get-ChildItem -Recurse out/Scripts
-          foreach ($n in 'fo4rouletteNative', 'fo4rouletteQuest', 'fo4rouletteGroupAlias') { if (-not (Test-Path "out/Scripts/$n.pex")) { throw "$n.pex not at out/Scripts/" } }
+          foreach ($n in 'WastelandWagersNative', 'WastelandWagersQuest', 'WastelandWagersGroupAlias') { if (-not (Test-Path "out/Scripts/$n.pex")) { throw "$n.pex not at out/Scripts/" } }
 
       - name: Package
         shell: pwsh
@@ -159,16 +159,16 @@ jobs:
           New-Item -ItemType Directory -Force "$stage/Data/Scripts/Source/User" | Out-Null
           Copy-Item out/Scripts/*.pex "$stage/Data/Scripts/"
           Copy-Item papyrus/*.psc "$stage/Data/Scripts/Source/User/"
-          Copy-Item build/out/F4SE/Plugins/fo4roulette.dll "$stage/Data/F4SE/Plugins/"
-          Copy-Item build/out/F4SE/Plugins/fo4roulette.pdb "$stage/Data/F4SE/Plugins/" -ErrorAction SilentlyContinue
-          Copy-Item LICENSE "$stage/Data/F4SE/Plugins/fo4roulette-LICENSE.txt" -ErrorAction SilentlyContinue
-          python tools/make_esl.py "$stage/Data/fo4roulette.esl"
+          Copy-Item build/out/F4SE/Plugins/WastelandWagers.dll "$stage/Data/F4SE/Plugins/"
+          Copy-Item build/out/F4SE/Plugins/WastelandWagers.pdb "$stage/Data/F4SE/Plugins/" -ErrorAction SilentlyContinue
+          Copy-Item LICENSE "$stage/Data/F4SE/Plugins/WastelandWagers-LICENSE.txt" -ErrorAction SilentlyContinue
+          python tools/make_esl.py "$stage/Data/WastelandWagers.esl"
           if ($LASTEXITCODE -ne 0) { throw "make_esl failed" }
           Get-ChildItem -Recurse $stage | Select-Object FullName
 
       - uses: actions/upload-artifact@v4
         with:
-          name: fo4roulette
+          name: WastelandWagers
           path: stage/
 
       # The latest main build, also as plain files on the 'builds' branch (one commit, replaced each time), so it
@@ -188,11 +188,11 @@ jobs:
       - name: Zip for release
         if: startsWith(github.ref, 'refs/tags/v')
         shell: pwsh
-        run: Compress-Archive -Path stage/Data -DestinationPath "fo4roulette-${{ github.ref_name }}.zip"
+        run: Compress-Archive -Path stage/Data -DestinationPath "WastelandWagers-${{ github.ref_name }}.zip"
 
       - name: Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: fo4roulette-${{ github.ref_name }}.zip
+          files: WastelandWagers-${{ github.ref_name }}.zip
           prerelease: ${{ contains(github.ref_name, '-') }}

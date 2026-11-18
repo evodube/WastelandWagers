@@ -1,10 +1,10 @@
-"""Builds fo4roulette's chips in Blender (with PyNifly) from matveuk's "Poker chip set with values" (Sketchfab, CC
+"""Builds WastelandWagers's chips in Blender (with PyNifly) from matveuk's "Poker chip set with values" (Sketchfab, CC
 BY-NC-ND 4.0): the 1, 5, 25 and 100 chips, unchanged apart from what the game needs (no-derivatives: the model
 itself isn't edited). Each chip's modifiers are applied, it's scaled to the table's chip size with its origin at the
 bottom centre, and split by material, each part getting a one-colour texture of its material's colour
-(Textures\\fo4roulette\\chipcol_<rrggbb>.dds, written by make_textures.py from the list this returns).
+(Textures\\WastelandWagers\\chipcol_<rrggbb>.dds, written by make_textures.py from the list this returns).
 
-Run inside Blender after setting the paths below. Writes Meshes\\fo4roulette\\Chip1/5/25/100.nif.
+Run inside Blender after setting the paths below. Writes Meshes\\WastelandWagers\\Chip1/5/25/100.nif.
 """
 
 import math
@@ -18,7 +18,7 @@ CHIPS = r"C:\Users\Dan\Desktop\table\work\poker_chip_set_numbers.blend"
 TEMPLATE = r"C:\Users\Dan\Desktop\table\work\PoolTable01.nif"
 OUT = r"C:\Users\Dan\Desktop\table\work\Data"
 DIAMETER = 0.34 * 5.6 * 2  # the table's chips (src/rl/Table.h kChipRadius)
-TEX = "textures\\fo4roulette\\"
+TEX = "textures\\WastelandWagers\\"
 
 
 def ctx():
@@ -122,7 +122,7 @@ def main():
             o['pynNodeName'] = f"Chip{value}:{mi}"
             o['pynBlockName'] = 'BSTriShape'
             parts.append(o)
-        path = os.path.join(OUT, "Meshes", "fo4roulette", f"Chip{value}.nif")
+        path = os.path.join(OUT, "Meshes", "WastelandWagers", f"Chip{value}.nif")
         os.makedirs(os.path.dirname(path), exist_ok=True)
         for o in bpy.data.objects:
             o.select_set(False)

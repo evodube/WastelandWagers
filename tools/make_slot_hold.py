@@ -5,7 +5,7 @@ in the file moves.
 
     python3 tools/make_slot_hold.py [<Data dir>]
 
-Writes Meshes\\Actors\\Character\\Animations\\fo4roulette\\SlotMachineHold.hkx (fo4rouletteSlotHoldIdle's animation).
+Writes Meshes\\Actors\\Character\\Animations\\WastelandWagers\\SlotMachineHold.hkx (WastelandWagersSlotHoldIdle's animation).
 """
 import os
 import sys
@@ -19,7 +19,7 @@ def main(data: str) -> None:
     old, new = b"IdleFlavor\x00", b"SlotHoldOn\x00"
     assert d.count(old) == 1 and len(old) == len(new)
     d = d.replace(old, new)
-    out = os.path.join(data, "Meshes", "Actors", "Character", "Animations", "fo4roulette")
+    out = os.path.join(data, "Meshes", "Actors", "Character", "Animations", "WastelandWagers")
     os.makedirs(out, exist_ok=True)
     with open(os.path.join(out, "SlotMachineHold.hkx"), "wb") as f:
         f.write(d)

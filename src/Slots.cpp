@@ -1,4 +1,4 @@
-// The slot machines: fo4roulette.esl's Slot Machine (FURN), the Vault-Tec Workshop's machine re-skinned (tools/
+// The slot machines: WastelandWagers.esl's Slot Machine (FURN), the Vault-Tec Workshop's machine re-skinned (tools/
 // make_slot_machine.py, tools/build_slot_machine.py). Three reels, one payline, seven symbols; a pull costs 1, 5, 10
 // or 25 caps and three 7s at 25 win the jackpot (every machine's, growing with every pull; less than 25 on three 7s
 // pays 100 times the bet). Settlers sit down at free machines and play with their own caps (the roulette purses);
@@ -17,7 +17,7 @@
 // whose annotation furnitureIdleFlavor1Slave, 1.17 seconds in, is where the machine's own graph played its Pull). The
 // quest watches the sitter's animation for it (RegisterForAnimationEvent) and hands it to LeverDown here: the lever goes
 // down and the reels spin from then. When their hand's been idle a while, the pull's played on them
-// (fo4rouletteSlotPullIdle: that same animation) and the pull waits for it (asked again if it didn't play): a
+// (WastelandWagersSlotPullIdle: that same animation) and the pull waits for it (asked again if it didn't play): a
 // settler's reels only ever spin with their hand on the lever.
 //
 // You sit in it too (its activation's default processing, past the block that keeps passers-by off it), in first
@@ -253,9 +253,9 @@ namespace fr
 		if (!a_vm) {
 			return false;
 		}
-		a_vm->BindNativeMethod("fo4rouletteNative", "LeverDown", LeverDown, true);
-		a_vm->BindNativeMethod("fo4rouletteNative", "FlavorStarts", FlavorStarts, true);
-		log::info("papyrus: fo4rouletteNative.LeverDown, FlavorStarts bound");
+		a_vm->BindNativeMethod("WastelandWagersNative", "LeverDown", LeverDown, true);
+		a_vm->BindNativeMethod("WastelandWagersNative", "FlavorStarts", FlavorStarts, true);
+		log::info("papyrus: WastelandWagersNative.LeverDown, FlavorStarts bound");
 		return true;
 	}
 
@@ -550,7 +550,7 @@ namespace fr
 		m.askAt = std::uniform_real_distribution<float>(4.0f, 8.0f)(_rng);
 		auto* pull = Forms::SlotPull();
 		if (!pull) {
-			// (an older fo4roulette.esl: no pull idle) the lever on its own
+			// (an older WastelandWagers.esl: no pull idle) the lever on its own
 			if (const int bet = SlNpcBet(a_i); bet > 0) {
 				SlPull(a_i, bet, false, Clock::now());
 			}

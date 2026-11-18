@@ -1,4 +1,4 @@
-// The poker table: No-limit Texas Hold'em (pk/Holdem.h) at fo4roulette.esl's Poker Table. One poker table is in play
+// The poker table: No-limit Texas Hold'em (pk/Holdem.h) at WastelandWagers.esl's Poker Table. One poker table is in play
 // at a time, the nearest within reach. Up to six seats: you (activate the table: the nearest free seat) and settlers
 // who come over with their own caps (the roulette purses). The table deals itself; the cards are the 52 card models,
 // slid out from the dealer's tray and turned over; the bets and the pot are chip stacks.
@@ -1067,7 +1067,7 @@ namespace fr
 		if (!manager) {
 			return;
 		}
-		if (!_pkMenuLayer && !manager->AllocateNewLayer(_pkMenuLayer, "fo4roulette poker turning")) {
+		if (!_pkMenuLayer && !manager->AllocateNewLayer(_pkMenuLayer, "WastelandWagers poker turning")) {
 			return;
 		}
 		using Flag = RE::UserEvents::USER_EVENT_FLAG;

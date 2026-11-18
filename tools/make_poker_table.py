@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Writes the poker table's own wood and padded rail (Data/Textures/fo4roulette/pokerwood_*.dds, pokerrail_*.dds),
+"""Writes the poker table's own wood and padded rail (Data/Textures/WastelandWagers/pokerwood_*.dds, pokerrail_*.dds),
 1024 each and tiling, for build_poker_table.py's shapes (box-mapped: a tile every WOOD_TILE / RAIL_TILE units). The
 model's one atlas squeezed the wood into a thin strip that the whole race-track and pedestal stretched over, so it
 was a blur; these repeat at a sharp scale instead.
@@ -86,7 +86,7 @@ def leather():
 
 
 def main() -> int:
-    out = os.path.join(sys.argv[1], "Textures", "fo4roulette")
+    out = os.path.join(sys.argv[1], "Textures", "WastelandWagers")
     os.makedirs(out, exist_ok=True)
     for name, (d, n, s) in (("pokerwood", wood()), ("pokerrail", leather())):
         save_dds(d, os.path.join(out, f"{name}_d.dds"), "BC7")

@@ -5,7 +5,7 @@ here texel by texel from where each one is on the stool (its UVs, from WorkshopS
 
     python3 tools/make_slot_stool.py [<Data dir>] [--png]
 
-Writes Textures\\fo4roulette\\SlotStool_d.dds / _n.dds (BC7) and _s.dds (BC1), and Materials\\fo4roulette\\SlotStool.BGSM
+Writes Textures\\WastelandWagers\\SlotStool_d.dds / _n.dds (BC7) and _s.dds (BC1), and Materials\\WastelandWagers\\SlotStool.BGSM
 (the vanilla stool's material with our textures). tools/build_slot_machine.py points the model's stool at it.
 
 The stool's parts (its own space: Z up, the seat at Z 50.7-54, centred at X 0, Y 4.8):
@@ -206,9 +206,9 @@ def normal_map(height, mask):
 
 def bgsm(src: bytes) -> bytes:
     names = {
-        "setdressing/playerhouse/playerhouse_stoolbar01_d.dds": "fo4roulette/SlotStool_d.dds",
-        "setdressing/playerhouse/playerhouse_stoolbar01_n.dds": "fo4roulette/SlotStool_n.dds",
-        "setdressing/playerhouse/playerhouse_stoolbar01_s.dds": "fo4roulette/SlotStool_s.dds",
+        "setdressing/playerhouse/playerhouse_stoolbar01_d.dds": "WastelandWagers/SlotStool_d.dds",
+        "setdressing/playerhouse/playerhouse_stoolbar01_n.dds": "WastelandWagers/SlotStool_n.dds",
+        "setdressing/playerhouse/playerhouse_stoolbar01_s.dds": "WastelandWagers/SlotStool_s.dds",
     }
     out = bytearray()
     pos = 0
@@ -234,7 +234,7 @@ def main(data):
     col = bleed(col, mask)
     spec = bleed(spec, mask)
     gloss = bleed(gloss, mask)
-    tex = os.path.join(data, "Textures", "fo4roulette")
+    tex = os.path.join(data, "Textures", "WastelandWagers")
     os.makedirs(tex, exist_ok=True)
     d = Image.fromarray((col * 255).astype(np.uint8))
     nm = Image.fromarray((normal_map(height, mask) * 255).astype(np.uint8))
@@ -245,11 +245,11 @@ def main(data):
     save_dds(d.convert("RGBA"), os.path.join(tex, "SlotStool_d.dds"), "BC7")
     save_dds(nm.convert("RGBA"), os.path.join(tex, "SlotStool_n.dds"), "BC7")
     save_dds(s, os.path.join(tex, "SlotStool_s.dds"), "DXT1")
-    mats = os.path.join(data, "Materials", "fo4roulette")
+    mats = os.path.join(data, "Materials", "WastelandWagers")
     os.makedirs(mats, exist_ok=True)
     with open(os.path.join(SRC, "PlayerHouse_StoolBar01.BGSM"), "rb") as f:
         mat = bgsm(f.read())
-    assert b"fo4roulette/SlotStool_d.dds" in mat and b"fo4roulette/SlotStool_s.dds" in mat
+    assert b"WastelandWagers/SlotStool_d.dds" in mat and b"WastelandWagers/SlotStool_s.dds" in mat
     with open(os.path.join(mats, "SlotStool.BGSM"), "wb") as f:
         f.write(mat)
     print("stool: parts", {k: int((part == k).sum()) for k in range(6)})

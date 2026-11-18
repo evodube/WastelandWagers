@@ -1,4 +1,4 @@
-// The blackjack table: fo4roulette.esl's Blackjack Table, the rules in bj/Blackjack.h (six decks from the shoe, the
+// The blackjack table: WastelandWagers.esl's Blackjack Table, the rules in bj/Blackjack.h (six decks from the shoe, the
 // dealer stands on every 17, blackjack pays 3 to 2, insurance 2 to 1, double on any first two cards, split once). One
 // blackjack table is in play at a time, the nearest within reach. Seven places round the arc: you (activate the table:
 // the place nearest you) and settlers with their own caps (the roulette purses); a settler stands behind the chip rack

@@ -1,4 +1,4 @@
-// The Roulette Table Kit (fo4roulette.esl, an Aid item): sold by Vadim at the Dugout Inn, and made at a chem station.
+// The Roulette Table Kit (WastelandWagers.esl, an Aid item): sold by Vadim at the Dugout Inn, and made at a chem station.
 // Used from the Pip-Boy it unfolds into a roulette table in front of you, anywhere; sitting at a table set up that way,
 // P packs it back into a kit. Which tables are kit tables, and whether the Dugout Inn's been stocked, go in the co-save.
 // (Playable Pool's Pool Table Kit, for a roulette table.)
@@ -76,7 +76,7 @@ namespace fr
 	{
 		auto* kit = KitForm();
 		if (!kit) {
-			log::warn("kit: fo4roulette.esl's Roulette Table Kit not found");
+			log::warn("kit: WastelandWagers.esl's Roulette Table Kit not found");
 			return;
 		}
 		// the Dugout Inn's stock: one of each kit each time Vadim restocks (in memory, every launch: nothing in the esl

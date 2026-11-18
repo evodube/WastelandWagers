@@ -55,7 +55,7 @@ namespace fr::Npc
 			{}
 
 			void CallQueued() override {}
-			void CallCanceled() override { log::warn("papyrus {}: canceled (is fo4rouletteQuest.pex installed?)", _what); }
+			void CallCanceled() override { log::warn("papyrus {}: canceled (is WastelandWagersQuest.pex installed?)", _what); }
 			void StartMultiDispatch() override {}
 			void EndMultiDispatch() override {}
 			void operator()(RE::BSScript::Variable a_result) override
@@ -104,7 +104,7 @@ namespace fr::Npc
 				log::warn("{}: no script handle for the quest", a_what);
 				return false;
 			}
-			const RE::BSFixedString script{ "fo4rouletteQuest" };
+			const RE::BSFixedString script{ "WastelandWagersQuest" };
 			const RE::BSFixedString function{ a_function };
 			const bool              ok = vm->DispatchMethodCall(
                 handle, script, function,
@@ -113,7 +113,7 @@ namespace fr::Npc
                     return true;
                 },
                 a_callback);
-			log::info("{} {}", a_what, ok ? "sent" : "failed (is fo4rouletteQuest.pex installed?)");
+			log::info("{} {}", a_what, ok ? "sent" : "failed (is WastelandWagersQuest.pex installed?)");
 			return ok;
 		}
 
@@ -215,7 +215,7 @@ namespace fr::Npc
 			return;
 		}
 		const RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> logged{ new LogResult("ClearAll") };
-		CallQuest("ClearAll", "fo4rouletteQuest.ClearAll", logged, FormArg(Forms::LinkKeyword()));
+		CallQuest("ClearAll", "WastelandWagersQuest.ClearAll", logged, FormArg(Forms::LinkKeyword()));
 	}
 
 	bool MoveTo(RE::Actor* a_actor, RE::TESObjectREFR* a_target)

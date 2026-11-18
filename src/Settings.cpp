@@ -6,10 +6,10 @@ namespace fr
 {
 	namespace
 	{
-		constexpr auto kIniPath = L"Data\\F4SE\\Plugins\\fo4roulette.ini";
+		constexpr auto kIniPath = L"Data\\F4SE\\Plugins\\WastelandWagers.ini";
 		// what you've changed in the settings menu: its own file, not in the mod's download, so a new version (which
-		// brings its fo4roulette.ini with it) doesn't put your settings back to the defaults
-		constexpr auto kUserIniPath = L"Data\\F4SE\\Plugins\\fo4roulette_user.ini";
+		// brings its WastelandWagers.ini with it) doesn't put your settings back to the defaults
+		constexpr auto kUserIniPath = L"Data\\F4SE\\Plugins\\WastelandWagers_user.ini";
 
 		std::wstring ReadString(const wchar_t* a_section, const wchar_t* a_key, const std::wstring& a_default)
 		{

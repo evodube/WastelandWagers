@@ -1,45 +1,45 @@
 #!/usr/bin/env python3
-"""Writes fo4roulette.esl: the roulette table and its pieces, and the quest that walks NPCs to it.
+"""Writes WastelandWagers.esl: the roulette table and its pieces, and the quest that walks NPCs to it.
 
     python tools/make_esl.py [out.esl]
 
 Form IDs (src/Forms.h expects these):
-    xx000800  ACTI fo4rouletteTable        Roulette Table: Meshes\\fo4roulette\\RouletteTable.nif (activate: Play;
+    xx000800  ACTI WastelandWagersTable        Roulette Table: Meshes\\WastelandWagers\\RouletteTable.nif (activate: Play;
                                            workshop menu preview framed as the vanilla pool table's)
-    xx000801  STAT fo4rouletteBall         Meshes\\fo4roulette\\Ball.nif
-    xx000802  STAT fo4rouletteChip1        Meshes\\fo4roulette\\Chip1.nif   (and 5, 25, 100 at 803-805)
-    xx000806  KYWD fo4rouletteLinkSpot     an NPC's linked ref: the spot by the table they're to walk to
-    xx000807  PACK fo4rouletteWalkToSpot   Travel to that linked ref, walking, facing the marker at the end
-    xx000808  QUST fo4rouletteQuest        priority 100, start game enabled; collection aliases 0 Dealers and 1
+    xx000801  STAT WastelandWagersBall         Meshes\\WastelandWagers\\Ball.nif
+    xx000802  STAT WastelandWagersChip1        Meshes\\WastelandWagers\\Chip1.nif   (and 5, 25, 100 at 803-805)
+    xx000806  KYWD WastelandWagersLinkSpot     an NPC's linked ref: the spot by the table they're to walk to
+    xx000807  PACK WastelandWagersWalkToSpot   Travel to that linked ref, walking, facing the marker at the end
+    xx000808  QUST WastelandWagersQuest        priority 100, start game enabled; collection aliases 0 Dealers and 1
                                            Bettors, both carrying the package (alias packages go by quest priority,
                                            so it outranks settler sandboxes)
-    xx000809  COBJ workshop_co_fo4rouletteTable  the table in the workshop menu (Furniture > Tables, as the vanilla
+    xx000809  COBJ workshop_co_WastelandWagersTable  the table in the workshop menu (Furniture > Tables, as the vanilla
                                            tables): wood 12, steel 4, cloth 4, screws 2
-    xx00080A  ALCH fo4rouletteTableKit     Roulette Table Kit: an Aid item; used, the plugin sets a table up in front of
+    xx00080A  ALCH WastelandWagersTableKit     Roulette Table Kit: an Aid item; used, the plugin sets a table up in front of
                                            you (sold by Vadim at the Dugout Inn: the plugin adds it to his stock)
-    xx00080B  COBJ fo4rouletteco_TableKit  the kit at a chem station (Utility): wood 12, steel 6, cloth 4, screws 2,
+    xx00080B  COBJ WastelandWagersco_TableKit  the kit at a chem station (Utility): wood 12, steel 6, cloth 4, screws 2,
                                            adhesive 2
-    xx000810+ STAT fo4rouletteCard_<rank><suit>  the 52 playing cards (0x810 + suit * 13 + rank; suits c d h s)
-    xx000844  ACTI fo4roulettePokerTable  Poker Table (Meshes/fo4roulette/PokerTable.nif)
-    xx000845  COBJ workshop_co_fo4roulettePokerTable  in the workshop menu, Furniture > Tables
-    xx000846  ALCH fo4roulettePokerKit     Poker Table Kit (sold by Vadim too)
-    xx000847  COBJ fo4rouletteco_PokerKit  the poker kit at a chem station (Utility)
-    xx000848  KYWD fo4rouletteLinkSeat     a poker player's linked ref: their chair
-    xx000849  PACK fo4rouletteSitInSeat    Sit in that linked ref (as vanilla DefaultSitLinkCustom01NoEating), carried by
+    xx000810+ STAT WastelandWagersCard_<rank><suit>  the 52 playing cards (0x810 + suit * 13 + rank; suits c d h s)
+    xx000844  ACTI WastelandWagersPokerTable  Poker Table (Meshes/WastelandWagers/PokerTable.nif)
+    xx000845  COBJ workshop_co_WastelandWagersPokerTable  in the workshop menu, Furniture > Tables
+    xx000846  ALCH WastelandWagersPokerKit     Poker Table Kit (sold by Vadim too)
+    xx000847  COBJ WastelandWagersco_PokerKit  the poker kit at a chem station (Utility)
+    xx000848  KYWD WastelandWagersLinkSeat     a poker player's linked ref: their chair
+    xx000849  PACK WastelandWagersSitInSeat    Sit in that linked ref (as vanilla DefaultSitLinkCustom01NoEating), carried by
                                            the quest's third collection, 2 Sitters
-    xx00084A  ACTI fo4rouletteBlackjackTable  Blackjack Table (Meshes/fo4roulette/BlackjackTable.nif)
-    xx00084B  COBJ workshop_co_fo4rouletteBlackjackTable  in the workshop menu, Furniture > Tables
-    xx00084C  ALCH fo4rouletteBlackjackKit  Blackjack Table Kit (sold by Vadim too)
-    xx00084D  COBJ fo4rouletteco_BlackjackKit  the blackjack kit at a chem station (Utility)
-    xx00084E  FURN fo4rouletteSlotMachine  Slot Machine (Meshes/fo4roulette/SlotMachine.nif: the Vault-Tec Workshop's
+    xx00084A  ACTI WastelandWagersBlackjackTable  Blackjack Table (Meshes/WastelandWagers/BlackjackTable.nif)
+    xx00084B  COBJ workshop_co_WastelandWagersBlackjackTable  in the workshop menu, Furniture > Tables
+    xx00084C  ALCH WastelandWagersBlackjackKit  Blackjack Table Kit (sold by Vadim too)
+    xx00084D  COBJ WastelandWagersco_BlackjackKit  the blackjack kit at a chem station (Utility)
+    xx00084E  FURN WastelandWagersSlotMachine  Slot Machine (Meshes/WastelandWagers/SlotMachine.nif: the Vault-Tec Workshop's
                                            machine re-skinned; its sitting animations: DLCworkshop03.esm is a master)
-    xx00084F  COBJ workshop_co_fo4rouletteSlotMachine  in the workshop menu
-    xx000850  KYWD fo4rouletteWorkshopMenuMiniGames  the workshop menu's Wasteland Wagers category (in Furniture):
+    xx00084F  COBJ workshop_co_WastelandWagersSlotMachine  in the workshop menu
+    xx000850  KYWD WastelandWagersWorkshopMenu  the workshop menu's Wasteland Wagers category (in Furniture):
                                            every table's and the slot machine's recipe is in it
-    xx000851  ARTO fo4rouletteWorkshopMenuMiniGamesArt  the category's picture: its first item (the roulette table)
-    xx000853  IDLE fo4rouletteSlotHoldIdle  you sat at a slot machine, still: its sitting loop on its own (looping),
+    xx000851  ARTO WastelandWagersWorkshopMenuArt  the category's picture: its first item (the roulette table)
+    xx000853  IDLE WastelandWagersSlotHoldIdle  you sat at a slot machine, still: its sitting loop on its own (looping),
                                            so the furniture's idle doesn't pull the lever for you now and then
-    xx000852  IDLE fo4rouletteSlotPullIdle  sat at a slot machine: the hand to the lever and a pull (the DLC's own
+    xx000852  IDLE WastelandWagersSlotPullIdle  sat at a slot machine: the hand to the lever and a pull (the DLC's own
                                            pull, PoseA_IdleFlavor1: its furnitureIdleFlavor1Slave is the lever going down)
 
 Record layouts follow Playable Pool's tools/make_esl.py (laid out as Fallout4.esm's own records).
@@ -278,11 +278,11 @@ def slot_machine(form_id: int) -> bytes:
         b"FURN",
         0,
         form_id,
-        subrecord(b"EDID", zstring("fo4rouletteSlotMachine"))
+        subrecord(b"EDID", zstring("WastelandWagersSlotMachine"))
         + subrecord(b"OBND", struct.pack("<6h", -20, -61, 0, 20, 22, 125))
         + subrecord(b"PTRN", struct.pack("<I", DLC06 | 0x00252D))
         + subrecord(b"FULL", zstring("Slot Machine"))
-        + subrecord(b"MODL", zstring("fo4roulette\\SlotMachine.nif"))
+        + subrecord(b"MODL", zstring("WastelandWagers\\SlotMachine.nif"))
         + subrecord(b"KSIZ", struct.pack("<I", len(keywords)))
         + subrecord(b"KWDA", b"".join(struct.pack("<I", k) for k in keywords))
         + subrecord(b"PNAM", struct.pack("<I", 0))
@@ -316,8 +316,8 @@ def workshop_recipe(form_id: int, editor_id: str, created: int, components: list
 
 
 def quest(form_id: int, editor_id: str, package: int, sit: int, priority: int = 100) -> bytes:
-    """fo4rouletteQuest: start game enabled, priority 100. Collection aliases 0 'Dealers' and 1 'Bettors', each with
-    the walk package. Scripts: fo4rouletteQuest on the quest (properties Dealers and Bettors), fo4rouletteGroupAlias
+    """WastelandWagersQuest: start game enabled, priority 100. Collection aliases 0 'Dealers' and 1 'Bettors', each with
+    the walk package. Scripts: WastelandWagersQuest on the quest (properties Dealers and Bettors), WastelandWagersGroupAlias
     on both aliases (papyrus/)."""
     def collection(alias_id: int, name: str, package: int = package) -> bytes:
         # as vanilla WorkshopPermanentActors: ALCS id, ALMI 0 (no initial fill), then the alias: optional, allow reuse
@@ -334,8 +334,8 @@ def quest(form_id: int, editor_id: str, package: int, sit: int, priority: int = 
         )
     body = (
         subrecord(b"EDID", zstring(editor_id))
-        + subrecord(b"VMAD", quest_vmad(form_id, "fo4rouletteQuest", [("Dealers", 0), ("Bettors", 1), ("Sitters", 2)],
-                                        [(0, "fo4rouletteGroupAlias"), (1, "fo4rouletteGroupAlias"), (2, "fo4rouletteGroupAlias")]))
+        + subrecord(b"VMAD", quest_vmad(form_id, "WastelandWagersQuest", [("Dealers", 0), ("Bettors", 1), ("Sitters", 2)],
+                                        [(0, "WastelandWagersGroupAlias"), (1, "WastelandWagersGroupAlias"), (2, "WastelandWagersGroupAlias")]))
         # flags (0x10 start game enabled, 0x1 as saved by the CK for those), priority, unknown, delay 0, type 0
         + subrecord(b"DNAM", struct.pack("<HBBfI", 0x0011, priority, 0, 0.0, 0))
         + subrecord(b"NEXT", b"")
@@ -366,32 +366,32 @@ def slot_idle(form_id: int, editor_id: str, event: str, clip: str) -> bytes:
 def build() -> bytes:
     own = 0x02000000  # our records come after the two masters (Fallout4.esm, DLCworkshop03.esm)
     table = own | FIRST_ID
-    acti = [activator(table, "fo4rouletteTable", "Roulette Table", "fo4roulette\\RouletteTable.nif",
+    acti = [activator(table, "WastelandWagersTable", "Roulette Table", "WastelandWagers\\RouletteTable.nif",
                       (-118, -62, 0, 118, 62, 81), "Play",
                       0x001A03DD)]  # the vanilla pool table's preview framing (PoolTable01's PTRN): a table of much the same size
-    stats = [stat(own | (FIRST_ID + 1), "fo4rouletteBall", "fo4roulette\\Ball.nif", bound=2)]
+    stats = [stat(own | (FIRST_ID + 1), "WastelandWagersBall", "WastelandWagers\\Ball.nif", bound=2)]
     for i, v in enumerate((1, 5, 25, 100)):
-        stats.append(stat(own | (FIRST_ID + 2 + i), f"fo4rouletteChip{v}", f"fo4roulette\\Chip{v}.nif", bound=3))
+        stats.append(stat(own | (FIRST_ID + 2 + i), f"WastelandWagersChip{v}", f"WastelandWagers\\Chip{v}.nif", bound=3))
     link = own | (FIRST_ID + 6)
     walk = own | (FIRST_ID + 7)
     seat_link = own | (FIRST_ID + 0x48)
     sit = own | (FIRST_ID + 0x49)
     menu = own | (FIRST_ID + 0x50)  # the Wasteland Wagers workshop category: every table's and the slot machine's recipe
-    keywords = [keyword(link, "fo4rouletteLinkSpot"), keyword(seat_link, "fo4rouletteLinkSeat"),
-                menu_keyword(menu, "fo4rouletteWorkshopMenuMiniGames", "Wasteland Wagers")]
-    packages = [travel_package(walk, "fo4rouletteWalkToSpot", link), sit_package(sit, "fo4rouletteSitInSeat", seat_link)]
-    quests = [quest(own | (FIRST_ID + 8), "fo4rouletteQuest", walk, sit)]
-    recipes = [workshop_recipe(own | (FIRST_ID + 9), "workshop_co_fo4rouletteTable", table,
+    keywords = [keyword(link, "WastelandWagersLinkSpot"), keyword(seat_link, "WastelandWagersLinkSeat"),
+                menu_keyword(menu, "WastelandWagersWorkshopMenu", "Wasteland Wagers")]
+    packages = [travel_package(walk, "WastelandWagersWalkToSpot", link), sit_package(sit, "WastelandWagersSitInSeat", seat_link)]
+    quests = [quest(own | (FIRST_ID + 8), "WastelandWagersQuest", walk, sit)]
+    recipes = [workshop_recipe(own | (FIRST_ID + 9), "workshop_co_WastelandWagersTable", table,
                                [(0x0001FAC2, 12), (0x0001FABD, 4), (0x001223C7, 4), (0x0003D294, 2)], category=menu)]
     # the Roulette Table Kit: sold at the Dugout Inn (the plugin adds it to Vadim's stock); used, a table in front of
     # you. No model: nothing shows in the Pip-Boy or barter previews
     kit = own | (FIRST_ID + 10)
-    potions = [potion(kit, "fo4rouletteTableKit", "Roulette Table Kit",
+    potions = [potion(kit, "WastelandWagersTableKit", "Roulette Table Kit",
                       "A folding roulette table: wheel, ball, layout and all. Use it to set the table up in front of you; "
                       "sit at it and press P to pack it away again.",
                       "", bytes(12), 400, 25.0)]
     # ...and made at a chem station (its Utility tab): wood 12, steel 6, cloth 4, screws 2, adhesive 2
-    recipes.append(recipe(own | (FIRST_ID + 11), "fo4rouletteco_TableKit", kit,
+    recipes.append(recipe(own | (FIRST_ID + 11), "WastelandWagersco_TableKit", kit,
                           [(0x0001FAC2, 12), (0x0001FABD, 6), (0x001223C7, 4), (0x0003D294, 2), (0x0001FAA5, 2)],
                           0x00102158,   # WorkbenchChemlab
                           0x0006980C))  # RecipeUtility
@@ -400,46 +400,46 @@ def build() -> bytes:
     # the 52 cards (xx000810 + suit * 13 + rank: 2c .. Ac, 2d .., 2h .., 2s .. As), each its own model
     for s, suit in enumerate("cdhs"):
         for r, rank in enumerate("23456789TJQKA"):
-            stats.append(stat(own | (FIRST_ID + 0x10 + s * 13 + r), f"fo4rouletteCard_{rank}{suit}",
-                              f"fo4roulette\\Cards\\Card_{rank}{suit}.nif", bound=4))
+            stats.append(stat(own | (FIRST_ID + 0x10 + s * 13 + r), f"WastelandWagersCard_{rank}{suit}",
+                              f"WastelandWagers\\Cards\\Card_{rank}{suit}.nif", bound=4))
     poker = own | (FIRST_ID + 0x44)
-    acti.append(activator(poker, "fo4roulettePokerTable", "Poker Table", "fo4roulette\\PokerTable.nif",
+    acti.append(activator(poker, "WastelandWagersPokerTable", "Poker Table", "WastelandWagers\\PokerTable.nif",
                           (-47, -91, 0, 47, 91, 65), "Play", 0x001A03DD))
-    recipes.append(workshop_recipe(own | (FIRST_ID + 0x45), "workshop_co_fo4roulettePokerTable", poker,
+    recipes.append(workshop_recipe(own | (FIRST_ID + 0x45), "workshop_co_WastelandWagersPokerTable", poker,
                                    [(0x0001FAC2, 10), (0x001223C7, 6), (0x0003D294, 2), (0x0001FAA5, 1)], category=menu))
     pkit = own | (FIRST_ID + 0x46)
-    potions.append(potion(pkit, "fo4roulettePokerKit", "Poker Table Kit",
+    potions.append(potion(pkit, "WastelandWagersPokerKit", "Poker Table Kit",
                           "A folding poker table, cards and all. Use it to set the table up in front of you; sit at it "
                           "and press P to pack it away again.",
                           "", bytes(12), 300, 20.0))
-    recipes.append(recipe(own | (FIRST_ID + 0x47), "fo4rouletteco_PokerKit", pkit,
+    recipes.append(recipe(own | (FIRST_ID + 0x47), "WastelandWagersco_PokerKit", pkit,
                           [(0x0001FAC2, 10), (0x001223C7, 6), (0x0003D294, 2), (0x0001FAA5, 2)],
                           0x00102158, 0x0006980C))
 
     # ---- blackjack
     bjt = own | (FIRST_ID + 0x4A)
-    acti.append(activator(bjt, "fo4rouletteBlackjackTable", "Blackjack Table", "fo4roulette\\BlackjackTable.nif",
+    acti.append(activator(bjt, "WastelandWagersBlackjackTable", "Blackjack Table", "WastelandWagers\\BlackjackTable.nif",
                           (-73, -49, 0, 73, 49, 69), "Play", 0x001A03DD))
-    recipes.append(workshop_recipe(own | (FIRST_ID + 0x4B), "workshop_co_fo4rouletteBlackjackTable", bjt,
+    recipes.append(workshop_recipe(own | (FIRST_ID + 0x4B), "workshop_co_WastelandWagersBlackjackTable", bjt,
                                    [(0x0001FAC2, 12), (0x001223C7, 6), (0x0003D294, 2), (0x0001FAA5, 1)], category=menu))
     bkit = own | (FIRST_ID + 0x4C)
-    potions.append(potion(bkit, "fo4rouletteBlackjackKit", "Blackjack Table Kit",
+    potions.append(potion(bkit, "WastelandWagersBlackjackKit", "Blackjack Table Kit",
                           "A folding blackjack table, shoe and all. Use it to set the table up in front of you; sit at "
                           "it and press P to pack it away again.",
                           "", bytes(12), 300, 20.0))
-    recipes.append(recipe(own | (FIRST_ID + 0x4D), "fo4rouletteco_BlackjackKit", bkit,
+    recipes.append(recipe(own | (FIRST_ID + 0x4D), "WastelandWagersco_BlackjackKit", bkit,
                           [(0x0001FAC2, 12), (0x001223C7, 6), (0x0003D294, 2), (0x0001FAA5, 2)],
                           0x00102158, 0x0006980C))
 
     # ---- the slot machine (the Vault-Tec Workshop's)
     slots = own | (FIRST_ID + 0x4E)
     furniture = [slot_machine(slots)]
-    recipes.append(workshop_recipe(own | (FIRST_ID + 0x4F), "workshop_co_fo4rouletteSlotMachine", slots,
+    recipes.append(workshop_recipe(own | (FIRST_ID + 0x4F), "workshop_co_WastelandWagersSlotMachine", slots,
                                    [(0x0001FABD, 4), (0x0003D294, 2), (0x0001FAB7, 3), (0x0001FAB0, 2), (0x0001FA9B, 2)],
                                    category=menu, sounds=(0x000196B6, 0x000196BD)))
 
     # the Wasteland Wagers category's picture: its first item, the roulette table
-    art = [menu_art(own | (FIRST_ID + 0x51), "fo4rouletteWorkshopMenuMiniGamesArt", menu, "fo4roulette\\RouletteTable.nif",
+    art = [menu_art(own | (FIRST_ID + 0x51), "WastelandWagersWorkshopMenuArt", menu, "WastelandWagers\\RouletteTable.nif",
                     0x001A03DD, (-118, -62, 0, 118, 62, 81))]
 
     # a pull at the machine (the DLC's: the hand to the lever)
@@ -447,9 +447,9 @@ def build() -> bytes:
     # behaviour, WorkbenchFurnitureBehavior, has that and dyn_Flavor, no dyn_FlavorLooping), our copy of the loop
     # (tools/make_slot_hold.py: the DLC's has the IdleFlavor in it that has the furniture pick flavours, most of them a
     # pull). The DLC's own machines and animations untouched
-    idles = [slot_idle(own | (FIRST_ID + 0x52), "fo4rouletteSlotPullIdle", "dyn_Flavor", "PoseA_IdleFlavor1.hkx"),
-             slot_idle(own | (FIRST_ID + 0x53), "fo4rouletteSlotHoldIdle", "dyn_ActivationLoop",
-                       "Actors\\Character\\Animations\\fo4roulette\\SlotMachineHold.hkx")]
+    idles = [slot_idle(own | (FIRST_ID + 0x52), "WastelandWagersSlotPullIdle", "dyn_Flavor", "PoseA_IdleFlavor1.hkx"),
+             slot_idle(own | (FIRST_ID + 0x53), "WastelandWagersSlotHoldIdle", "dyn_ActivationLoop",
+                       "Actors\\Character\\Animations\\WastelandWagers\\SlotMachineHold.hkx")]
 
     count = (len(acti) + len(stats) + len(keywords) + len(packages) + len(quests) + len(recipes) + len(potions)
              + len(furniture) + len(art) + len(idles))
@@ -483,7 +483,7 @@ def build() -> bytes:
 
 def main() -> int:
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    out = args[0] if args else "fo4roulette.esl"
+    out = args[0] if args else "WastelandWagers.esl"
     data = build()
     with open(out, "wb") as f:
         f.write(data)

@@ -52,7 +52,7 @@ namespace fr::Audio
 		{
 			wchar_t exe[MAX_PATH]{};
 			::GetModuleFileNameW(nullptr, exe, MAX_PATH);
-			return std::filesystem::path(exe).parent_path() / L"Data" / L"Sound" / L"fo4roulette";
+			return std::filesystem::path(exe).parent_path() / L"Data" / L"Sound" / L"WastelandWagers";
 		}
 
 		// mono 16-bit PCM at 44.1 kHz only (what the mod ships)

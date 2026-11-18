@@ -16,7 +16,7 @@ import bmesh
 import bpy
 
 HERE = r"C:\Users\Dan\Desktop\table\work"
-NIF = os.path.join(HERE, "Data", "Meshes", "fo4roulette", "PokerTable.nif")
+NIF = os.path.join(HERE, "Data", "Meshes", "WastelandWagers", "PokerTable.nif")
 ATLAS = os.path.join(HERE, "poker_d.png")
 WOOD_TILE = 48.0   # make_poker_table.py's
 RAIL_TILE = 24.0

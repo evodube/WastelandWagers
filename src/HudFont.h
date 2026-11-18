@@ -1,6 +1,6 @@
 #pragma once
 // The HUD's two fonts (Chakra Petch Bold and Share Tech Mono, both OFL), pre-rendered with their glow into the PNG
-// atlases in Data\F4SE\Plugins\fo4roulette\hud: where each glyph is. From Playable Pool's tools/hud/render_hud.py.
+// atlases in Data\F4SE\Plugins\WastelandWagers\hud: where each glyph is. From Playable Pool's tools/hud/render_hud.py.
 
 namespace fr::HudFont
 {

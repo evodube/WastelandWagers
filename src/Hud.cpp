@@ -1,6 +1,6 @@
 // The HUD, drawn through F4SE Menu Framework when it's installed, in Playable Pool's green terminal style: your caps
 // and chip, the dealer and the players, the bet under the cursor, the last numbers, what's been happening, and the
-// big banners (no more bets, the result). Text uses the two pre-rendered fonts in Data\F4SE\Plugins\fo4roulette\hud
+// big banners (no more bets, the result). Text uses the two pre-rendered fonts in Data\F4SE\Plugins\WastelandWagers\hud
 // (HudFont.h); the panels are drawn shapes. Laid out on a 1280x720 design screen, scaled to the real one.
 
 #include "Hud.h"
@@ -58,7 +58,7 @@ namespace fr::Hud
 			auto& t = g_textures[a_file];
 			if (!t.tried) {
 				t.tried = true;
-				for (const char* dir : { "Data\\F4SE\\Plugins\\fo4roulette\\hud\\", "F4SE\\Plugins\\fo4roulette\\hud\\" }) {
+				for (const char* dir : { "Data\\F4SE\\Plugins\\WastelandWagers\\hud\\", "F4SE\\Plugins\\WastelandWagers\\hud\\" }) {
 					t.id = F4SEMenuFramework::LoadTexture(std::string(dir) + a_file);
 					if (t.id) {
 						break;
@@ -587,7 +587,7 @@ namespace fr::Hud
 			static bool        tried = false;
 			if (!tried) {
 				tried = true;
-				for (const char* dir : { "Data\\F4SE\\Plugins\\fo4roulette\\hud\\", "F4SE\\Plugins\\fo4roulette\\hud\\" }) {
+				for (const char* dir : { "Data\\F4SE\\Plugins\\WastelandWagers\\hud\\", "F4SE\\Plugins\\WastelandWagers\\hud\\" }) {
 					if ((id = F4SEMenuFramework::LoadTexture(std::string(dir) + "cards.png"))) {
 						break;
 					}
@@ -1230,7 +1230,7 @@ namespace fr::Hud
 		{
 			SetNextWindowPos(ImVec2{ a_viewport->Pos.x + 24.0f, a_viewport->Pos.y + 24.0f }, ImGuiCond_Always, ImVec2{ 0.0f, 0.0f });
 			SetNextWindowBgAlpha(0.6f);
-			if (Begin("##fo4roulette", nullptr, kFlags)) {
+			if (Begin("##WastelandWagers", nullptr, kFlags)) {
 				static constexpr std::array<int, 4> chips{ 1, 5, 25, 100 };
 				if (a_st.poker) {
 					Text("Caps %d  %s  pot %d", a_st.caps, a_st.pkInfo.c_str(), a_st.pkPot);

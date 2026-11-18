@@ -332,7 +332,7 @@ namespace fr
 		if (!manager) {
 			return;
 		}
-		if (!_inputLayer && !manager->AllocateNewLayer(_inputLayer, "fo4roulette table")) {
+		if (!_inputLayer && !manager->AllocateNewLayer(_inputLayer, "WastelandWagers table")) {
 			log::warn("could not get an input layer; controls stay on at the table");
 			return;
 		}

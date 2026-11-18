@@ -1,5 +1,5 @@
 // The settlers who come over to bet, each at their own spot round the layout, with a few vanilla idles while they play.
-// Walking them there is fo4roulette.esl's quest package (Npc.h); once there they're held with SetRestrained and
+// Walking them there is WastelandWagers.esl's quest package (Npc.h); once there they're held with SetRestrained and
 // kept facing the table.
 
 #include "Game.h"

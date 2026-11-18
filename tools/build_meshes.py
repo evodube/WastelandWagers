@@ -1,11 +1,11 @@
-"""Builds fo4roulette's meshes in Blender (with PyNifly) from the roulette table model.
+"""Builds WastelandWagers's meshes in Blender (with PyNifly) from the roulette table model.
 
 Run inside Blender (Text editor, or blender --python), after setting the paths below:
 
     OBJ       the table model (RuletMasası.obj)
     TEMPLATE  vanilla Meshes\\SetDressing\\PoolTable\\PoolTable01.nif: only its shader setup and its collision
               object's structure are borrowed (its geometry is thrown away)
-    OUT       the Data folder to write Meshes\\fo4roulette\\ into
+    OUT       the Data folder to write Meshes\\WastelandWagers\\ into
 
 Writes:
     RouletteTable.nif   the table, the bowl and its diamonds, both layouts (LayoutEU, LayoutUS: the plugin hides the
@@ -45,7 +45,7 @@ BLEND = 2.0 * SCALE
 WOOD_TILE = 48.0  # game units a tile of the walnut (make_poker_table.py's, as on the poker table)
 ORIGIN = Vector((12.005, 3.755, -8.22))   # model units: footprint centre, floor
 BALL_R = 0.16 * SCALE
-TEX = "textures\\fo4roulette\\"
+TEX = "textures\\WastelandWagers\\"
 CUBEMAP = "textures\\Shared\\Cubemaps\\mipblur_DefaultOutside1.dds"  # as the vanilla pool table uses
 
 # the rotor's profile (model units: radius, height), from the model's disc; the wheel's axis is the model's origin
@@ -79,7 +79,7 @@ def template_material():
         bpy.ops.import_scene.pynifly(filepath=TEMPLATE)
     shape = next(o for o in bpy.data.objects if o.type == 'MESH' and o.get('pynBlockName') == 'BSTriShape')
     mat = shape.active_material
-    mat.name = "fo4roulette_template"
+    mat.name = "WastelandWagers_template"
     mat.use_fake_user = True
     for o in list(bpy.data.objects):
         bpy.data.objects.remove(o, do_unlink=True)
@@ -509,7 +509,7 @@ def main():
 
     data = OUT
     table_objs = [root, bsx, body, deco, l_eu, l_us, g_eu, g_us] + [x for r in rotors.values() for x in r] + [system]
-    table_path = os.path.join(data, "Meshes", "fo4roulette", "RouletteTable.nif")
+    table_path = os.path.join(data, "Meshes", "WastelandWagers", "RouletteTable.nif")
     export(table_objs, table_path)
     env = add_envmap(table_path, metal_shapes)
 
@@ -529,7 +529,7 @@ def main():
     rb = node("Ball")
     rb['pynRoot'] = True
     ball.parent = rb
-    export([rb, ball], os.path.join(data, "Meshes", "fo4roulette", "Ball.nif"))
+    export([rb, ball], os.path.join(data, "Meshes", "WastelandWagers", "Ball.nif"))
     return {"grid_faces": grid_faces, "hull": hull_n, "wheel_centre": tuple(round(c, 3) for c in centre), "envmap": env}
 
 

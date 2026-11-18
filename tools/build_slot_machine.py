@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """The slot machine's model and material: the Vault-Tec Workshop's WorkshopSlotMachine01.nif (tools/source_slots,
 from DLCworkshop03 - Main.ba2) with
-  - its material our own (Materials\\fo4roulette\\SlotMachine.BGSM: the DLC's, its textures ours: make_slot_machine.py),
-  - its stool's too (Materials\\fo4roulette\\SlotStool.BGSM: casino red leather, chrome and brass: make_slot_stool.py),
+  - its material our own (Materials\\WastelandWagers\\SlotMachine.BGSM: the DLC's, its textures ours: make_slot_machine.py),
+  - its stool's too (Materials\\WastelandWagers\\SlotStool.BGSM: casino red leather, chrome and brass: make_slot_stool.py),
   - its behaviour graph off (the BGED extra data renamed: the plugin turns the reels and the lever itself, so they land
     where it wants them; the DLC's graph would play its own canned spins),
   - its workshop power connection points off (the CPA extra data renamed: nothing to wire),
   - the reels' and lever's NiTransformControllers not active (their flags' active bit cleared).
 Only header strings and those flags change: every block's size is as it was.
 
-    python3 tools/build_slot_machine.py <Data dir>     (writes Meshes\\fo4roulette\\SlotMachine.nif and the BGSM)
+    python3 tools/build_slot_machine.py <Data dir>     (writes Meshes\\WastelandWagers\\SlotMachine.nif and the BGSM)
 
 The reels' strip starts (src/Slots.cpp kStripStart) come from the reel shapes' UVs: printed here as a check.
 """
@@ -23,12 +23,12 @@ sys.path.insert(0, HERE)
 from nifheader import Nif, trishape  # noqa: E402
 
 SRC = os.path.join(HERE, "source_slots")
-MATERIAL = "Materials\\fo4roulette\\SlotMachine.BGSM"
-STOOL = "Materials\\fo4roulette\\SlotStool.BGSM"  # (the stool's: tools/make_slot_stool.py)
+MATERIAL = "Materials\\WastelandWagers\\SlotMachine.BGSM"
+STOOL = "Materials\\WastelandWagers\\SlotStool.BGSM"  # (the stool's: tools/make_slot_stool.py)
 TEXTURES = {
-    "DLC06/SetDressing/SlotMachine/SlotMachine01_d.dds": "fo4roulette/SlotMachine_d.dds",
-    "DLC06/SetDressing/SlotMachine/SlotMachine01_n.dds": "fo4roulette/SlotMachine_n.dds",
-    "DLC06/SetDressing/SlotMachine/SlotMachine01_s.dds": "fo4roulette/SlotMachine_s.dds",
+    "DLC06/SetDressing/SlotMachine/SlotMachine01_d.dds": "WastelandWagers/SlotMachine_d.dds",
+    "DLC06/SetDressing/SlotMachine/SlotMachine01_n.dds": "WastelandWagers/SlotMachine_n.dds",
+    "DLC06/SetDressing/SlotMachine/SlotMachine01_s.dds": "WastelandWagers/SlotMachine_s.dds",
 }
 
 
@@ -87,13 +87,13 @@ def main(data: str) -> None:
             flags = struct.unpack_from("<H", d, at)[0]
             struct.pack_into("<H", d, at, flags & ~0x8)
     n.d = bytes(d)
-    os.makedirs(os.path.join(data, "Meshes", "fo4roulette"), exist_ok=True)
-    os.makedirs(os.path.join(data, "Materials", "fo4roulette"), exist_ok=True)
-    n.write(os.path.join(data, "Meshes", "fo4roulette", "SlotMachine.nif"), strings)
+    os.makedirs(os.path.join(data, "Meshes", "WastelandWagers"), exist_ok=True)
+    os.makedirs(os.path.join(data, "Materials", "WastelandWagers"), exist_ok=True)
+    n.write(os.path.join(data, "Meshes", "WastelandWagers", "SlotMachine.nif"), strings)
     with open(os.path.join(SRC, "SlotMachine01.BGSM"), "rb") as f:
         mat = bgsm(f.read())
-    assert b"fo4roulette/SlotMachine_d.dds" in mat
-    with open(os.path.join(data, "Materials", "fo4roulette", "SlotMachine.BGSM"), "wb") as f:
+    assert b"WastelandWagers/SlotMachine_d.dds" in mat
+    with open(os.path.join(data, "Materials", "WastelandWagers", "SlotMachine.BGSM"), "wb") as f:
         f.write(mat)
     print("reel strip starts (degrees):", strip_starts(n))
 

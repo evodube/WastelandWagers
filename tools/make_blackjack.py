@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The blackjack table's textures, 2048 each (Data/Textures/fo4roulette/):
+"""The blackjack table's textures, 2048 each (Data/Textures/WastelandWagers/):
 
 - bjfelt_d / bjfelt_n: the felt, drawn here: baize with the seven betting circles and the card boxes in front of
   them, the insurance band, BLACKJACK PAYS 3 TO 2 and the dealer's rule, round the arc the players stand on
@@ -129,7 +129,7 @@ def atlas() -> Image.Image:
 
 
 def main() -> int:
-    out = os.path.join(sys.argv[1], "Textures", "fo4roulette")
+    out = os.path.join(sys.argv[1], "Textures", "WastelandWagers")
     os.makedirs(out, exist_ok=True)
     big = felt()
     d = big.resize((N, N), Image.LANCZOS)

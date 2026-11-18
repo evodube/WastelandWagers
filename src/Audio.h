@@ -22,7 +22,7 @@ namespace fr::Audio
 		kCount
 	};
 
-	// Loads Data\Sound\fo4roulette\*.wav (<bank>_<n>.wav, mono 16-bit 44.1 kHz) and starts XAudio2. Safe to call more
+	// Loads Data\Sound\WastelandWagers\*.wav (<bank>_<n>.wav, mono 16-bit 44.1 kHz) and starts XAudio2. Safe to call more
 	// than once.
 	void Init();
 

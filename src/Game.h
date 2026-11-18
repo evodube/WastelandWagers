@@ -8,7 +8,7 @@
 
 namespace fr
 {
-	// the plugin's Papyrus natives (fo4rouletteNative.LeverDown: a slot machine sitter's hand on the lever), bound with F4SE's
+	// the plugin's Papyrus natives (WastelandWagersNative.LeverDown: a slot machine sitter's hand on the lever), bound with F4SE's
 	// Papyrus interface
 	bool RegisterNatives(RE::BSScript::IVirtualMachine* a_vm);
 

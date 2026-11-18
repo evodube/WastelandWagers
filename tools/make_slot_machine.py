@@ -2,7 +2,7 @@
 DLCworkshop03 - Textures.ba2) repainted as a red and gold casino cabinet, its reel strip drawn again with our own
 symbols, and its prize plates saying what pays.
 
-    python3 tools/make_slot_machine.py <out dir (the texture folder: textures/fo4roulette)>
+    python3 tools/make_slot_machine.py <out dir (the texture folder: textures/WastelandWagers)>
 
 Writes SlotMachine_d.dds / _n.dds (BC7) and _s.dds (BC1) at 2048, as the other tables' textures (and a _d.png to look at
 with --png).
@@ -264,4 +264,4 @@ def main(out):
 
 if __name__ == "__main__":
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    main(args[0] if args else os.path.join(HERE, "..", "dist", "Data", "Textures", "fo4roulette"))
+    main(args[0] if args else os.path.join(HERE, "..", "dist", "Data", "Textures", "WastelandWagers"))

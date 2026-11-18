@@ -1,8 +1,8 @@
--- fo4roulette: a playable roulette table for Fallout 4 (F4SE plugin).
+-- WastelandWagers: a playable roulette table for Fallout 4 (F4SE plugin).
 -- Built against Dear-Modding CommonLibF4. Primary target: Fallout 4 OG (1.10.163).
 includes("lib/commonlibf4")
 
-set_project("fo4roulette")
+set_project("WastelandWagers")
 set_version("0.9.5")
 set_license("GPL-3.0")
 set_languages("c++23")
@@ -18,9 +18,9 @@ add_rules("mode.debug", "mode.releasedbg")
 -- REL::ID / REL::Offset initializer slots are [OG, NG, AE].
 add_defines("COMMONLIB_RUNTIMECOUNT=3")
 
-target("fo4roulette", function()
+target("WastelandWagers", function()
     add_rules("commonlibf4.plugin", {
-        name = "fo4roulette",
+        name = "WastelandWagers",
         author = "evodube",
         description = "A playable roulette table.",
         plugin_template = path.join(os.projectdir(), "res/commonlibf4-plugin.cpp.in"),

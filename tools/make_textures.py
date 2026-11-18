@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Writes fo4roulette's textures (Data/Textures/fo4roulette/*.dds) from the table model's maps.
+"""Writes WastelandWagers's textures (Data/Textures/WastelandWagers/*.dds) from the table model's maps.
 
     python tools/make_textures.py <model textures folder> <out Data folder>     (the model's .obj next to it, in ../model)
 
@@ -404,7 +404,7 @@ def flat(size=64, col=(128, 128, 255)) -> Image.Image:
 
 def main() -> int:
     src, data = sys.argv[1], sys.argv[2]
-    out = os.path.join(data, "Textures", "fo4roulette")
+    out = os.path.join(data, "Textures", "WastelandWagers")
     os.makedirs(out, exist_ok=True)
 
     def load(n):

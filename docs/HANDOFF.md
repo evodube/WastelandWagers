@@ -1,4 +1,4 @@
-# fo4roulette: project handoff
+# WastelandWagers: project handoff
 
 **Wasteland Wagers** (formerly Mini Games, before that Real Roulette; repo `evodube/fo4roulette`): a playable roulette table for Fallout 4, F4SE plugin, OG 1.10.163.
 Built on Playable Pool's foundations (`evodube/fo4pool`): its free camera hooks, Present hook, Papyrus quest pattern
@@ -11,7 +11,7 @@ for walking NPCs, HUD fonts, XAudio2 sounds, settings menu and CI.
 - Meshes and textures are in `dist/Data` (the model is CC BY 4.0: credit it). They're made on the user's PC:
   - model: `C:\Users\Dan\Desktop\table\model\RuletMasası.obj` + `textures\` (Sketchfab "Roulette Table 2" by Dudzy, CC BY 4.0)
   - `C:\Users\Dan\Desktop\table\work\build_meshes.py` (= `tools/build_meshes.py`), run in Blender 5.2 with PyNifly:
-    writes `work\Data\Meshes\fo4roulette\*.nif`. Uses vanilla `PoolTable01.nif` (extracted to `work\`) only as a
+    writes `work\Data\Meshes\WastelandWagers\*.nif`. Uses vanilla `PoolTable01.nif` (extracted to `work\`) only as a
     shader template.
   - textures: `python tools/make_textures.py <maps folder> <Data folder>` (cloud session or anywhere with Pillow).
   - the full mod = `builds` branch `Data` + those meshes and textures.

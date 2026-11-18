@@ -3,10 +3,10 @@
     the table: Pieter Ferreira's "Poker Table" (Sketchfab, CC BY 4.0), with the few chips and cards modelled lying
                on its felt taken off (the plugin deals its own). Scaled to the felt 53 units (76 cm) up, then its pedestal stretched so the felt's 63 up (90 cm, for standing); origin on
                the floor under the middle of the felt; X across the table (the chip tray, the dealer's place, at +X),
-               Y along it, Z up. One convex collision body round it. -> Meshes\\fo4roulette\\PokerTable.nif
+               Y along it, Z up. One convex collision body round it. -> Meshes\\WastelandWagers\\PokerTable.nif
     the cards: a playing card each (56 x 89 mm, the art's 5:8, rounded corners), face up with its top towards +Y, origin in the middle of its
                underside; the face from make_cards.py's atlas (cell k for card k), the back underneath.
-               -> Meshes\\fo4roulette\\Cards\\Card_<rank><suit>.nif
+               -> Meshes\\WastelandWagers\\Cards\\Card_<rank><suit>.nif
 
 Run inside Blender after setting the paths below; it reuses build_meshes.py's helpers (same folder).
 """
@@ -35,7 +35,7 @@ SUITS = "cdhs"
 _src = open(os.path.join(HERE, "build_meshes.py"), encoding="utf-8").read()
 _src = _src[:_src.index("\ndef main():")]
 exec(compile(_src, "build_meshes.py", "exec"))
-TEX = "textures\\fo4roulette\\"
+TEX = "textures\\WastelandWagers\\"
 
 
 def import_table():
@@ -160,7 +160,7 @@ def main():
     parent_keep(body, root)
     vs = [v.co for v in body.data.vertices]
     size = [round(max(v[i] for v in vs) - min(v[i] for v in vs), 2) for i in range(3)]
-    export([root, bsx, body, system], os.path.join(DATA, "Meshes", "fo4roulette", "PokerTable.nif"))
+    export([root, bsx, body, system], os.path.join(DATA, "Meshes", "WastelandWagers", "PokerTable.nif"))
 
     # the cards, each its own NIF
     for o in list(bpy.data.objects):
@@ -175,7 +175,7 @@ def main():
             croot['pynBlockName'] = 'NiNode'
             c = card_mesh(name + ":0", idx, m_card)
             c.parent = croot
-            export([croot, c], os.path.join(DATA, "Meshes", "fo4roulette", "Cards", name + ".nif"))
+            export([croot, c], os.path.join(DATA, "Meshes", "WastelandWagers", "Cards", name + ".nif"))
             n += 1
     return {"dropped_faces": dropped, "scale": round(k, 3), "size": size, "hull": hull_n, "cards": n}
 

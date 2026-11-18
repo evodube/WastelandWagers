@@ -1,4 +1,4 @@
-# Wasteland Wagers (fo4roulette)
+# Wasteland Wagers
 
 A playable roulette table for Fallout 4, as an F4SE plugin: build the table in a settlement, sit down at it, put
 chips on the layout from a top-down camera and spin. The rotor turns, the ball runs round the track, rattles over the
@@ -100,29 +100,29 @@ line bet; the default). Every table shows the matching wheel and layout; a table
 
 ### Settings
 
-Every setting is in `Data\F4SE\Plugins\fo4roulette.ini` and on the Wasteland Wagers pages in the F4SE Menu Framework
-menu (Table, Camera, NPCs, HUD & sound, Keys). What you change in the menu goes to `fo4roulette_user.ini` beside it,
+Every setting is in `Data\F4SE\Plugins\WastelandWagers.ini` and on the Wasteland Wagers pages in the F4SE Menu Framework
+menu (Table, Camera, NPCs, HUD & sound, Keys). What you change in the menu goes to `WastelandWagers_user.ini` beside it,
 read first, so updating the mod doesn't put your settings back.
 
-`Documents\My Games\Fallout4\F4SE\fo4roulette.log` records what happened: tables, spins (and how many throws it took
+`Documents\My Games\Fallout4\F4SE\WastelandWagers.log` records what happened: tables, spins (and how many throws it took
 to land on the drawn number), the bettors' walks.
 
 ## What's in it
 
-- `fo4roulette.dll` (F4SE plugin), `fo4roulette.esl` (the table, ball and chips, the workshop recipe, the quest that
-  walks NPCs to the table), `Scripts\fo4rouletteQuest.pex` and `fo4rouletteGroupAlias.pex`.
-- `Meshes\fo4roulette`, `Textures\fo4roulette`: the table (from a Sketchfab model; see Credits), its two rotors and
+- `WastelandWagers.dll` (F4SE plugin), `WastelandWagers.esl` (the table, ball and chips, the workshop recipe, the quest that
+  walks NPCs to the table), `Scripts\WastelandWagersQuest.pex` and `WastelandWagersGroupAlias.pex`.
+- `Meshes\WastelandWagers`, `Textures\WastelandWagers`: the table (from a Sketchfab model; see Credits), its two rotors and
   layouts (European and American, painted by `tools/make_textures.py`), ball and chips.
-- `Sound\fo4roulette`: the ball's roll, hits, small knocks and settling cut from a recording by Maxwell Dufresne (gfxsounds.com), each played as the ball does it; chips and the rotor synthesised by `tools/make_sounds.py`.
-- `F4SE\Plugins\fo4roulette\hud`: the HUD's fonts (Chakra Petch, Share Tech Mono; OFL).
+- `Sound\WastelandWagers`: the ball's roll, hits, small knocks and settling cut from a recording by Maxwell Dufresne (gfxsounds.com), each played as the ball does it; chips and the rotor synthesised by `tools/make_sounds.py`.
+- `F4SE\Plugins\WastelandWagers\hud`: the HUD's fonts (Chakra Petch, Share Tech Mono; OFL).
 
 ## Building
 
 ```
 git submodule update --init --recursive
 xmake f -m releasedbg
-xmake build fo4roulette
-python tools/make_esl.py Data/fo4roulette.esl
+xmake build WastelandWagers
+python tools/make_esl.py Data/WastelandWagers.esl
 ```
 
 GitHub Actions builds the DLL, compiles the scripts, makes the ESL and publishes the `Data` folder to the `builds`
@@ -167,4 +167,4 @@ g++ -std=c++20 -O2 -Isrc tests/layout_test.cpp src/rl/Layout.cpp src/rl/Wheel.cp
 
 ## License
 
-GPL-3.0 (the code). The meshes and textures made from the roulette, poker and blackjack table models and the card model are CC BY 4.0, like the models (their credits ship with the mod in `fo4roulette-Credits.txt`).
+GPL-3.0 (the code). The meshes and textures made from the roulette, poker and blackjack table models and the card model are CC BY 4.0, like the models (their credits ship with the mod in `WastelandWagers-Credits.txt`).

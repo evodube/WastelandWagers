@@ -1,13 +1,13 @@
 #pragma once
 
-// Making NPCs walk to the table and stay there, through fo4roulette.esl's quest (fo4rouletteQuest): two collection
-// aliases, Dealers (unused since 0.2.1) and Bettors, whose package (fo4rouletteWalkToSpot) walks each one to their linked ref (keyword
-// fo4rouletteLinkSpot) and faces it there. Alias packages go by quest priority (100), so this outranks the sandbox
+// Making NPCs walk to the table and stay there, through WastelandWagers.esl's quest (WastelandWagersQuest): two collection
+// aliases, Dealers (unused since 0.2.1) and Bettors, whose package (WastelandWagersWalkToSpot) walks each one to their linked ref (keyword
+// WastelandWagersLinkSpot) and faces it there. Alias packages go by quest priority (100), so this outranks the sandbox
 // packages settlers usually have. The plugin places an XMarkerHeading where each should stand and links them to it.
 // Plus a few Papyrus Actor functions. Main thread only; the calls run on the script thread, later.
 namespace fr::Npc
 {
-	bool Ready();  // fo4roulette.esl's quest and keyword are there
+	bool Ready();  // WastelandWagers.esl's quest and keyword are there
 
 	// into Dealers (a_dealer) or Bettors, linked to a_target: they walk there
 	void Join(RE::Actor* a_actor, RE::TESObjectREFR* a_target, bool a_dealer);

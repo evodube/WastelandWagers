@@ -1,4 +1,4 @@
-"""Builds the blackjack table (Meshes/fo4roulette/BlackjackTable.nif) in Blender (with PyNifly) from ddemon26's
+"""Builds the blackjack table (Meshes/WastelandWagers/BlackjackTable.nif) in Blender (with PyNifly) from ddemon26's
 "Blackjack Table" (Sketchfab, CC BY 4.0; BLACKJACK_GLB).
 
 Scaled whole (one factor, no stretching) so the felt is the poker table's height (59.875 up); the floor at 0, the
@@ -35,7 +35,7 @@ FELT_X, FELT_Y0, FELT_Y1 = 74.0, -50.0, 54.0  # make_blackjack.py's
 _src = open(os.path.join(HERE, "build_meshes.py"), encoding="utf-8").read()
 _src = _src[:_src.index("\ndef main():")]
 exec(compile(_src, "build_meshes.py", "exec"))
-TEX = "textures\\fo4roulette\\"
+TEX = "textures\\WastelandWagers\\"
 # build_poker_table.py's classify and split (the atlas to sort by: the blackjack model's own)
 _src = open(os.path.join(HERE, "build_poker_table.py"), encoding="utf-8").read()
 _src = _src[_src.index("\ndef classify("):_src.index("\ndef main():")]
@@ -112,7 +112,7 @@ def main():
         c.target = system
     vs = [v.co for o in (body, wood, rail, felt) for v in o.data.vertices]
     size = [round(max(v[i] for v in vs) - min(v[i] for v in vs), 2) for i in range(3)]
-    export([root, bsx, body, wood, rail, felt, props, system], os.path.join(DATA, "Meshes", "fo4roulette", "BlackjackTable.nif"))
+    export([root, bsx, body, wood, rail, felt, props, system], os.path.join(DATA, "Meshes", "WastelandWagers", "BlackjackTable.nif"))
     return {"scale": round(k, 3), "size": size, "hull": hull_n, "wood_faces": nw, "rail_faces": nr, "left": len(body.data.polygons)}
 
 

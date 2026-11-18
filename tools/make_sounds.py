@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Writes fo4roulette's sounds (Data/Sound/fo4roulette/<bank>_<n>.wav, mono 16-bit 44.1 kHz).
+"""Writes WastelandWagers's sounds (Data/Sound/WastelandWagers/<bank>_<n>.wav, mono 16-bit 44.1 kHz).
 
     python tools/make_sounds.py <out Data folder>
 
@@ -200,7 +200,7 @@ def real_settle():
 
 
 def main() -> int:
-    out = os.path.join(sys.argv[1], "Sound", "fo4roulette")
+    out = os.path.join(sys.argv[1], "Sound", "WastelandWagers")
     os.makedirs(out, exist_ok=True)
     for old in os.listdir(out):
         if old.endswith(".wav"):

@@ -2,7 +2,7 @@
 
 namespace fr
 {
-	// Data\F4SE\Plugins\fo4roulette.ini. Read at startup and each time you sit down at a table, so edits apply
+	// Data\F4SE\Plugins\WastelandWagers.ini. Read at startup and each time you sit down at a table, so edits apply
 	// without restarting the game. Every key is also on the mod's pages in F4SE Menu Framework's menu.
 	struct Settings
 	{
@@ -46,7 +46,7 @@ namespace fr
 		int   maxBettors{ 4 };
 		bool  bettorIdles{ true };         // they cheer, clap, shake their heads, look the layout over
 		bool  logChips{ false };           // log the poker table's chips: moves, and anything else moving, hiding or fading them ([chip])
-		bool  logTurning{ false };         // log what settlers held at a table are doing when they turn (fo4roulette.log, [turn])
+		bool  logTurning{ false };         // log what settlers held at a table are doing when they turn (WastelandWagers.log, [turn])
 		float bettorEvery{ 12.0f };        // seconds between looking for someone to come over
 		float bettorRange{ 1500.0f };      // ...within this far of the table
 		int   bettorMinRounds{ 2 };
@@ -86,6 +86,6 @@ namespace fr
 		bool  turnChime{ true };   // a chime when it's your turn at the poker or blackjack table (or bets open)
 
 		// [Forms]
-		std::string plugin{ "fo4roulette.esl" };
+		std::string plugin{ "WastelandWagers.esl" };
 	};
 }

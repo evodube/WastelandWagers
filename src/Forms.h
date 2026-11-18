@@ -3,27 +3,27 @@
 #include "Settings.h"
 #include "Util.h"
 
-// fo4roulette.esl's records (tools/make_esl.py) and the vanilla ones the plugin uses.
+// WastelandWagers.esl's records (tools/make_esl.py) and the vanilla ones the plugin uses.
 namespace fr::Forms
 {
-	inline constexpr std::uint32_t kTableID = 0x800;     // ACTI fo4rouletteTable: Meshes\fo4roulette\RouletteTable.nif
-	inline constexpr std::uint32_t kBallID = 0x801;      // STAT fo4rouletteBall
-	inline constexpr std::uint32_t kChipID = 0x802;      // STAT fo4rouletteChip1, 5, 25, 100 at 0x802-0x805
-	inline constexpr std::uint32_t kLinkID = 0x806;      // KYWD fo4rouletteLinkSpot
-	inline constexpr std::uint32_t kSeatLinkID = 0x848;  // KYWD fo4rouletteLinkSeat (a poker player's chair: their Sit package's)
-	inline constexpr std::uint32_t kPackageID = 0x807;   // PACK fo4rouletteWalkToSpot
-	inline constexpr std::uint32_t kQuestID = 0x808;     // QUST fo4rouletteQuest
-	inline constexpr std::uint32_t kKitID = 0x80A;       // ALCH fo4rouletteTableKit
-	inline constexpr std::uint32_t kCardID = 0x810;      // STAT fo4rouletteCard_2c .. _As: 0x810 + suit * 13 + rank
-	inline constexpr std::uint32_t kPokerTableID = 0x844;  // ACTI fo4roulettePokerTable: Meshes\fo4roulette\PokerTable.nif
-	inline constexpr std::uint32_t kPokerKitID = 0x846;  // ALCH fo4roulettePokerKit
-	inline constexpr std::uint32_t kBlackjackTableID = 0x84A;  // ACTI fo4rouletteBlackjackTable: Meshes\fo4roulette\BlackjackTable.nif
-	inline constexpr std::uint32_t kBlackjackKitID = 0x84C;    // ALCH fo4rouletteBlackjackKit
-	inline constexpr std::uint32_t kWorkshopMenuID = 0x850;    // KYWD fo4rouletteWorkshopMenuMiniGames: the Wasteland Wagers workshop category
-	inline constexpr std::uint32_t kSlotMachineID = 0x84E;     // FURN fo4rouletteSlotMachine: Meshes\fo4roulette\SlotMachine.nif (the
+	inline constexpr std::uint32_t kTableID = 0x800;     // ACTI WastelandWagersTable: Meshes\WastelandWagers\RouletteTable.nif
+	inline constexpr std::uint32_t kBallID = 0x801;      // STAT WastelandWagersBall
+	inline constexpr std::uint32_t kChipID = 0x802;      // STAT WastelandWagersChip1, 5, 25, 100 at 0x802-0x805
+	inline constexpr std::uint32_t kLinkID = 0x806;      // KYWD WastelandWagersLinkSpot
+	inline constexpr std::uint32_t kSeatLinkID = 0x848;  // KYWD WastelandWagersLinkSeat (a poker player's chair: their Sit package's)
+	inline constexpr std::uint32_t kPackageID = 0x807;   // PACK WastelandWagersWalkToSpot
+	inline constexpr std::uint32_t kQuestID = 0x808;     // QUST WastelandWagersQuest
+	inline constexpr std::uint32_t kKitID = 0x80A;       // ALCH WastelandWagersTableKit
+	inline constexpr std::uint32_t kCardID = 0x810;      // STAT WastelandWagersCard_2c .. _As: 0x810 + suit * 13 + rank
+	inline constexpr std::uint32_t kPokerTableID = 0x844;  // ACTI WastelandWagersPokerTable: Meshes\WastelandWagers\PokerTable.nif
+	inline constexpr std::uint32_t kPokerKitID = 0x846;  // ALCH WastelandWagersPokerKit
+	inline constexpr std::uint32_t kBlackjackTableID = 0x84A;  // ACTI WastelandWagersBlackjackTable: Meshes\WastelandWagers\BlackjackTable.nif
+	inline constexpr std::uint32_t kBlackjackKitID = 0x84C;    // ALCH WastelandWagersBlackjackKit
+	inline constexpr std::uint32_t kWorkshopMenuID = 0x850;    // KYWD WastelandWagersWorkshopMenu: the Wasteland Wagers workshop category
+	inline constexpr std::uint32_t kSlotMachineID = 0x84E;     // FURN WastelandWagersSlotMachine: Meshes\WastelandWagers\SlotMachine.nif (the
 	                                                           // Vault-Tec Workshop's machine, re-skinned; its sitting animations)
-	inline constexpr std::uint32_t kSlotPullID = 0x852;        // IDLE fo4rouletteSlotPullIdle: sat at the machine, a pull (the DLC's)
-	inline constexpr std::uint32_t kSlotHoldID = 0x853;        // IDLE fo4rouletteSlotHoldIdle: sat at it, still (its sitting loop, looping)
+	inline constexpr std::uint32_t kSlotPullID = 0x852;        // IDLE WastelandWagersSlotPullIdle: sat at the machine, a pull (the DLC's)
+	inline constexpr std::uint32_t kSlotHoldID = 0x853;        // IDLE WastelandWagersSlotHoldIdle: sat at it, still (its sitting loop, looping)
 
 	inline constexpr RE::TESFormID kXMarkerHeading = 0x00000034;
 	inline constexpr RE::TESFormID kCaps = 0x0000000F;
