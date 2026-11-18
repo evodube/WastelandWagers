@@ -410,8 +410,8 @@ namespace fr
 		bool         WalkTo(RE::Actor* a_actor, Walker& a_walk, const Frame& a_frame, const RE::NiPoint3& a_spot, float a_heading, float a_dt,
 					bool a_dealer, float a_timeout);  // true: there
 		void         FaceTowards(RE::Actor* a_actor, float a_heading);
-		// a standing dealer turned (smoothly: a quarter turn in half a second, no snapping) to face a_x, a_y (world)
-		void         TurnToFace(RE::Actor* a_actor, float a_x, float a_y, float a_dt);
+		// a standing dealer turned to face a_x, a_y (world), if they're more than 12 degrees off it (SetAngle: once)
+		void         TurnToFace(RE::Actor* a_actor, float a_x, float a_y);
 		// the dealers (Npcs.cpp): found, walked to their place (table space, facing the way given) and stood there
 		bool         IsCroupier(RE::TESFormID a_id) const;  // dealing at one of the tables (blackjack's too)
 		void         Voice(RE::Actor* a_actor, int a_how);
@@ -552,6 +552,7 @@ namespace fr
 			bool                                                   peeking{ false };  // you're looking at your cards: they're turned up
 			PkSession                                              session;
 			Croupier                                               croupier;  // the dealer, by the chip tray
+			float                                                  dealerWait{ 0.0f };  // seconds a hand's waited for them
 			int                                                    pointed{ -1 };  // (who the dealer pointed at this hand: once a hand)
 		};
 		PokerState        _pk;
@@ -699,6 +700,7 @@ namespace fr
 			std::string                     dealerName;
 			Walker                          dealerWalk;
 			bool                            dealerHeld{ false };
+			float                           dealerFaceIn{ 0.0f };  // seconds to the next turn to the table's middle
 			float                           dealerLook{ 0.0f };
 			int                             lifted{ 0 };       // your bets back in your pocket over a save
 			std::array<RE::ObjectRefHandle, kBjSeats> chairs;  // (the chairs option) one at each place

@@ -185,6 +185,16 @@ Bool Function LeavePool(Int aiActor)
 	return true
 EndFunction
 
+; a dealer turned to face a way (degrees): set, once (SetHeading in the plugin didn't stick on someone held still)
+Bool Function FaceAngle(Int aiActor, Float afAngle)
+	Actor akActor = Game.GetForm(aiActor) as Actor
+	if akActor == None
+		return false
+	endif
+	akActor.SetAngle(0.0, 0.0, afAngle)
+	return true
+EndFunction
+
 ; ...out of a looping idle first (IdleStop: you held still at a slot machine, its pull wanted)
 Bool Function PlayIdleAfterStop(Int aiActor, Int aiIdle)
 	Actor akActor = Game.GetForm(aiActor) as Actor

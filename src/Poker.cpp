@@ -1535,7 +1535,13 @@ namespace fr
 				for (const auto& st : _pk.seats) {
 					ready += st.used && (st.you ? !st.away : (st.step == Seat::Step::kPlaying && st.atSpot > kSettleIn)) && st.stack >= s.pkBigBlind;
 				}
+				// (a dealer on their way: the hand waits for them, a while: 30 s, then it's dealt anyway)
+				if (ready >= 2 && _pk.croupier.id != 0 && !_pk.croupier.held && _pk.dealerWait < 30.0f) {
+					_pk.dealerWait += 1.0f;
+					return;
+				}
 				if (ready >= 2) {
+					_pk.dealerWait = 0.0f;
 					PkStartHand();
 				}
 				return;

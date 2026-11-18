@@ -42,6 +42,9 @@ namespace fr::Npc
 	// not more than every couple of seconds for anyone
 	void KeepFromPool(RE::Actor* a_actor);
 
+	// turned to face a heading (radians, the game's: 0 north, clockwise), set once (SetAngle)
+	void FaceAngle(RE::Actor* a_actor, float a_heading);
+
 	void PlayIdle(RE::Actor* a_actor, RE::TESFormID a_idle);
 	// ...out of a looping idle first (IdleStop, then a_idle)
 	void PlayIdleAfterStop(RE::Actor* a_actor, RE::TESFormID a_idle);

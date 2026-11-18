@@ -209,18 +209,16 @@ namespace fr
 		(void)a_heading;
 	}
 
-	void Game::TurnToFace(RE::Actor* a_actor, float a_x, float a_y, float a_dt)
+	void Game::TurnToFace(RE::Actor* a_actor, float a_x, float a_y)
 	{
 		if (!a_actor) {
 			return;
 		}
 		const float want = std::atan2(a_x - a_actor->data.location.x, a_y - a_actor->data.location.y);
-		const float diff = util::AngleDiff(want, a_actor->data.angle.z);
-		if (std::abs(diff) < 0.04f) {
-			return;  // (within 2 degrees: left be)
+		if (std::abs(util::AngleDiff(want, a_actor->data.angle.z)) < 0.21f) {
+			return;  // (within 12 degrees: left be)
 		}
-		const float step = std::min(std::abs(diff), 3.1f * std::clamp(a_dt, 0.0f, 0.1f));
-		a_actor->SetHeading(a_actor->data.angle.z + (diff < 0.0f ? -step : step));
+		Npc::FaceAngle(a_actor, want);
 	}
 
 	bool Game::WalkTo(RE::Actor* a_actor, Walker& a_walk, const Frame& a_frame, const RE::NiPoint3& a_spot, float a_heading, float a_dt,
@@ -273,7 +271,9 @@ namespace fr
 		// (a dealer: right up to their spot, nothing put them on it after. Close enough, or no closer for a while)
 		// (stuck a few seconds anywhere near the table, chairs in the way say: there too, and put on their spot by the
 		// caller, once)
-		if (a_dealer ? (d < 15.0f || (d < 250.0f && a_walk.stall > 4.0f)) : (d < kAtSpot && a_walk.stall > 1.5f)) {
+		// (the stall only once they've been walking a while: a walk takes a few seconds to start, and a dealer 232 away
+		// was put on their spot before they'd taken a step)
+		if (a_dealer ? (d < 15.0f || (d < 250.0f && a_walk.stall > 4.0f && a_walk.walked > 8.0f)) : (d < kAtSpot && a_walk.stall > 1.5f)) {
 			return true;
 		}
 		// sat down somewhere on the way (their sandbox's doing): up
@@ -384,17 +384,21 @@ namespace fr
 		if (a_c.held) {
 			// there: they just stand where their walk ended. (Put back on the exact spot every few seconds, as they
 			// were, they jumped back and forth: the table's edge pushed them off it again.) Well off it (pushed away),
-			// they walk back. Turned to the table's middle (poker), or the way given (roulette: the wheel)
-			if (a_faceMiddle) {
-				TurnToFace(actor, a_frame.origin.x, a_frame.origin.y, a_dt);
-			} else {
-				const auto ahead = ToWorld(a_frame, a_x + a_faceX * 100.0, a_y + a_faceY * 100.0, 0.0);
-				TurnToFace(actor, ahead.x, ahead.y, a_dt);
-			}
+			// they walk back. Now and then turned to the table's middle (poker), or the way given (roulette: the wheel)
 			a_c.snapIn -= a_dt;
 			if (a_c.snapIn <= 0.0f) {
 				a_c.snapIn = 3.0f;
-				if (off > 60.0f) {
+				if (a_faceMiddle) {
+					TurnToFace(actor, a_frame.origin.x, a_frame.origin.y);
+				} else {
+					const auto ahead = ToWorld(a_frame, a_x + a_faceX * 100.0, a_y + a_faceY * 100.0, 0.0);
+					TurnToFace(actor, ahead.x, ahead.y);
+				}
+				if (auto marker = a_c.walk.marker.get(); marker && off > 300.0f) {
+					// far off (gone home over a load, say): out of sight, put back on their spot
+					log::info("{}: dealer {} {:.0f} off their spot: put back on it", a_table, a_c.name, off);
+					Npc::MoveTo(actor, marker.get());
+				} else if (off > 60.0f) {
 					log::info("{}: dealer {} {:.0f} off their spot: walking back", a_table, a_c.name, off);
 					Npc::SetRestrained(actor, false);
 					a_c.held = false;
@@ -414,7 +418,7 @@ namespace fr
 			}
 			log::info("{}: dealer {} at their spot ({:.0f} off it)", a_table, a_c.name, off);
 			a_c.held = Npc::SetRestrained(actor, true);
-			a_c.snapIn = 3.0f;
+			a_c.snapIn = 0.5f;  // (turned to the table straight after)
 		}
 	}
 

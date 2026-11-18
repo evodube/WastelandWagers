@@ -331,6 +331,17 @@ namespace fr::Npc
 		return {};
 	}
 
+	void FaceAngle(RE::Actor* a_actor, float a_heading)
+	{
+		if (!a_actor || !Ready()) {
+			return;
+		}
+		const float degrees = a_heading * 57.29578f;
+		const std::string what = std::format("{} {:.0f}", What(a_actor, "FaceAngle"), degrees);
+		const RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> logged{ new LogResult(what) };
+		CallQuest("FaceAngle", what, logged, FormArg(a_actor), degrees);
+	}
+
 	void KeepFromPool(RE::Actor* a_actor)
 	{
 		if (!a_actor || !AtPool(a_actor) || !Ready()) {

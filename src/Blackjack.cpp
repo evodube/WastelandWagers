@@ -681,7 +681,25 @@ namespace fr
 				_bj.dealerId = 0;
 				_bj.dealerHeld = false;
 			} else if (_bj.dealerHeld) {
-				TurnToFace(actor, a_frame.origin.x, a_frame.origin.y, a_dt);  // (facing the table's middle)
+				// now and then turned to the table's middle
+				_bj.dealerFaceIn -= a_dt;
+				if (_bj.dealerFaceIn <= 0.0f) {
+					_bj.dealerFaceIn = 3.0f;
+					TurnToFace(actor, a_frame.origin.x, a_frame.origin.y);
+					// well off their spot: far (gone home over a load, say), put back on it; pushed away, walking back
+					const auto  spot = ToWorld(a_frame, 0.0, kDealerStand, 0.0);
+					const float off = Distance2D(actor->data.location, spot);
+					if (auto marker = _bj.dealerWalk.marker.get(); marker && off > 300.0f) {
+						log::info("blackjack: dealer {:.0f} off their spot: put back on it", off);
+						Npc::MoveTo(actor, marker.get());
+					} else if (off > 60.0f) {
+						log::info("blackjack: dealer {:.0f} off their spot: walking back", off);
+						Npc::SetRestrained(actor, false);
+						_bj.dealerHeld = false;
+						_bj.dealerWalk.walked = _bj.dealerWalk.stall = 0.0f;
+						_bj.dealerWalk.best = 1e9f;
+					}
+				}
 			} else {
 				const float heading = HeadingOf(a_frame, 0.0, -1.0);
 				const auto  spot = ToWorld(a_frame, 0.0, kDealerStand, 0.0);
@@ -693,6 +711,7 @@ namespace fr
 						Npc::MoveTo(actor, marker.get());
 					}
 					_bj.dealerHeld = Npc::SetRestrained(actor, true);
+					_bj.dealerFaceIn = 0.5f;  // (turned to the table straight after)
 				}
 			}
 		}
