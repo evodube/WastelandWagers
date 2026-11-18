@@ -83,7 +83,9 @@ jobs:
 
       - name: Build
         run: |
-          # (the compile-time PDB the cache brought back: a stale one made cl.exe fail at once, with no words)
+          # (our own objects, precompiled header and compile-time PDB start fresh: the PDB and the header's .pch have to
+          # match, and a mismatch from the cache made cl.exe fail at once, with no words. CommonLibF4's stay cached)
+          Remove-Item -Recurse -Force -ErrorAction SilentlyContinue build/.objs/WastelandWagers, build/.gens/WastelandWagers
           Remove-Item -ErrorAction SilentlyContinue build/out/F4SE/Plugins/compile.WastelandWagers.pdb
           xmake build -y WastelandWagers
           # (now and then the first compile fails at once with no words, and the same build again goes through: once
