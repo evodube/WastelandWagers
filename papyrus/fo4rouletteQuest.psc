@@ -160,16 +160,29 @@ Bool Function WatchLever(Int aiActor, Bool abOn)
 	if akActor == None
 		return false
 	endif
+	; (you: the furniture's own idle picking a flavour too, so the plugin holds you still before it can pull for you)
+	Bool abYou = akActor == Game.GetPlayer()
 	if !abOn
 		UnregisterForAnimationEvent(akActor, "furnitureIdleFlavor1Slave")
+		if abYou
+			UnregisterForAnimationEvent(akActor, "IdleFlavor")
+		endif
 		return true
+	endif
+	if abYou
+		RegisterForAnimationEvent(akActor, "IdleFlavor")
 	endif
 	return RegisterForAnimationEvent(akActor, "furnitureIdleFlavor1Slave")
 EndFunction
 
 Event OnAnimationEvent(ObjectReference akSource, String asEventName)
-	if akSource != None && asEventName == "furnitureIdleFlavor1Slave"
+	if akSource == None
+		return
+	endif
+	if asEventName == "furnitureIdleFlavor1Slave"
 		fo4rouletteNative.LeverDown(akSource.GetFormID())
+	elseif asEventName == "IdleFlavor"
+		fo4rouletteNative.FlavorStarts(akSource.GetFormID())
 	endif
 EndEvent
 

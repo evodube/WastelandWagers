@@ -48,6 +48,16 @@ namespace fr
 		std::mutex                                               g_leverLock;
 		std::vector<std::pair<RE::TESFormID, Clock::time_point>> g_levers;
 
+		// your sitting idle about to pick a flavour (FlavorStarts), for the tick
+		std::atomic<bool> g_yourFlavor{ false };
+
+		void FlavorStarts(std::monostate, std::int32_t a_actor)
+		{
+			if (static_cast<RE::TESFormID>(a_actor) == 0x14) {
+				g_yourFlavor = true;
+			}
+		}
+
 		void LeverDown(std::monostate, std::int32_t a_actor)
 		{
 			std::scoped_lock lock(g_leverLock);
@@ -244,7 +254,8 @@ namespace fr
 			return false;
 		}
 		a_vm->BindNativeMethod("fo4rouletteNative", "LeverDown", LeverDown, true);
-		log::info("papyrus: fo4rouletteNative.LeverDown bound");
+		a_vm->BindNativeMethod("fo4rouletteNative", "FlavorStarts", FlavorStarts, true);
+		log::info("papyrus: fo4rouletteNative.LeverDown, FlavorStarts bound");
 		return true;
 	}
 
@@ -744,6 +755,15 @@ namespace fr
 		}
 		for (const auto& [who, at] : levers) {
 			SlLever(who, at);
+		}
+		// your sitting idle picking a flavour (the end of the sit-down, or its loop now and then): held still instead,
+		// before its pull can get to the lever (1.17 s in)
+		if (g_yourFlavor.exchange(false) && _slSeated && _slSits && _slYou >= 0 && _slYou < static_cast<int>(_sl.size()) &&
+			_sl[_slYou].pend < 0.0f) {
+			if (auto* player = RE::PlayerCharacter::GetSingleton(); player && Forms::SlotHold()) {
+				log::info("slots: your sitting idle picks a flavour: held still instead");
+				Npc::PlayIdle(player, Forms::SlotHold()->GetFormID());
+			}
 		}
 		const auto now = Clock::now();
 		for (int i = 0; i < static_cast<int>(_sl.size()); ++i) {
