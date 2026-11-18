@@ -590,12 +590,6 @@ namespace fr
 				m.dry = a_at;  // (the lever goes with your hand, nothing more)
 				m.dryOn = true;
 			}
-			// held still again once the pull's animation is done (3 s long, the lever 1.17 s in: done 1.83 s after the
-			// lever). Asked for while it's still ending, the hold didn't take and the furniture's own loop came back
-			// with its pulls: so 0.8 s after it's done, and again 1.6 s after that (well before the loop's first
-			// flavour, 5.3 s into it)
-			_slHoldIn = 2.6f;
-			_slHoldAgainIn = 4.2f;
 			return;
 		}
 		// a settler's hand put a machine's lever down
@@ -756,14 +750,10 @@ namespace fr
 		for (const auto& [who, at] : levers) {
 			SlLever(who, at);
 		}
-		// your sitting idle picking a flavour (the end of the sit-down, or its loop now and then): held still instead,
-		// before its pull can get to the lever (1.17 s in)
-		if (g_yourFlavor.exchange(false) && _slSeated && _slSits && _slYou >= 0 && _slYou < static_cast<int>(_sl.size()) &&
-			_sl[_slYou].pend < 0.0f) {
-			if (auto* player = RE::PlayerCharacter::GetSingleton(); player && Forms::SlotHold()) {
-				log::info("slots: your sitting idle picks a flavour: held still instead");
-				Npc::PlayIdle(player, Forms::SlotHold()->GetFormID());
-			}
+		// your sitting idle picking a flavour (shouldn't happen: the slot machine's sit-down and sitting loop are ours,
+		// without the IdleFlavor that picks them: tools/make_slot_hold.py), logged
+		if (g_yourFlavor.exchange(false) && _slSeated && _slSits) {
+			log::info("slots: your sitting idle picks a flavour (IdleFlavor): the DLC's own sitting animations in use?");
 		}
 		const auto now = Clock::now();
 		for (int i = 0; i < static_cast<int>(_sl.size()); ++i) {
@@ -831,11 +821,6 @@ namespace fr
 		if (sitting) {
 			if (!_slSat) {
 				_slLookIn = 0.4f;  // (once the sit's settled)
-				// held still: not straight away (the sit-down still settling into the loop, it didn't take and the
-				// furniture's own loop pulled the lever a few seconds on), 1 s in and again at 2.6 s, well before the
-				// loop's first flavour (5.3 s into it)
-				_slHoldIn = 1.0f;
-				_slHoldAgainIn = 2.6f;
 			}
 			// held still: the sitting loop on its own, so your hand only goes to the lever when you pull (again after
 			// each pull, the pull's animation done: the furniture's own loop back for a moment)
@@ -888,8 +873,6 @@ namespace fr
 		if ((m.pendSent > 0 && m.pend > 3.4f) || (m.pendSent == 0 && m.pend > 6.0f)) {
 			log::info("slots: your hand never got to the lever: pulled anyway");
 			m.pend = -1.0f;
-			_slHoldIn = 0.5f;
-			_slHoldAgainIn = 2.0f;
 			SlPull(_slYou, m.pendBet, true, Clock::now());
 		}
 	}
