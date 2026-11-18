@@ -71,6 +71,13 @@ namespace fr
 
 	void Settings::Load()
 	{
+		// the mod's old name (fo4roulette): your settings from it carried over once, to the new name's file
+		if (::GetFileAttributesW(kUserIniPath) == INVALID_FILE_ATTRIBUTES &&
+			::GetFileAttributesW(L"Data\\F4SE\\Plugins\\fo4roulette_user.ini") != INVALID_FILE_ATTRIBUTES) {
+			if (::CopyFileW(L"Data\\F4SE\\Plugins\\fo4roulette_user.ini", kUserIniPath, TRUE)) {
+				log::info("settings: your fo4roulette_user.ini carried over to WastelandWagers_user.ini");
+			}
+		}
 		auto key = [](const wchar_t* a_name, int a_default) { return static_cast<int>(ReadInt(L"Keys", a_name, a_default)); };
 		keyLeave = key(L"iLeave", keyLeave);
 		keyView = key(L"iView", keyView);
