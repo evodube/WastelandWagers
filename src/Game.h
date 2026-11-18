@@ -258,6 +258,15 @@ namespace fr
 			float               stall{ 0.0f };   // seconds without getting closer
 			float               getUp{ 0.0f };   // seconds before trying to get them out of a chair again
 			bool                heldWarned{ false };  // (logged once: held in place by something else, no walk resent)
+			// at their spot (KeepHeld): let go until their own package has turned them to the table, then held
+			float               settle{ 0.0f };     // seconds let go, turning
+			float               still{ 0.0f };      // seconds facing the table and asking for no turn
+			float               wait{ 0.0f };       // seconds before acting again (SetRestrained goes through papyrus)
+			bool                asking{ false };    // (held) their graph asking for a turn last tick
+			int                 requests{ 0 };      // (held) turns asked for since firstAsk
+			float               sinceFirst{ 0.0f };
+			int                 resettles{ 0 };     // let go again to turn, this minute
+			float               resettleWindow{ 0.0f };
 			std::chrono::steady_clock::time_point last{};  // (the walk's timers in real seconds: the tick's are capped)
 		};
 
@@ -417,8 +426,9 @@ namespace fr
 		bool         WalkTo(RE::Actor* a_actor, Walker& a_walk, const Frame& a_frame, const RE::NiPoint3& a_spot, float a_heading, float a_dt,
 					bool a_dealer, float a_timeout);  // true: there
 		void         FaceTowards(RE::Actor* a_actor, float a_heading, float& a_faceIn, float a_dt);
-		void         HoldFacing(Walker& a_walk, RE::Actor* a_actor);  // a held NPC's walk marker turned the way they face
-		void         UnstickTurn(RE::Actor* a_actor);                  // a held NPC turning on the spot and back over and over: out of it
+		// someone standing at their spot: held still once their own package has turned them to a_heading (never turned
+		// by SetAngle while held: that's what started the turn-on-the-spot loop)
+		void         KeepHeld(RE::Actor* a_actor, Walker& a_walk, float a_heading, float a_dt, const std::string& a_name);
 		// a standing dealer turned to face a_x, a_y (world), if they're more than 12 degrees off it (SetAngle: once)
 		void         TurnToFace(RE::Actor* a_actor, float a_x, float a_y);
 		// the dealers (Npcs.cpp): found, walked to their place (table space, facing the way given) and stood there

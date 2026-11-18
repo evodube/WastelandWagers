@@ -220,73 +220,75 @@ namespace fr
 		}
 	}
 
-	void Game::HoldFacing(Walker& a_walk, RE::Actor* a_actor)
+	void Game::KeepHeld(RE::Actor* a_actor, Walker& a_walk, float a_heading, float a_dt, const std::string& a_name)
 	{
-		// Held where they stand, their walk package stays on, linked to their spot's marker. The marker kept the
-		// heading it was made with while they stood however they'd ended up (and were turned to the table after),
-		// and the package went on asking for a turn to it they couldn't make: the idle-turn log showed the same turn
-		// asked for over and over (Sally 73, Maisie and Sophie 67 degrees), feet stepping round and snapping back
-		// every two or three seconds. The marker turned to wherever they face now: nothing left to turn to.
-		// (Only its heading: its place is still their spot, where they're put back to.)
+		// The turn-on-the-spot loop (Sally, Sophie, Maisie, Niah, Ivy, Cecylia; roulette, poker, dealers): it started
+		// when someone held still (SetRestrained) was turned with SetAngle (FaceAngle: put facing the table on
+		// arriving, and every few seconds after when they'd drifted). Their body turned, their AI's facing didn't, and
+		// held they could never turn back to it: their graph asked for the same turn every two or three seconds
+		// (fo4idlefix: Cecylia held at :52.99, FaceAngle -49 at :53.49, asking from :53.7; Sophie the same at :39),
+		// feet stepping round and snapping back. Not the tables: anyone held and SetAngle'd.
+		// So nobody held is turned any more. At their spot they're let go, their walk marker faces the table and their
+		// own package turns them to it (one ordinary turn), and once they face it and ask for nothing they're held.
+		// Held, if they still ask for turns (twice in 8 s) or drift well off the table, they're let go to settle again
+		// (at most three times a minute).
+		static const RE::BSFixedString kTurnDelta{ "TurnDelta" };
 		if (!a_actor) {
 			return;
 		}
-		UnstickTurn(a_actor);
-		auto marker = a_walk.marker.get();
-		if (!marker) {
-			return;
+		if (auto marker = a_walk.marker.get(); marker && std::abs(util::AngleDiff(marker->data.angle.z, a_heading)) > 0.01f) {
+			marker->data.angle.z = a_heading;  // (the way their package turns them)
 		}
-		const float facing = a_actor->data.angle.z;
-		if (std::abs(util::AngleDiff(marker->data.angle.z, facing)) > 0.01f) {
-			marker->data.angle.z = facing;
+		a_walk.wait -= a_dt;
+		a_walk.resettleWindow -= a_dt;
+		if (a_walk.resettleWindow <= 0.0f) {
+			a_walk.resettleWindow = 60.0f;
+			a_walk.resettles = 0;
 		}
-	}
-
-	void Game::UnstickTurn(RE::Actor* a_actor)
-	{
-		// A held NPC caught in the turn-on-the-spot loop: their graph asks for the same turn every two or three
-		// seconds (fo4idlefix's log: Sally 73 degrees, Maisie and Sophie 67, from the moment a save loads, before
-		// anything here touched them), they can't make it, the feet step round and snap back, over and over. A
-		// full-body idle breaks it: Maisie's stopped for good after her dealer's reach over the table
-		// (DialogueGiveItem). So: two turn requests within 8 s while held, and out of whatever's looping (IdleStop)
-		// into that reach, once; again at most every 20 s if it comes back
-		static const RE::BSFixedString kTurnDelta{ "TurnDelta" };
-		constexpr RE::TESFormID        kGiveItem = 0x000CEA8D;
-		struct Watch
-		{
-			bool                                  asking{ false };
-			int                                   requests{ 0 };
-			std::chrono::steady_clock::time_point first{};
-			std::chrono::steady_clock::time_point kicked{};
-			int                                   kicks{ 0 };
-		};
-		static std::unordered_map<RE::TESFormID, Watch> watches;
-
 		float turn = 0.0f;
-		if (!a_actor || !a_actor->GetGraphVariableImplFloat(kTurnDelta, turn)) {
+		a_actor->GetGraphVariableImplFloat(kTurnDelta, turn);
+		const float off = std::abs(util::AngleDiff(a_heading, a_actor->data.angle.z));
+		const bool  held = static_cast<const RE::ActorState*>(a_actor)->lifeState == static_cast<std::uint32_t>(RE::ACTOR_LIFE_STATE::kRestrained);
+		if (a_walk.wait > 0.0f) {
 			return;
 		}
-		auto&      w = watches[a_actor->GetFormID()];
-		const auto now = std::chrono::steady_clock::now();
-		const bool asking = std::abs(turn) > 1.0f;
-		if (asking && !w.asking) {
-			if (w.requests == 0 || now - w.first > std::chrono::seconds(8)) {
-				w.requests = 0;
-				w.first = now;
+
+		if (!held) {
+			a_walk.settle += a_dt;
+			a_walk.still = off < 0.26f && std::abs(turn) < 1.0f ? a_walk.still + a_dt : 0.0f;
+			if (a_walk.still >= 0.4f || a_walk.settle > 6.0f) {
+				log::info("{}: {} the table ({:.0f} off it after {:.1f} s): held", a_name, a_walk.still >= 0.4f ? "turned to" : "not turning to",
+					off * 57.2958f, a_walk.settle);
+				Npc::SetRestrained(a_actor, true);
+				a_walk.settle = a_walk.still = 0.0f;
+				a_walk.requests = 0;
+				a_walk.asking = false;
+				a_walk.wait = 0.5f;
 			}
-			++w.requests;
-		}
-		w.asking = asking;
-		if (w.requests < 2 || (w.kicks > 0 && now - w.kicked < std::chrono::seconds(20))) {
 			return;
 		}
-		w.requests = 0;
-		w.kicked = now;
-		++w.kicks;
-		log::info("{} ({:08X}): turning on the spot and back (asked {:.0f}, held, can't): out of it with a reach ({}{})",
-			a_actor->GetDisplayFullName() ? a_actor->GetDisplayFullName() : "?", a_actor->GetFormID(), turn, w.kicks,
-			w.kicks == 1 ? "st time" : " times");
-		Npc::PlayIdleAfterStop(a_actor, kGiveItem);
+
+		const bool asking = std::abs(turn) > 1.0f;
+		a_walk.sinceFirst += a_dt;
+		if (asking && !a_walk.asking) {
+			if (a_walk.requests == 0 || a_walk.sinceFirst > 8.0f) {
+				a_walk.requests = 0;
+				a_walk.sinceFirst = 0.0f;
+			}
+			++a_walk.requests;
+		}
+		a_walk.asking = asking;
+		const bool looping = a_walk.requests >= 2;
+		const bool drifted = off > 0.35f;
+		if ((looping || drifted) && a_walk.resettles < 3) {
+			++a_walk.resettles;
+			log::info("{}: {} ({:.0f} off the table, asking {:.0f}): let go to turn to it ({} this minute)", a_name,
+				looping ? "turning on the spot and back" : "turned away", off * 57.2958f, turn, a_walk.resettles);
+			Npc::SetRestrained(a_actor, false);
+			a_walk.settle = a_walk.still = 0.0f;
+			a_walk.requests = 0;
+			a_walk.wait = 0.5f;
+		}
 	}
 
 	void Game::TurnToFace(RE::Actor* a_actor, float a_x, float a_y)
@@ -488,7 +490,15 @@ namespace fr
 		const auto  spot = ToWorld(a_frame, a_x, a_y, 0.0);
 		const float off = std::hypot(actor->data.location.x - spot.x, actor->data.location.y - spot.y);
 		if (a_c.held) {
-			HoldFacing(a_c.walk, actor);
+			{
+				// facing: the table's middle (poker) or the way given (roulette: the wheel), turned to by their own
+				// package (KeepHeld), never SetAngle'd
+				float face = heading;
+				if (a_faceMiddle) {
+					face = std::atan2(a_frame.origin.x - actor->data.location.x, a_frame.origin.y - actor->data.location.y);
+				}
+				KeepHeld(actor, a_c.walk, face, a_dt, std::format("{} dealer {}", a_table, a_c.name));
+			}
 			// there: they just stand where their walk ended. (Put back on the exact spot every few seconds, as they
 			// were, they jumped back and forth: the table's edge pushed them off it again.) Well off it (pushed away),
 			// they walk back. Now and then turned to the table's middle (poker), or the way given (roulette: the wheel)
@@ -504,12 +514,6 @@ namespace fr
 			a_c.snapIn -= a_dt;
 			if (a_c.snapIn <= 0.0f) {
 				a_c.snapIn = 3.0f;
-				if (a_faceMiddle) {
-					TurnToFace(actor, a_frame.origin.x, a_frame.origin.y);
-				} else {
-					const auto ahead = ToWorld(a_frame, a_x + a_faceX * 100.0, a_y + a_faceY * 100.0, 0.0);
-					TurnToFace(actor, ahead.x, ahead.y);
-				}
 				// off their spot by more than a step (pushed back past the chairs, or gone home over a load): put back on
 				// it. Not every check: at most every 20 s, so a nudge from the table's edge isn't a jump back and forth
 				// (a few units off is left alone: that was the blackjack dealer's back and forth)
@@ -537,8 +541,9 @@ namespace fr
 				Npc::MoveTo(actor, marker.get());
 			}
 			log::info("{}: dealer {} at their spot ({:.0f} off it)", a_table, a_c.name, off);
-			a_c.held = Npc::SetRestrained(actor, true);
-			a_c.snapIn = 0.5f;  // (turned to the table straight after)
+			a_c.held = true;  // (at their spot; KeepHeld holds them still once they face the table)
+			a_c.walk.settle = a_c.walk.still = 0.0f;
+			a_c.snapIn = 0.5f;
 		}
 	}
 
@@ -815,11 +820,9 @@ namespace fr
 				}
 				break;
 			case Seat::Step::kPlaying:
-				if (!seat.held) {
-					seat.held = Npc::SetRestrained(actor, true);
-				}
-				HoldFacing(seat.walk, actor);
-				FaceTowards(actor, heading, seat.faceIn, a_dt);
+				seat.held = true;  // (at their spot; KeepHeld holds them still once they face the table)
+				KeepHeld(actor, seat.walk, heading, a_dt, seat.name);
+				WatchTurn(actor, heading);
 				// standing at their spot for a moment before they play (not while still coming up to it)
 				if (Distance2D(actor->data.location, spot) < kAtSpot) {
 					seat.atSpot += a_dt;

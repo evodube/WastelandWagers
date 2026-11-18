@@ -717,7 +717,8 @@ namespace fr
 				_bj.dealerId = 0;
 				_bj.dealerHeld = false;
 			} else if (_bj.dealerHeld) {
-				HoldFacing(_bj.dealerWalk, actor);
+				KeepHeld(actor, _bj.dealerWalk,
+					std::atan2(a_frame.origin.x - actor->data.location.x, a_frame.origin.y - actor->data.location.y), a_dt, "blackjack dealer " + _bj.dealerName);
 				// a standing fidget of their own between their gestures (the game's unarmed standing fidgets and
 				// talking hands: dyn_Flavor, played where they stand)
 				_bj.dealerIdleIn -= a_dt;
@@ -733,7 +734,6 @@ namespace fr
 				_bj.dealerFaceIn -= a_dt;
 				if (_bj.dealerFaceIn <= 0.0f) {
 					_bj.dealerFaceIn = 3.0f;
-					TurnToFace(actor, a_frame.origin.x, a_frame.origin.y);
 					// off their spot by more than a step (pushed away, or gone home over a load): put back on it, at most
 					// every 20 s (a few units off is left alone: that was the back and forth)
 					const auto  spot = ToWorld(a_frame, 0.0, kDealerStand, 0.0);
@@ -760,8 +760,9 @@ namespace fr
 						log::info("blackjack: dealer stopped {:.0f} short of their spot: put on it", Distance2D(actor->data.location, spot));
 						Npc::MoveTo(actor, marker.get());
 					}
-					_bj.dealerHeld = Npc::SetRestrained(actor, true);
-					_bj.dealerFaceIn = 0.5f;  // (turned to the table straight after)
+					_bj.dealerHeld = true;  // (at their spot; KeepHeld holds them still once they face the table)
+					_bj.dealerWalk.settle = _bj.dealerWalk.still = 0.0f;
+					_bj.dealerFaceIn = 0.5f;
 				}
 			}
 		}
@@ -825,10 +826,8 @@ namespace fr
 				// (out of the chair again, or not in it yet: back to nothing, and no bet goes down in front of them)
 				st.atSpot = !chair || actor->DoGetSitSleepState() == RE::SIT_SLEEP_STATE::kIsSitting ? st.atSpot + a_dt : 0.0f;
 			} else {
-				if (!st.held) {
-					st.held = Npc::SetRestrained(actor, true);
-				}
-				HoldFacing(st.walk, actor);
+				st.held = true;  // (at their spot; KeepHeld holds them still once they face the table)
+				KeepHeld(actor, st.walk, heading, a_dt, st.name);
 				st.atSpot = Distance2D(actor->data.location, spot) < kArrived + 10.0f ? st.atSpot + a_dt : 0.0f;
 			}
 			// between hands: out of caps, or had enough
