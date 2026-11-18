@@ -811,7 +811,11 @@ namespace fr
 		if (sitting) {
 			if (!_slSat) {
 				_slLookIn = 0.4f;  // (once the sit's settled)
-				_slHoldIn = 0.3f;
+				// held still: not straight away (the sit-down still settling into the loop, it didn't take and the
+				// furniture's own loop pulled the lever a few seconds on), 1 s in and again at 2.6 s, well before the
+				// loop's first flavour (5.3 s into it)
+				_slHoldIn = 1.0f;
+				_slHoldAgainIn = 2.6f;
 			}
 			// held still: the sitting loop on its own, so your hand only goes to the lever when you pull (again after
 			// each pull, the pull's animation done: the furniture's own loop back for a moment)
