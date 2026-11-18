@@ -204,12 +204,20 @@ namespace fr
 			graphB("bAnimationDriven"), graphB("bIsSynced"), a_actor->IsInCombat(), a_actor->IsTalking());
 	}
 
-	void Game::FaceTowards(RE::Actor* a_actor, float a_heading)
+	void Game::FaceTowards(RE::Actor* a_actor, float a_heading, float& a_faceIn, float a_dt)
 	{
 		WatchTurn(a_actor, a_heading);
-		// (no longer turned back: snapped back to the table whenever they'd turned away with an idle, they stuttered
-		// round. They're put on their spot facing the table when they get there, and left to it after that)
-		(void)a_heading;
+		// turned to the table now and then (every 3 s), only when well off it (more than 20 degrees): their walk could
+		// end facing anywhere (two roulette players stood facing each other), and nothing turned them. (Not every tick:
+		// snapped back whenever an idle turned them a little, they stuttered round)
+		a_faceIn -= a_dt;
+		if (!a_actor || a_faceIn > 0.0f) {
+			return;
+		}
+		a_faceIn = 3.0f;
+		if (std::abs(util::AngleDiff(a_heading, a_actor->data.angle.z)) > 0.35f) {
+			Npc::FaceAngle(a_actor, a_heading);
+		}
 	}
 
 	void Game::HoldFacing(Walker& a_walk, RE::Actor* a_actor)
@@ -760,7 +768,7 @@ namespace fr
 					seat.held = Npc::SetRestrained(actor, true);
 				}
 				HoldFacing(seat.walk, actor);
-				FaceTowards(actor, heading);
+				FaceTowards(actor, heading, seat.faceIn, a_dt);
 				// standing at their spot for a moment before they play (not while still coming up to it)
 				if (Distance2D(actor->data.location, spot) < kAtSpot) {
 					seat.atSpot += a_dt;

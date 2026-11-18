@@ -302,6 +302,7 @@ namespace fr
 			int   chipsToPlace{ 0 };
 			int   roundNet{ 0 };       // won (or lost) on the last spin
 			float nextIdle{ 6.0f };    // seconds before their next little idle while they wait
+			float faceIn{ 0.5f };      // seconds before checking they face the table
 			float reactIn{ -1.0f };    // seconds before they react to the result (-1 none due)
 			int   budget{ 0 };         // caps still to put down this round
 			float atSpot{ 0.0f };      // seconds they've been standing at their spot
@@ -415,7 +416,7 @@ namespace fr
 		static void  AddToPurse(RE::TESFormID a_id, int a_caps);
 		bool         WalkTo(RE::Actor* a_actor, Walker& a_walk, const Frame& a_frame, const RE::NiPoint3& a_spot, float a_heading, float a_dt,
 					bool a_dealer, float a_timeout);  // true: there
-		void         FaceTowards(RE::Actor* a_actor, float a_heading);
+		void         FaceTowards(RE::Actor* a_actor, float a_heading, float& a_faceIn, float a_dt);
 		void         HoldFacing(Walker& a_walk, RE::Actor* a_actor);  // a held NPC's walk marker turned the way they face
 		// a standing dealer turned to face a_x, a_y (world), if they're more than 12 degrees off it (SetAngle: once)
 		void         TurnToFace(RE::Actor* a_actor, float a_x, float a_y);
@@ -458,6 +459,7 @@ namespace fr
 			float               atSpot{ 0.0f };
 			pk::Style           style;
 			float               nextIdle{ 8.0f };
+			float               faceIn{ 0.5f };    // (no chairs) seconds before checking they face the table
 			float               sitCheck{ 0.0f };  // (chairs) seconds before checking they're still sat down
 			int                 sitTries{ 0 };     // (chairs) told to sit, and not sitting, in a row
 			int                 notSat{ 0 };       // checks in a row not sat (walking into the chair, say): 3, put in it
