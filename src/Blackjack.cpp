@@ -683,10 +683,7 @@ namespace fr
 				const float heading = HeadingOf(a_frame, 0.0, -1.0);
 				const auto  spot = ToWorld(a_frame, 0.0, kDealerStand, 0.0);
 				if (WalkTo(actor, _bj.dealerWalk, a_frame, spot, heading, a_dt, true, 15.0f)) {
-					if (auto marker = _bj.dealerWalk.marker.get(); marker && Distance2D(actor->data.location, spot) > 0.5f) {
-						Npc::MoveTo(actor, marker.get());
-					}
-					_bj.dealerHeld = Npc::SetRestrained(actor, true);
+					_bj.dealerHeld = Npc::SetRestrained(actor, true);  // (where their walk ended: no step-put, a jump)
 				}
 			}
 		}
@@ -713,10 +710,7 @@ namespace fr
 					continue;
 				}
 				if (WalkTo(actor, st.walk, a_frame, spot, heading, a_dt, false, 15.0f)) {
-					st.step = Seat::Step::kPlaying;
-					if (auto marker = st.walk.marker.get(); marker && Distance2D(actor->data.location, spot) > 0.5f) {
-						Npc::MoveTo(actor, marker.get());
-					}
+					st.step = Seat::Step::kPlaying;  // (where their walk ended: no step-put, a jump)
 				}
 				continue;
 			}
@@ -734,14 +728,10 @@ namespace fr
 					if (down) {
 						st.sitTries = 0;
 					} else {
-						if (++st.sitTries > 2) {
-							log::info("blackjack: {} still isn't in their chair (sit state {}): moved onto it and sat", st.name, static_cast<int>(sit));
-							Npc::MoveTo(actor, chair.get());
-							st.sitTries = 0;
-						} else {
-							log::info("[sit] blackjack: {} isn't in their chair (sit state {}): sat down again", st.name, static_cast<int>(sit));
-						}
-						Npc::SitOn(actor, chair.get());
+						// (walked over and sat down the chair's way: never snapped in or moved onto it, a jump)
+						++st.sitTries;
+						log::info("[sit] blackjack: {} isn't in their chair (sit state {}): sat down again", st.name, static_cast<int>(sit));
+						Npc::SitDown(actor, chair.get());
 					}
 				}
 				st.held = true;

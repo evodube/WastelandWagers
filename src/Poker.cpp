@@ -1339,9 +1339,7 @@ namespace fr
 					// (their walk package stays on, linked to the spot they're now on: its travel done, it holds them there.
 					// Unlinked, as it was, it went on travelling with nowhere to go: stepping and turning on the spot, the
 					// turning log showed, procedure 0 at speed 15)
-					if (auto marker = st.walk.marker.get(); marker && Distance2D(actor->data.location, spot) > 0.5f) {
-						Npc::MoveTo(actor, marker.get());
-					}
+					// (where their walk ended: no step-put, a jump)
 				}
 				break;
 			case Seat::Step::kPlaying:
@@ -1364,14 +1362,10 @@ namespace fr
 						if (down) {
 							st.sitTries = 0;
 						} else {
-							if (++st.sitTries > 2) {
-								log::info("poker: {} still isn't in their chair (sit state {}): moved onto it and sat", st.name, static_cast<int>(sit));
-								Npc::MoveTo(actor, chair.get());
-								st.sitTries = 0;
-							} else {
-								log::info("[sit] poker: {} isn't in their chair (sit state {}): sat down again", st.name, static_cast<int>(sit));
-							}
-							Npc::SitOn(actor, chair.get());
+							// (walked over and sat down the chair's way: never snapped in or moved onto it, a jump)
+							++st.sitTries;
+							log::info("[sit] poker: {} isn't in their chair (sit state {}): sat down again", st.name, static_cast<int>(sit));
+							Npc::SitDown(actor, chair.get());
 						}
 					}
 					st.held = true;  // (for the idles: they're where they should be)

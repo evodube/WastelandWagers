@@ -504,19 +504,10 @@ namespace fr
 			if (down) {
 				m.sitTries = 0;
 			} else {
+				// (walked over and sat down the machine's way again: never snapped in or moved onto it, a jump)
 				++m.sitTries;
-				if (m.sitTries > 2) {
-					log::info("[sit] slots: {} still isn't at their machine (sit state {}): moved onto it and sat", m.name, static_cast<int>(sit));
-					Npc::MoveTo(actor, machine.get());
-					Npc::SitOn(actor, machine.get());
-					m.sitTries = 0;
-				} else if (m.sitTries == 2) {
-					log::info("[sit] slots: {} isn't at their machine (sit state {}): put in it", m.name, static_cast<int>(sit));
-					Npc::SitOn(actor, machine.get());
-				} else {
-					log::info("[sit] slots: {} isn't at their machine (sit state {}): sat down again", m.name, static_cast<int>(sit));
-					Npc::SitDown(actor, machine.get());
-				}
+				log::info("[sit] slots: {} isn't at their machine (sit state {}): sat down again", m.name, static_cast<int>(sit));
+				Npc::SitDown(actor, machine.get());
 			}
 		}
 		// their hand: the quest watching for it on the lever (again now and then: a watch goes with their 3D)

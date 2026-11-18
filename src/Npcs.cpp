@@ -277,10 +277,19 @@ namespace fr
 			}
 		}
 		if (a_walk.walked > a_timeout) {
-			// a last resort (tight spaces round a table can't always be walked): put them there
-			log::info("{}: still {:.0f} from the table after {:.0f}s; put there", a_actor->GetDisplayFullName(), d, a_walk.walked);
-			Npc::MoveTo(a_actor, marker.get());
+			// a while on and not there (tight spaces round a table can't always be walked): near enough, where they
+			// are is their place; further, the walk sent again. Never put there: a jump the eye catches
 			a_walk.walked = 0.0f;
+			if (d < 120.0f) {
+				log::info("{}: {:.0f} from their spot after a while: near enough", a_actor->GetDisplayFullName(), d);
+				return true;
+			}
+			log::info("{}: still {:.0f} from the table; walking again", a_actor->GetDisplayFullName(), d);
+			if (Npc::Joined(a_actor)) {
+				Npc::Walk(a_actor, marker.get(), true);
+			} else {
+				a_walk.joinSent = false;
+			}
 		}
 		return false;
 	}
@@ -343,34 +352,38 @@ namespace fr
 		auto  ref = a_c.actor.get();
 		auto* actor = ref ? ref->As<RE::Actor>() : nullptr;
 		if (!Usable(actor) || actor->IsInCombat() || (you && you->IsInCombat()) || Npc::AtPool(actor)) {
-			ReleaseCroupier(a_c, "gone");
+			// gone for a moment (their 3D reloaded after a menu, say) isn't gone: a few seconds of it is
+			a_c.goneFor += a_dt;
+			if (a_c.goneFor > 3.0f || !actor) {
+				ReleaseCroupier(a_c, "gone");
+			}
 			return;
 		}
+		a_c.goneFor = 0.0f;
 		const float heading = HeadingOf(a_frame, a_faceX, a_faceY);
 		const auto  spot = ToWorld(a_frame, a_x, a_y, 0.0);
 		const float off = std::hypot(actor->data.location.x - spot.x, actor->data.location.y - spot.y);
 		if (a_c.held) {
-			// there: they just stand. Checked now and then: not on their spot (put down short of it, pushed off it),
-			// put on it again
+			// there: they just stand where their walk ended. (Put back on the exact spot every few seconds, as they
+			// were, they jumped back and forth: the table's edge pushed them off it again.) Well off it (pushed away),
+			// they walk back
 			a_c.snapIn -= a_dt;
 			if (a_c.snapIn <= 0.0f) {
 				a_c.snapIn = 3.0f;
-				if (off > 4.0f) {
-					if (auto marker = a_c.walk.marker.get()) {
-						log::info("{}: dealer {} {:.0f} off their spot: put on it", a_table, a_c.name, off);
-						Npc::MoveTo(actor, marker.get());
-					}
+				if (off > 60.0f) {
+					log::info("{}: dealer {} {:.0f} off their spot: walking back", a_table, a_c.name, off);
+					Npc::SetRestrained(actor, false);
+					a_c.held = false;
+					a_c.walk.walked = a_c.walk.stall = 0.0f;
+					a_c.walk.best = 1e9f;
 				}
 			}
 			return;
 		}
 		if (WalkTo(actor, a_c.walk, a_frame, spot, heading, a_dt, true, 15.0f)) {
-			if (auto marker = a_c.walk.marker.get(); marker && off > 0.5f) {
-				Npc::MoveTo(actor, marker.get());
-			}
-			log::info("{}: dealer {} at their spot ({:.0f} off it: put on it)", a_table, a_c.name, off);
+			log::info("{}: dealer {} at their spot ({:.0f} off it)", a_table, a_c.name, off);
 			a_c.held = Npc::SetRestrained(actor, true);
-			a_c.snapIn = 2.0f;
+			a_c.snapIn = 3.0f;
 		}
 	}
 
@@ -624,9 +637,7 @@ namespace fr
 					// (their walk package stays on, linked to the spot they're now on: its travel done, it holds them there.
 					// Unlinked, as it was, it went on travelling with nowhere to go: stepping and turning on the spot, the
 					// turning log showed, procedure 0 at speed 15)
-					if (auto marker = seat.walk.marker.get(); marker && Distance2D(actor->data.location, spot) > 0.5f) {
-						Npc::MoveTo(actor, marker.get());  // stopped short (maybe at someone's elbow): onto their own spot
-					}
+					// (no putting them on the spot exactly: the step-put showed as a jump)
 					seat.nextIdle = std::uniform_real_distribution<float>(4.0f, 10.0f)(_rng);
 				}
 				break;
