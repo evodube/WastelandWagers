@@ -152,6 +152,39 @@ Bool Function PlayIdleOn(Int aiActor, Int aiIdle)
 	return akActor.PlayIdle(akIdle)
 EndFunction
 
+; someone in a game here (dealing, playing, on their way) whom Playable Pool called over to its table: out of its
+; quest's aliases (0 Opponent, 1 Watchers, 2 Opponent2, 3 Players: their packages), so they stay where they are
+Bool Function LeavePool(Int aiActor)
+	Actor akActor = Game.GetForm(aiActor) as Actor
+	Quest akPool = Game.GetFormFromFile(0x00000816, "fo4pool.esl") as Quest
+	if akActor == None || akPool == None
+		return false
+	endif
+	Int i = 0
+	while i < 4
+		ReferenceAlias akOne = akPool.GetAlias(i) as ReferenceAlias
+		if akOne && akOne.GetReference() == akActor
+			akOne.Clear()
+		endif
+		RefCollectionAlias akMany = akPool.GetAlias(i) as RefCollectionAlias
+		if akMany && akMany.Find(akActor) >= 0
+			akMany.RemoveRef(akActor)
+		endif
+		i += 1
+	endwhile
+	; (and its links: where to walk, the table to hang round)
+	Keyword akSpot = Game.GetFormFromFile(0x00000814, "fo4pool.esl") as Keyword
+	Keyword akTable = Game.GetFormFromFile(0x00000817, "fo4pool.esl") as Keyword
+	if akSpot
+		akActor.SetLinkedRef(None, akSpot)
+	endif
+	if akTable
+		akActor.SetLinkedRef(None, akTable)
+	endif
+	akActor.EvaluatePackage()
+	return true
+EndFunction
+
 ; ...out of a looping idle first (IdleStop: you held still at a slot machine, its pull wanted)
 Bool Function PlayIdleAfterStop(Int aiActor, Int aiIdle)
 	Actor akActor = Game.GetForm(aiActor) as Actor

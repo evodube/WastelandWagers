@@ -668,7 +668,8 @@ namespace fr
 		_bj.dealerCool -= a_dt;
 		if (auto ref = _bj.dealerActor.get(); _bj.dealerId != 0) {
 			auto* actor = ref ? ref->As<RE::Actor>() : nullptr;
-			if (!Usable(actor) || actor->IsInCombat() || (you && you->IsInCombat()) || Npc::AtPool(actor)) {
+			Npc::KeepFromPool(actor);  // (in a game here and called over to the pool table: kept here)
+			if (!Usable(actor) || actor->IsInCombat() || (you && you->IsInCombat())) {
 				if (actor) {
 					if (_bj.dealerHeld) {
 						Npc::SetRestrained(actor, false);
@@ -694,7 +695,8 @@ namespace fr
 			}
 			auto  ref = st.actor.get();
 			auto* actor = ref ? ref->As<RE::Actor>() : nullptr;
-			if (!Usable(actor) || actor->IsInCombat() || (you && you->IsInCombat()) || Npc::AtPool(actor)) {
+			Npc::KeepFromPool(actor);  // (in a game here and called over to the pool table: kept here)
+			if (!Usable(actor) || actor->IsInCombat() || (you && you->IsInCombat())) {
 				BjRelease(i, "gone");
 				continue;
 			}

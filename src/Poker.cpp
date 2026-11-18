@@ -1316,7 +1316,8 @@ namespace fr
 			auto* actor = ref ? ref->As<RE::Actor>() : nullptr;
 			// (a fight: everyone up. Held, their AI is off and they'd not notice it themselves)
 			const auto* you = RE::PlayerCharacter::GetSingleton();
-			if (!Usable(actor) || actor->IsInCombat() || (you && you->IsInCombat()) || Npc::AtPool(actor)) {  // (or called over to pool)
+			Npc::KeepFromPool(actor);  // (in a game here and called over to the pool table: kept here)
+			if (!Usable(actor) || actor->IsInCombat() || (you && you->IsInCombat())) {
 				PkRelease(i, "gone");
 				continue;
 			}

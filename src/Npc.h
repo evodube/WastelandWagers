@@ -37,6 +37,11 @@ namespace fr::Npc
 	bool ClearLookAt(RE::Actor* a_actor);
 
 	// a vanilla idle (Fallout4.esm IDLE form ID) through the quest's PlayIdleOn
+	// someone in a game here (dealing, playing, on their way) whom Playable Pool has called over to its table: let go
+	// of by pool's quest (its aliases), so they stay. A no-op unless they're at the pool table (checked here), and
+	// not more than every couple of seconds for anyone
+	void KeepFromPool(RE::Actor* a_actor);
+
 	void PlayIdle(RE::Actor* a_actor, RE::TESFormID a_idle);
 	// ...out of a looping idle first (IdleStop, then a_idle)
 	void PlayIdleAfterStop(RE::Actor* a_actor, RE::TESFormID a_idle);

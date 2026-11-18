@@ -351,7 +351,8 @@ namespace fr
 		}
 		auto  ref = a_c.actor.get();
 		auto* actor = ref ? ref->As<RE::Actor>() : nullptr;
-		if (!Usable(actor) || actor->IsInCombat() || (you && you->IsInCombat()) || Npc::AtPool(actor)) {
+		Npc::KeepFromPool(actor);  // (in a game here and called over to the pool table: kept here)
+		if (!Usable(actor) || actor->IsInCombat() || (you && you->IsInCombat())) {
 			// gone for a moment (their 3D reloaded after a menu, say) isn't gone: a few seconds of it is
 			a_c.goneFor += a_dt;
 			if (a_c.goneFor > 3.0f || !actor) {
@@ -621,7 +622,8 @@ namespace fr
 			auto* actor = ref ? ref->As<RE::Actor>() : nullptr;
 			// (a fight: everyone up. Held, their AI is off and they'd not notice it themselves)
 			const auto* you = RE::PlayerCharacter::GetSingleton();
-			if (!Usable(actor) || actor->IsInCombat() || (you && you->IsInCombat()) || Npc::AtPool(actor)) {  // (or called over to pool)
+			Npc::KeepFromPool(actor);  // (in a game here and called over to the pool table: kept here)
+			if (!Usable(actor) || actor->IsInCombat() || (you && you->IsInCombat())) {
 				seat.step = Seat::Step::kLeaving;
 				continue;
 			}

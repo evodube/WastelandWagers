@@ -307,6 +307,27 @@ namespace fr::Npc
 		return {};
 	}
 
+	void KeepFromPool(RE::Actor* a_actor)
+	{
+		if (!a_actor || !AtPool(a_actor) || !Ready()) {
+			return;
+		}
+		static std::mutex                                                             lock;
+		static std::unordered_map<RE::TESFormID, std::chrono::steady_clock::time_point> sent;
+		{
+			std::scoped_lock l(lock);
+			const auto now = std::chrono::steady_clock::now();
+			auto&      last = sent[a_actor->GetFormID()];
+			if (now - last < std::chrono::seconds(2)) {
+				return;
+			}
+			last = now;
+		}
+		const std::string what = What(a_actor, "LeavePool");
+		const RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> logged{ new LogResult(what) };
+		CallQuest("LeavePool", what, logged, FormArg(a_actor));
+	}
+
 	void PlayIdleAfterStop(RE::Actor* a_actor, RE::TESFormID a_idle)
 	{
 		if (!a_actor || !Ready()) {

@@ -475,7 +475,8 @@ namespace fr
 		auto* actor = ref ? ref->As<RE::Actor>() : nullptr;
 		auto  machine = m.ref.get();
 		const auto* you = RE::PlayerCharacter::GetSingleton();
-		if (!Usable(actor) || actor->IsInCombat() || (you && you->IsInCombat()) || Npc::AtPool(actor) || !machine) {
+		Npc::KeepFromPool(actor);  // (in a game here and called over to the pool table: kept here)
+		if (!Usable(actor) || actor->IsInCombat() || (you && you->IsInCombat()) || !machine) {
 			SlRelease(a_i, "gone");
 			return;
 		}
