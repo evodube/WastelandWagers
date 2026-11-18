@@ -1,4 +1,4 @@
-// Every fo4roulette.ini setting on pages in F4SE Menu Framework's menu (Mini Games > Table, Camera, ...).
+// Every fo4roulette.ini setting on pages in F4SE Menu Framework's menu (Wasteland Wagers > Table, Camera, ...).
 //
 // One table below drives it: each row is an INI key, the Settings field it sets, a label, a range and a line of
 // help. Changes apply straight away and are written to the INI as soon as they're made.
@@ -452,7 +452,7 @@ namespace fr::SettingsMenu
 		}
 		installed = true;
 		Settings::Get().Load();  // the menu shows the INI's values from the start
-		F4SEMenuFramework::SetSection("Mini Games");
+		F4SEMenuFramework::SetSection("Wasteland Wagers");
 		AddPages(std::make_index_sequence<7>{});
 		log::info("settings pages registered in F4SE Menu Framework ({} pages)", Pages().size());
 	}

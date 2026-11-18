@@ -34,9 +34,9 @@ Form IDs (src/Forms.h expects these):
     xx00084E  FURN fo4rouletteSlotMachine  Slot Machine (Meshes/fo4roulette/SlotMachine.nif: the Vault-Tec Workshop's
                                            machine re-skinned; its sitting animations: DLCworkshop03.esm is a master)
     xx00084F  COBJ workshop_co_fo4rouletteSlotMachine  in the workshop menu
-    xx000850  KYWD fo4rouletteWorkshopMenuMiniGames  the workshop menu's Mini Games tab (its top row):
+    xx000850  KYWD fo4rouletteWorkshopMenuMiniGames  the workshop menu's Wasteland Wagers category (in Furniture):
                                            every table's and the slot machine's recipe is in it
-    xx000851  ARTO fo4rouletteWorkshopMenuMiniGamesArt  the tab's picture: its first item (the roulette table)
+    xx000851  ARTO fo4rouletteWorkshopMenuMiniGamesArt  the category's picture: its first item (the roulette table)
     xx000853  IDLE fo4rouletteSlotHoldIdle  you sat at a slot machine, still: its sitting loop on its own (looping),
                                            so the furniture's idle doesn't pull the lever for you now and then
     xx000852  IDLE fo4rouletteSlotPullIdle  sat at a slot machine: the hand to the lever and a pull (the DLC's own
@@ -131,7 +131,7 @@ def keyword(form_id: int, editor_id: str) -> bytes:
 
 def menu_keyword(form_id: int, editor_id: str, name: str) -> bytes:
     """a workshop menu category (a recipe filter, as Fallout4.esm's WorkshopRecipeFilterFurniture02Tables): its name is
-    what the menu shows. The plugin puts it in the workshop menu's top row when the game's data is loaded (Forms.h
+    what the menu shows. The plugin puts it in the workshop menu's Furniture menu (after Tables) when the game's data is loaded (Forms.h
     AddWorkshopMenu: not in the menu's form list here, so nothing else's menu changes are overwritten)"""
     return record(
         b"KYWD", 0, form_id,
@@ -376,9 +376,9 @@ def build() -> bytes:
     walk = own | (FIRST_ID + 7)
     seat_link = own | (FIRST_ID + 0x48)
     sit = own | (FIRST_ID + 0x49)
-    menu = own | (FIRST_ID + 0x50)  # the Mini Games workshop category: every table's and the slot machine's recipe
+    menu = own | (FIRST_ID + 0x50)  # the Wasteland Wagers workshop category: every table's and the slot machine's recipe
     keywords = [keyword(link, "fo4rouletteLinkSpot"), keyword(seat_link, "fo4rouletteLinkSeat"),
-                menu_keyword(menu, "fo4rouletteWorkshopMenuMiniGames", "Mini Games")]
+                menu_keyword(menu, "fo4rouletteWorkshopMenuMiniGames", "Wasteland Wagers")]
     packages = [travel_package(walk, "fo4rouletteWalkToSpot", link), sit_package(sit, "fo4rouletteSitInSeat", seat_link)]
     quests = [quest(own | (FIRST_ID + 8), "fo4rouletteQuest", walk, sit)]
     recipes = [workshop_recipe(own | (FIRST_ID + 9), "workshop_co_fo4rouletteTable", table,
@@ -438,7 +438,7 @@ def build() -> bytes:
                                    [(0x0001FABD, 4), (0x0003D294, 2), (0x0001FAB7, 3), (0x0001FAB0, 2), (0x0001FA9B, 2)],
                                    category=menu, sounds=(0x000196B6, 0x000196BD)))
 
-    # the Mini Games tab's picture: its first item, the roulette table
+    # the Wasteland Wagers category's picture: its first item, the roulette table
     art = [menu_art(own | (FIRST_ID + 0x51), "fo4rouletteWorkshopMenuMiniGamesArt", menu, "fo4roulette\\RouletteTable.nif",
                     0x001A03DD, (-118, -62, 0, 118, 62, 81))]
 
@@ -459,7 +459,7 @@ def build() -> bytes:
         0,
         subrecord(b"HEDR", struct.pack("<fiI", 1.0, count, FIRST_ID + 0x54))
         + subrecord(b"CNAM", zstring("evodube"))
-        + subrecord(b"SNAM", zstring("Mini Games: playable roulette, poker and blackjack tables, and slot machines"))
+        + subrecord(b"SNAM", zstring("Wasteland Wagers: playable roulette, poker and blackjack tables, and slot machines"))
         + subrecord(b"MAST", zstring("Fallout4.esm"))
         + subrecord(b"DATA", struct.pack("<Q", 0))
         + subrecord(b"MAST", zstring("DLCworkshop03.esm"))

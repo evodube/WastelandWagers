@@ -19,7 +19,7 @@ namespace fr::Forms
 	inline constexpr std::uint32_t kPokerKitID = 0x846;  // ALCH fo4roulettePokerKit
 	inline constexpr std::uint32_t kBlackjackTableID = 0x84A;  // ACTI fo4rouletteBlackjackTable: Meshes\fo4roulette\BlackjackTable.nif
 	inline constexpr std::uint32_t kBlackjackKitID = 0x84C;    // ALCH fo4rouletteBlackjackKit
-	inline constexpr std::uint32_t kWorkshopMenuID = 0x850;    // KYWD fo4rouletteWorkshopMenuMiniGames: the Mini Games workshop category
+	inline constexpr std::uint32_t kWorkshopMenuID = 0x850;    // KYWD fo4rouletteWorkshopMenuMiniGames: the Wasteland Wagers workshop category
 	inline constexpr std::uint32_t kSlotMachineID = 0x84E;     // FURN fo4rouletteSlotMachine: Meshes\fo4roulette\SlotMachine.nif (the
 	                                                           // Vault-Tec Workshop's machine, re-skinned; its sitting animations)
 	inline constexpr std::uint32_t kSlotPullID = 0x852;        // IDLE fo4rouletteSlotPullIdle: sat at the machine, a pull (the DLC's)
@@ -106,44 +106,35 @@ namespace fr::Forms
 		auto* machine = SlotMachine();
 		return base && machine && base == machine;
 	}
-	// the workshop menu's Mini Games category (every table's and the slot machine's recipe is in it): a tab of its own
-	// in the workshop menu's top row, beside Furniture and Decorations, when the game's data is loaded. The menu's
-	// form lists aren't overridden in the plugin (that would undo other mods' changes to them): the category's added
-	// here, each time the game starts. The top row is the form list that holds the Furniture menu (the list with
-	// Tables in it)
+	// the workshop menu's Wasteland Wagers category (every table's and the slot machine's recipe is in it): in the
+	// Furniture menu, right after Tables, when the game's data is loaded. The menu's form lists aren't overridden in
+	// the plugin (that would undo other mods' changes to them): the category's added here, each time the game starts.
+	// The Furniture menu is the form list (or lists, mods' copies too) with Tables in it
 	inline void AddWorkshopMenu()
 	{
 		auto* data = RE::TESDataHandler::GetSingleton();
 		auto* ours = Own(kWorkshopMenuID);
 		auto* tables = RE::TESForm::GetFormByID(0x00118F59);  // WorkshopRecipeFilterFurniture02Tables
 		if (!data || !ours || !tables) {
-			log::warn("workshop menu: the Mini Games category ({}) or the Tables one ({}) isn't there", ours != nullptr, tables != nullptr);
+			log::warn("workshop menu: the Wasteland Wagers category ({}) or the Tables one ({}) isn't there", ours != nullptr, tables != nullptr);
 			return;
-		}
-		const auto holds = [](RE::BGSListForm* a_list, const RE::TESForm* a_form) {
-			return std::ranges::find(a_list->arrayOfForms, a_form) != a_list->arrayOfForms.end();
-		};
-		std::vector<RE::BGSListForm*> furniture;
-		for (auto* list : data->GetFormArray<RE::BGSListForm>()) {
-			if (list && holds(list, tables)) {
-				furniture.push_back(list);
-			}
 		}
 		int added = 0;
 		for (auto* list : data->GetFormArray<RE::BGSListForm>()) {
-			if (!list || std::ranges::none_of(furniture, [&](RE::BGSListForm* f) { return holds(list, f); })) {
+			if (!list) {
 				continue;
 			}
-			if (!holds(list, ours)) {
-				// (right after Furniture)
-				auto at = std::ranges::find_if(list->arrayOfForms, [&](RE::TESForm* f) { return std::ranges::find(furniture, f) != furniture.end(); });
-				list->arrayOfForms.insert(at == list->arrayOfForms.end() ? at : at + 1, ours);
-				++added;
-				log::info("workshop menu: Mini Games added to {:08X} (the menu with Furniture in it)", list->GetFormID());
+			auto& forms = list->arrayOfForms;
+			const auto at = std::ranges::find(forms, tables);
+			if (at == forms.end() || std::ranges::find(forms, ours) != forms.end()) {
+				continue;
 			}
+			forms.insert(at + 1, ours);
+			++added;
+			log::info("workshop menu: Wasteland Wagers added to {:08X} (the Furniture menu, after Tables)", list->GetFormID());
 		}
 		if (added == 0) {
-			log::warn("workshop menu: the top row (the menu with Furniture in it) wasn't found: the Mini Games category isn't in the workshop menu");
+			log::warn("workshop menu: the Furniture menu (the list with Tables in it) wasn't found: the Wasteland Wagers category isn't in the workshop menu");
 		}
 	}
 
