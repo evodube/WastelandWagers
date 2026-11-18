@@ -285,7 +285,7 @@ namespace fr
 			a_walk.getUp = 3.0f;
 			a_actor->InitiateGetUpPackage();
 		}
-		const bool heldElsewhere = static_cast<const RE::ActorState*>(a_actor)->lifeState == static_cast<std::uint32_t>(RE::LIFE_STATE::kRestrained);
+		const bool heldElsewhere = static_cast<const RE::ActorState*>(a_actor)->lifeState == static_cast<std::uint32_t>(RE::ACTOR_LIFE_STATE::kRestrained);
 		if (a_walk.stall > kStallResend && heldElsewhere) {
 			// held in place by something else (another table, another mod): can't walk, and a walk sent with its AI
 			// reset only turns them on the spot and back, every few seconds. Left be
