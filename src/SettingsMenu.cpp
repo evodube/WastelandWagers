@@ -82,6 +82,12 @@ namespace fr::SettingsMenu
 							"of what the house wins from settlers (what it pays out to them comes off first)" },
 						{ L"Income", L"iPokerRake", "Card room's cut (poker)", Kind::kInt, &s.pokerRake, 0, 50, nullptr,
 							"percent of what a settler leaves the poker table up (poker has no house: this is its income)" },
+						{ L"Income", L"bAway", "Income while you're away", Kind::kBool, &s.awayIncome, 0, 0, nullptr,
+							"with you away from a settlement, its tables and slot machines still earn: a day's takings each, by how many "
+							"settlers live there, into its workbench" },
+						{ L"Income", L"fAwayPerSettler", "Away: caps a day per settler", Kind::kFloat, &s.awayPerSettler, 0.0f, 50.0f, "%.1f",
+							"for each table, each game day, each settler living there (a slot machine earns half). 10 settlers, a "
+							"roulette table: 20 caps a day" },
 					} },
 				{ "Camera", "The view while you're at the table.",
 					{

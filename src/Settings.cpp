@@ -102,6 +102,8 @@ namespace fr
 		income = ReadBool(L"Income", L"bIncome", income);
 		incomeShare = std::clamp(ReadFloat(L"Income", L"fShare", incomeShare), 0.0f, 100.0f);
 		pokerRake = std::clamp(static_cast<int>(ReadInt(L"Income", L"iPokerRake", pokerRake)), 0, 50);
+		awayIncome = ReadBool(L"Income", L"bAway", awayIncome);
+		awayPerSettler = std::clamp(ReadFloat(L"Income", L"fAwayPerSettler", awayPerSettler), 0.0f, 50.0f);
 
 		layoutHeight = std::clamp(ReadFloat(L"Camera", L"fLayoutHeight", layoutHeight), 40.0f, 600.0f);
 		wheelHeight = std::clamp(ReadFloat(L"Camera", L"fWheelHeight", wheelHeight), 25.0f, 400.0f);

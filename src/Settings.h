@@ -40,6 +40,8 @@ namespace fr
 		bool  income{ true };              // the house's take from settlers' play goes to the settlement's workbench
 		float incomeShare{ 100.0f };       // ...this much of it (%)
 		int   pokerRake{ 10 };             // the card room's cut (%) of what a settler leaves the poker table up
+		bool  awayIncome{ true };          // ...and while you're away: a day's takings for each table, by the settlement's population
+		float awayPerSettler{ 2.0f };      // caps a game day, a table, a settler living there (a slot machine half)
 
 		// [Camera]
 		float layoutHeight{ 98.0f };      // the top view over the layout, above the felt

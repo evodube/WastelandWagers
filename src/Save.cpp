@@ -30,6 +30,7 @@ namespace fr
 		SavePokerMemory(a_intfc);
 		SaveJackpot(a_intfc);
 		SaveRoster(a_intfc);
+		SaveIncome(a_intfc);
 	}
 
 	void Game::Load(const F4SE::SerializationInterface* a_intfc)
@@ -39,6 +40,7 @@ namespace fr
 		g_pkMemory.clear();
 		s_jackpot = 0;
 		s_roster.clear();
+		RevertIncome();
 		RevertKit();
 		std::uint32_t type = 0, version = 0, length = 0;
 		while (a_intfc->GetNextRecordInfo(type, version, length)) {
@@ -56,6 +58,10 @@ namespace fr
 			}
 			if (type == 0x52535452) {  // 'RSTR': who was at the tables (Roster.cpp)
 				LoadRoster(a_intfc, version);
+				continue;
+			}
+			if (type == 0x494E434D) {  // 'INCM': the settlements' tables and their takings (Luck.cpp)
+				LoadIncome(a_intfc, version);
 				continue;
 			}
 			if (version != kVersion || type != kPursesType) {
@@ -93,6 +99,7 @@ namespace fr
 			g_pkMemory.clear();
 		}
 		s_roster.clear();
+		RevertIncome();
 		RevertKit();
 	}
 }

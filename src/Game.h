@@ -334,7 +334,10 @@ namespace fr
 		RE::TESObjectREFR* Workbench(RE::TESObjectREFR* a_table) const;  // the settlement's a table's built in, or none
 		bool               EarnsIncome(RE::TESObjectREFR* a_table) const;
 		void               HouseTake(RE::TESObjectREFR* a_table, int a_caps, const char* a_game);  // + the house won
-		void               TickIncome();
+		void               TickIncome(float a_dt);
+		static void        SaveIncome(const F4SE::SerializationInterface* a_intfc);
+		static void        LoadIncome(const F4SE::SerializationInterface* a_intfc, std::uint32_t a_version);
+		static void        RevertIncome();
 		void        Say(const std::string& a_text, int a_tone = 0);  // the HUD log (and a corner message with bNotifications)
 
 		// tables
@@ -969,8 +972,9 @@ namespace fr
 		bool                              _haveLast{ false };
 		bool                              _lifted{ false };      // BeforeSave took our things off; AfterSave puts them back
 		std::mt19937                      _rng{ std::random_device{}() };
-		std::unordered_map<RE::TESFormID, int> _houseOwed;      // per workbench: what the house paid out more than it took
-		int                               _houseMade{ 0 };       // put in workbenches since it was last said
+		int                               _houseMade{ 0 };       // put in workbenches since it was last said (settlers playing)
+		int                               _awayMade{ 0 };        // ...and while you were away
+		float                             _incomeScan{ 0.0f };   // seconds to the next look for tables and day's takings
 		std::chrono::steady_clock::time_point _houseSaid{};
 		int                               _appliedWheel{ -1 };   // the setting the tables' nodes were last shown for
 		std::vector<RE::TESFormID>        _appliedTables;

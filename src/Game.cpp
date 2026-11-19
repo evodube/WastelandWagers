@@ -465,7 +465,7 @@ namespace fr
 		_last = now;
 		_haveLast = true;
 		dt = std::clamp(dt, 0.0f, kMaxFrame);
-		TickIncome();
+		TickIncome(dt);
 		// someone talking to you while you're at the table (a greeting that got through): up, so the conversation can
 		// happen with your own controls and camera
 		if (_seated) {
