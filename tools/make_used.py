@@ -441,26 +441,39 @@ def weather(c, kind, seed, atlas=True):
         c = mix(c, c * col(255, 232, 196), 0.35 * heavy)              # yellowed, nicotine and dust
         if kind == "print":
             c = mix(c, c * col(230, 205, 150), smooth(sun, 0.4, 0.8) * 0.7)
-        # rust coming through in blotches, streaked down a little
-        rmask = smooth(fbm(size, 120, 5, seed + 4, aspect=0.6), 0.6 - 0.06 * heavy, 0.72)
-        rust = col(110, 52, 24) * (0.6 + 0.8 * fbm(size, 12, 3, seed + 5))[..., None]
-        rust = mix(rust, col(160, 92, 40), smooth(fbm(size, 25, 3, seed + 6), 0.5, 0.7))
-        c = mix(c, rust, rmask * 0.9 * metal)
-        # paint chipped off to grey metal, at the edges of the blotches
-        chips = smooth(fbm(size, 22, 4, seed + 7), 0.66, 0.70) * smooth(grime, 0.4, 0.6)
-        c = mix(c, col(118, 116, 110) * (0.8 + 0.4 * dust)[..., None], chips * 0.85 * metal)
-        pits = speckle(size, 0.004 * heavy, seed + 8, 0.9)
-        c = c * (1 - pits[..., None] * 0.45)
-        sc = lines(size, int(400 * heavy), 160, 2, seed + 9, 0.3)
-        c = mix(c, c * 1.5 + 0.06, sc * 0.45)
-        c = c * (1 - blotch[..., None] * 0.4 * heavy)
+        # rust: patches with ragged edges (broad shapes broken up by fine noise), the brown of old iron oxide rather
+        # than orange (dark at the heart, lighter where it flakes), and specks of it scattered round the patches
+        shape = 0.7 * fbm(size, 90, 5, seed + 4) + 0.3 * fbm(size, 10, 3, seed + 5)
+        t0 = 0.655 - 0.03 * heavy
+        rmask = smooth(shape, t0, t0 + 0.035)
+        near = smooth(shape, t0 - 0.08, t0)
+        specks = smooth(fbm(size, 4, 2, seed + 13), 0.62, 0.7) * near * (1 - rmask)
+        tone = fbm(size, 14, 3, seed + 6)
+        rust = mix(col(56, 36, 26), col(100, 60, 38), smooth(tone, 0.35, 0.65))
+        rust = mix(rust, col(128, 82, 52), smooth(fbm(size, 5, 2, seed + 14), 0.62, 0.75) * 0.6)   # flaking, lighter
+        rust = rust * (0.85 + 0.3 * fbm(size, 3, 2, seed + 15))[..., None]
+        c = mix(c, rust, np.clip(rmask + specks * 0.8, 0, 1) * metal)
+        # run-off: brown stains washed down from the rust (down the texture: most of these are laid out upright)
+        import cv2
+        run = cv2.blur(np.pad(rmask, ((80, 80), (0, 0)), mode="wrap").astype(np.float32), (3, 121))[80:-80]
+        run = np.roll(run.astype(np.float64), 50, axis=0) * (0.6 + 0.8 * streaks(size, 40, seed + 16, np.pi / 2))
+        c = mix(c, c * col(140, 104, 76), np.clip(run * 2.5, 0, 1) * (1 - rmask) * 0.6 * metal)
+        # paint chipped off to bare grey metal (painted parts: not the bare steel)
+        paint = 0.0 if kind == "metal" else metal
+        chips = smooth(fbm(size, 22, 4, seed + 7), 0.67, 0.70) * smooth(grime, 0.45, 0.6)
+        c = mix(c, col(110, 108, 102) * (0.8 + 0.4 * dust)[..., None], chips * 0.8 * paint)
+        pits = speckle(size, 0.002 * heavy, seed + 8, 0.6) * (0.3 + rmask)
+        c = c * (1 - np.clip(pits, 0, 1)[..., None] * 0.4)
+        sc = lines(size, int(160 * heavy), 160, 1, seed + 9, 0.3, (40, 120))
+        c = mix(c, c * 1.3 + 0.04, sc * 0.3)
+        c = c * (1 - blotch[..., None] * (0.15 if kind == "metal" else 0.3) * heavy)  # grime
         if kind == "stool":  # the red leather: cracked, faded
             cr = cracks(size, 60, seed + 10)
             c = mix(c, c * 1.4 + col(40, 32, 20), smooth(cr, 0.3, 0.8) * 0.6)
             H -= cr * 1.0
-        H -= pits * 0.8 + sc * 0.5 + chips * 0.4 * metal
-        H += rmask * metal * (fbm(size, 6, 2, seed + 11) - 0.5) * 2.0 + (fbm(size, 70, 3, seed + 12) - 0.5) * 0.9
-        dull += (rmask * 0.9 + chips * 0.3) * metal + 0.3
+        H -= np.clip(pits, 0, 1) * 0.5 + sc * 0.25 + chips * 0.4 * paint
+        H += rmask * metal * (fbm(size, 5, 2, seed + 11) - 0.5) * 1.6 + (fbm(size, 120, 3, seed + 12) - 0.5) * 0.6
+        dull += (rmask * 0.9 + run * 0.3 + chips * 0.3 * paint) * metal + 0.3
 
     # dust over everything, settled in the low spots
     c = mix(c, c * 0.8 + col(120, 110, 90) * 0.35, smooth(dust, 0.55, 0.8) * 0.35)
@@ -517,13 +530,49 @@ TEXTURES = {
 SPECULAR = {"wheel": ("wheel_s", 1212), "felt": None}
 
 
+# The roulette layout's betting grid is its own piece, laid on the felt (RouletteTable.nif's LayoutGrid* over Layout*):
+# each one's UVs from its position on the table (u, v = M . (x, y, 1), both exact). The grid's wear is the felt's own
+# under it, so the two meet without a seam: the weathered felt sampled where the grid lies, its printing laid over.
+GRID_UV = np.array([[-0.0078, 3e-06, 0.881913], [1e-06, 0.016972, 0.841947]])
+LAYOUT_UV = np.array([[-0.004393, 1e-06, 0.499969], [1e-06, 0.005138, 0.70186]])
+
+
+def grid_from_layout(grid_clean, layout_clean, layout_used):
+    import cv2
+    h, w = grid_clean.shape[:2]
+    lh, lw = layout_clean.shape[:2]
+    yy, xx = np.mgrid[0:h, 0:w]
+    u, v = (xx + 0.5) / w, (yy + 0.5) / h
+    ai = np.linalg.inv(GRID_UV[:, :2])
+    px = ai[0, 0] * (u - GRID_UV[0, 2]) + ai[0, 1] * (v - GRID_UV[1, 2])
+    py = ai[1, 0] * (u - GRID_UV[0, 2]) + ai[1, 1] * (v - GRID_UV[1, 2])
+    lu = LAYOUT_UV[0, 0] * px + LAYOUT_UV[0, 1] * py + LAYOUT_UV[0, 2]
+    lv = LAYOUT_UV[1, 0] * px + LAYOUT_UV[1, 1] * py + LAYOUT_UV[1, 2]
+    mx, my = (lu * lw - 0.5).astype(np.float32), (lv * lh - 0.5).astype(np.float32)
+    sample = lambda img: cv2.remap(img.astype(np.float32), mx, my, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT).astype(np.float64)
+    under_clean, under_used = sample(layout_clean), sample(layout_used)
+    printed = grid_clean - under_clean                              # the lines, numbers and diamonds (the felt: ~0)
+    darkened = np.clip((lum(under_clean) - lum(under_used)) * 3.0, 0, 1)  # burns and stains over the printing
+    worn = 0.8 * (1 - 0.6 * darkened) * (0.85 + 0.3 * fbm((h, w), 60, 3, 4242))
+    return np.clip(under_used + printed * worn[..., None], 0, 1)
+
+
 def make_textures(tex):
+    used = {}
     for name, (kind, own_n, own_s, seed) in TEXTURES.items():
         src = os.path.join(tex, name + "_d.dds")
         w, h = Image.open(src).size
         size = (S, S * h // w)  # 2K wide, the same shape
         print(name, kind, (w, h), "->", size)
-        c, H, dull = weather(load(src, size), kind, seed)
+        if name.startswith("layoutgrid_"):
+            under = "layout_" + name.split("_")[1]
+            ls = used[under].shape[:2]
+            c = grid_from_layout(load(src, size), load(os.path.join(tex, under + "_d.dds"), ls[::-1]), used[under])
+            H, dull = np.zeros(c.shape[:2]), np.zeros(c.shape[:2])
+        else:
+            c, H, dull = weather(load(src, size), kind, seed)
+        if name.startswith("layout_"):
+            used[name] = c
         save(c, os.path.join(tex, name + "_used_d.dds"), "DXT1")
         if own_n:
             n_src = os.path.join(tex, name + "_n.dds")
@@ -545,7 +594,7 @@ def make_textures(tex):
     d = np.asarray(Image.fromarray((dull * 255).astype(np.uint8)).resize(s.shape[1::-1], Image.BILINEAR)) / 255.0
     save(s * (0.75 - 0.6 * d)[..., None], os.path.join(tex, "wheel_used_s.dds"), "DXT1")
     size = (S, S)
-    H = -lines(size, 520, 320, 2, 77) * 0.6 - speckle(size, 0.003, 78, 1.0) * 0.6 + (fbm(size, 80, 3, 79) - 0.5) * 1.2
+    H = -lines(size, 200, 320, 1, 77, 0.3, (40, 120)) * 0.3 + (fbm(size, 120, 3, 79) - 0.5) * 1.0
     flat = np.zeros(size + (3,)) + np.array([0.5, 0.5, 1.0])
     save(bump(flat, H, 4.0), os.path.join(tex, "used_n.dds"), "BC7")
 
