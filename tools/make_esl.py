@@ -39,6 +39,11 @@ Form IDs (src/Forms.h expects these):
     xx000851  ARTO WastelandWagersWorkshopMenuArt  the category's picture: its first item (the roulette table)
     xx000853  IDLE WastelandWagersSlotHoldIdle  you sat at a slot machine, still: its sitting loop on its own (looping),
                                            so the furniture's idle doesn't pull the lever for you now and then
+    xx000854  ACTI WastelandWagersTableUsed    Used Roulette Table (Meshes/WastelandWagers/RouletteTableUsed.nif: the same table,
+                                           post-war; tools/make_used.py), 855 its COBJ in the workshop menu
+    xx000856  ACTI WastelandWagersPokerTableUsed  Used Poker Table, 857 its COBJ
+    xx000858  ACTI WastelandWagersBlackjackTableUsed  Used Blackjack Table, 859 its COBJ
+    xx00085A  FURN WastelandWagersSlotMachineUsed  Used Slot Machine (SlotMachineUsed.nif), 85B its COBJ
     xx000852  IDLE WastelandWagersSlotPullIdle  sat at a slot machine: the hand to the lever and a pull (the DLC's own
                                            pull, PoseA_IdleFlavor1: its furnitureIdleFlavor1Slave is the lever going down)
 
@@ -266,7 +271,8 @@ def activator(form_id: int, editor_id: str, name: str, mesh: str, bounds: tuple,
 DLC06 = 0x01000000  # DLCworkshop03.esm: our second master (its forms are 01xxxxxx here)
 
 
-def slot_machine(form_id: int) -> bytes:
+def slot_machine(form_id: int, editor_id: str = "WastelandWagersSlotMachine", name: str = "Slot Machine",
+                 mesh: str = "WastelandWagers\\SlotMachine.nif") -> bytes:
     """The Vault-Tec Workshop's slot machine (DLC06WorkshopSlotMachineBase) as furniture of ours: our re-skinned model
     (its behaviour graph off: the plugin turns the reels), the DLC's slot machine sitting animations (AnimFurnSlotMachine,
     its furniture marker model), no workshop power, no scripts, not a relaxation object (settlers don't wander over to it
@@ -278,11 +284,11 @@ def slot_machine(form_id: int) -> bytes:
         b"FURN",
         0,
         form_id,
-        subrecord(b"EDID", zstring("WastelandWagersSlotMachine"))
+        subrecord(b"EDID", zstring(editor_id))
         + subrecord(b"OBND", struct.pack("<6h", -20, -61, 0, 20, 22, 125))
         + subrecord(b"PTRN", struct.pack("<I", DLC06 | 0x00252D))
-        + subrecord(b"FULL", zstring("Slot Machine"))
-        + subrecord(b"MODL", zstring("WastelandWagers\\SlotMachine.nif"))
+        + subrecord(b"FULL", zstring(name))
+        + subrecord(b"MODL", zstring(mesh))
         + subrecord(b"KSIZ", struct.pack("<I", len(keywords)))
         + subrecord(b"KWDA", b"".join(struct.pack("<I", k) for k in keywords))
         + subrecord(b"PNAM", struct.pack("<I", 0))
@@ -438,6 +444,27 @@ def build() -> bytes:
                                    [(0x0001FABD, 4), (0x0003D294, 2), (0x0001FAB7, 3), (0x0001FAB0, 2), (0x0001FA9B, 2)],
                                    category=menu, sounds=(0x000196B6, 0x000196BD)))
 
+    # ---- the Used ones: the same tables and machine, post-war (tools/make_used.py: their models, the clean ones with
+    # worn textures). Played just the same (the plugin takes each for its clean one); salvaged, so cheaper to build
+    used = [
+        (0x54, "WastelandWagersTableUsed", "Used Roulette Table", "RouletteTableUsed", (-118, -62, 0, 118, 62, 81),
+         [(0x0001FAC2, 8), (0x0001FABD, 2), (0x001223C7, 2), (0x0003D294, 1)]),
+        (0x56, "WastelandWagersPokerTableUsed", "Used Poker Table", "PokerTableUsed", (-47, -91, 0, 47, 91, 65),
+         [(0x0001FAC2, 6), (0x001223C7, 3), (0x0003D294, 1)]),
+        (0x58, "WastelandWagersBlackjackTableUsed", "Used Blackjack Table", "BlackjackTableUsed", (-73, -49, 0, 73, 49, 69),
+         [(0x0001FAC2, 8), (0x001223C7, 3), (0x0003D294, 1)]),
+    ]
+    for off, edid, name, model, bounds, parts in used:
+        acti.append(activator(own | (FIRST_ID + off), edid, name, f"WastelandWagers\\{model}.nif", bounds, "Play", 0x001A03DD))
+        recipes.append(workshop_recipe(own | (FIRST_ID + off + 1), "workshop_co_" + edid, own | (FIRST_ID + off), parts,
+                                       category=menu))
+    used_slots = own | (FIRST_ID + 0x5A)
+    furniture.append(slot_machine(used_slots, "WastelandWagersSlotMachineUsed", "Used Slot Machine",
+                                  "WastelandWagers\\SlotMachineUsed.nif"))
+    recipes.append(workshop_recipe(own | (FIRST_ID + 0x5B), "workshop_co_WastelandWagersSlotMachineUsed", used_slots,
+                                   [(0x0001FABD, 2), (0x0003D294, 1), (0x0001FAB7, 2), (0x0001FAB0, 1), (0x0001FA9B, 1)],
+                                   category=menu, sounds=(0x000196B6, 0x000196BD)))
+
     # the Wasteland Wagers category's picture: its first item, the roulette table
     art = [menu_art(own | (FIRST_ID + 0x51), "WastelandWagersWorkshopMenuArt", menu, "WastelandWagers\\RouletteTable.nif",
                     0x001A03DD, (-118, -62, 0, 118, 62, 81))]
@@ -457,7 +484,7 @@ def build() -> bytes:
         b"TES4",
         FLAG_MASTER | FLAG_LIGHT,
         0,
-        subrecord(b"HEDR", struct.pack("<fiI", 1.0, count, FIRST_ID + 0x54))
+        subrecord(b"HEDR", struct.pack("<fiI", 1.0, count, FIRST_ID + 0x5C))
         + subrecord(b"CNAM", zstring("evodube"))
         + subrecord(b"SNAM", zstring("Wasteland Wagers: playable roulette, poker and blackjack tables, and slot machines"))
         + subrecord(b"MAST", zstring("Fallout4.esm"))

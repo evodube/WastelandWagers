@@ -93,6 +93,14 @@ pull; at less than 25 they pay 100 times the bet), three BARs 50 times the bet, 
 oranges 10, lemons 8, two cherries 4, one cherry your bet back. Settlers sit down at free machines and play too
 (`[Slots]` in the ini, or the Slots page). The plugin turns the reels itself, so they stop on the drawn symbols.
 
+### Used tables
+
+Every piece has a **Used** version beside it in the workshop menu (Used Roulette Table, Used Poker Table, Used
+Blackjack Table, Used Slot Machine): the same thing, played just the same, but post-war. Felt faded, stained, burnt
+and worn bald; wood scratched with its varnish worn through and rings from bottles; the rails cracked to the foam and
+patched with duct tape; the metal and the machine rusted and chipped. Salvaged, they cost less to build.
+(`tools/make_used.py` makes their textures from the clean ones and the models from theirs.)
+
 ### European or American
 
 `[Table] iWheel` (or the Table page in the menu): 0 European (one zero), 1 American (0 and 00, and the 0-00-1-2-3 top

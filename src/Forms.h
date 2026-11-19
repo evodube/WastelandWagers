@@ -23,7 +23,12 @@ namespace fr::Forms
 	inline constexpr std::uint32_t kSlotMachineID = 0x84E;     // FURN WastelandWagersSlotMachine: Meshes\WastelandWagers\SlotMachine.nif (the
 	                                                           // Vault-Tec Workshop's machine, re-skinned; its sitting animations)
 	inline constexpr std::uint32_t kSlotPullID = 0x852;        // IDLE WastelandWagersSlotPullIdle: sat at the machine, a pull (the DLC's)
-	inline constexpr std::uint32_t kSlotHoldID = 0x853;        // IDLE WastelandWagersSlotHoldIdle: sat at it, still (its sitting loop, looping)
+	inline constexpr std::uint32_t kSlotHoldID = 0x853;
+	// the Used ones (post-war textures, the same models): played just as the clean ones
+	inline constexpr std::uint32_t kTableUsedID = 0x854;           // ACTI WastelandWagersTableUsed
+	inline constexpr std::uint32_t kPokerTableUsedID = 0x856;      // ACTI WastelandWagersPokerTableUsed
+	inline constexpr std::uint32_t kBlackjackTableUsedID = 0x858;  // ACTI WastelandWagersBlackjackTableUsed
+	inline constexpr std::uint32_t kSlotMachineUsedID = 0x85A;     // FURN WastelandWagersSlotMachineUsed        // IDLE WastelandWagersSlotHoldIdle: sat at it, still (its sitting loop, looping)
 
 	inline constexpr RE::TESFormID kXMarkerHeading = 0x00000034;
 	inline constexpr RE::TESFormID kCaps = 0x0000000F;
@@ -65,12 +70,13 @@ namespace fr::Forms
 		return f && f->IsBoundObject() ? static_cast<RE::TESBoundObject*>(f) : nullptr;
 	}
 
-	inline bool IsTable(const RE::TESObjectREFR* a_ref)
+	// a ref's base is ours: the clean one or its Used twin
+	inline bool IsOurs(const RE::TESObjectREFR* a_ref, std::uint32_t a_clean, std::uint32_t a_used)
 	{
 		auto* base = a_ref ? a_ref->GetObjectReference() : nullptr;
-		auto* table = Table();
-		return base && table && base == table;
+		return base && (base == Own(a_clean) || base == Own(a_used));
 	}
+	inline bool IsTable(const RE::TESObjectREFR* a_ref) { return IsOurs(a_ref, kTableID, kTableUsedID); }
 
 	inline RE::TESBoundObject* PokerTable()
 	{
@@ -78,34 +84,19 @@ namespace fr::Forms
 		return f && f->IsBoundObject() ? static_cast<RE::TESBoundObject*>(f) : nullptr;
 	}
 	inline RE::TESBoundObject* Card(int a_card) { return util::ResolveForm(Settings::Get().plugin, kCardID + static_cast<std::uint32_t>(std::clamp(a_card, 0, 51))); }
-	inline bool IsPokerTable(const RE::TESObjectREFR* a_ref)
-	{
-		auto* base = a_ref ? a_ref->GetObjectReference() : nullptr;
-		auto* table = PokerTable();
-		return base && table && base == table;
-	}
+	inline bool IsPokerTable(const RE::TESObjectREFR* a_ref) { return IsOurs(a_ref, kPokerTableID, kPokerTableUsedID); }
 	inline RE::TESBoundObject* BlackjackTable()
 	{
 		auto* f = Own(kBlackjackTableID);
 		return f && f->IsBoundObject() ? static_cast<RE::TESBoundObject*>(f) : nullptr;
 	}
-	inline bool IsBlackjackTable(const RE::TESObjectREFR* a_ref)
-	{
-		auto* base = a_ref ? a_ref->GetObjectReference() : nullptr;
-		auto* table = BlackjackTable();
-		return base && table && base == table;
-	}
+	inline bool IsBlackjackTable(const RE::TESObjectREFR* a_ref) { return IsOurs(a_ref, kBlackjackTableID, kBlackjackTableUsedID); }
 	inline RE::TESBoundObject* SlotMachine()
 	{
 		auto* f = Own(kSlotMachineID);
 		return f && f->IsBoundObject() ? static_cast<RE::TESBoundObject*>(f) : nullptr;
 	}
-	inline bool IsSlotMachine(const RE::TESObjectREFR* a_ref)
-	{
-		auto* base = a_ref ? a_ref->GetObjectReference() : nullptr;
-		auto* machine = SlotMachine();
-		return base && machine && base == machine;
-	}
+	inline bool IsSlotMachine(const RE::TESObjectREFR* a_ref) { return IsOurs(a_ref, kSlotMachineID, kSlotMachineUsedID); }
 	// the workshop menu's Wasteland Wagers category (every table's and the slot machine's recipe is in it): in the
 	// Furniture menu, right after Tables, when the game's data is loaded. The menu's form lists aren't overridden in
 	// the plugin (that would undo other mods' changes to them): the category's added here, each time the game starts.
