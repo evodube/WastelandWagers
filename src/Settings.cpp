@@ -98,6 +98,10 @@ namespace fr
 		spinDelay = std::clamp(ReadFloat(L"Table", L"fSpinDelay", spinDelay), 3.0f, 300.0f);
 		maxBet = std::clamp(static_cast<int>(ReadInt(L"Table", L"iMaxBet", maxBet)), 1, 100000);
 		activeDistance = std::clamp(ReadFloat(L"Table", L"fActiveDistance", activeDistance), 500.0f, 20000.0f);
+		luck = std::clamp(ReadFloat(L"Table", L"fLuck", luck), 0.0f, 3.0f);
+		income = ReadBool(L"Income", L"bIncome", income);
+		incomeShare = std::clamp(ReadFloat(L"Income", L"fShare", incomeShare), 0.0f, 100.0f);
+		pokerRake = std::clamp(static_cast<int>(ReadInt(L"Income", L"iPokerRake", pokerRake)), 0, 50);
 
 		layoutHeight = std::clamp(ReadFloat(L"Camera", L"fLayoutHeight", layoutHeight), 40.0f, 600.0f);
 		wheelHeight = std::clamp(ReadFloat(L"Camera", L"fWheelHeight", wheelHeight), 25.0f, 400.0f);

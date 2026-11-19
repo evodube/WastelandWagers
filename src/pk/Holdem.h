@@ -94,6 +94,8 @@ namespace pk
 		// a new hand: a_players in seat order (at least two with chips), the button at a_button (a seat index), the
 		// blinds; shuffles and deals two cards each, posts the blinds
 		void Start(std::vector<Player> a_players, int a_button, int a_small, int a_big, std::mt19937& a_rng);
+		// (your Luck, at the deal: a_seat's hole cards and the next two in the deck swapped, if those are better)
+		bool Favour(int a_seat);
 
 		int  ToAct() const { return _toAct; }  // the seat whose turn it is, or -1 (nobody: the hand's over)
 		bool Over() const { return street == Street::kShowdown; }

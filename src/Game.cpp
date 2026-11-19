@@ -465,6 +465,7 @@ namespace fr
 		_last = now;
 		_haveLast = true;
 		dt = std::clamp(dt, 0.0f, kMaxFrame);
+		TickIncome();
 		// someone talking to you while you're at the table (a greeting that got through): up, so the conversation can
 		// happen with your own controls and camera
 		if (_seated) {
@@ -1066,9 +1067,31 @@ namespace fr
 		p.rotorSpeed = speed;
 		const auto type = _t.wheel;
 		const auto seed = _rng();
-		_t.planFuture = std::async(std::launch::async, [type, p, seed]() {
+		// the number, drawn fairly; with your bets down, your Luck now and then has a second number drawn and the one
+		// that pays you more kept
+		const auto& seq = rl::Sequence(type);
+		std::uniform_int_distribution<int> pocketOf(0, rl::PocketCount(type) - 1);
+		int        pocket = pocketOf(_rng);
+		auto       yourNet = [&](int a_number) {
+            int net = 0;
+            for (const auto& st : _t.stakes) {
+                if (st.owner == 0 && st.won < 0) {
+                    net += st.bet.Wins(a_number) ? st.amount * st.bet.Payout() : -st.amount;
+                }
+            }
+            return net;
+		};
+		if (HasBets(0) && LuckSmiles("roulette: a second number drawn")) {
+			const int other = pocketOf(_rng);
+			if (yourNet(seq[static_cast<std::size_t>(other)]) > yourNet(seq[static_cast<std::size_t>(pocket)])) {
+				log::info("luck: roulette: {} instead of {}", rl::NumberName(seq[static_cast<std::size_t>(other)]),
+					rl::NumberName(seq[static_cast<std::size_t>(pocket)]));
+				pocket = other;
+			}
+		}
+		_t.planFuture = std::async(std::launch::async, [type, p, seed, pocket]() {
 			std::mt19937 rng(seed);
-			return rl::PlanSpin(type, p, rng);
+			return rl::PlanSpin(type, p, rng, pocket);
 		});
 		_t.plan = {};
 		_t.planning = true;
@@ -1228,6 +1251,16 @@ namespace fr
 				if (st.owner != 0) {
 					npcNet[st.owner] -= st.amount;
 				}
+			}
+		}
+		// the house's take from the settlers (to the settlement's workbench, if the table's built in one)
+		{
+			int settlers = 0;
+			for (const auto& [id, net] : npcNet) {
+				settlers += net;
+			}
+			if (auto table = _t.table.get()) {
+				HouseTake(table.get(), -settlers, "roulette");
 			}
 		}
 		if (yourBack > 0) {

@@ -173,6 +173,22 @@ namespace pk
 		}
 	}
 
+	bool Hand::Favour(int a_seat)
+	{
+		if (a_seat < 0 || a_seat >= static_cast<int>(players.size()) || _deck.Left() < 2) {
+			return false;
+		}
+		auto&  p = players[static_cast<std::size_t>(a_seat)];
+		Card&  a = _deck.Peek(0);
+		Card&  b = _deck.Peek(1);
+		if (ChenScore(a, b) <= ChenScore(p.hole[0], p.hole[1])) {
+			return false;
+		}
+		std::swap(p.hole[0], a);
+		std::swap(p.hole[1], b);
+		return true;
+	}
+
 	bool Hand::RoundDone() const
 	{
 		if (Live() <= 1) {

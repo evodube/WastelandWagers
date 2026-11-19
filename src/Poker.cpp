@@ -1220,6 +1220,7 @@ namespace fr
 		log::info("poker: {} plays like a {}", st.name, pk::ArchetypeName(st.style.archetype));
 		st.hands = std::uniform_int_distribution<int>(6, 20)(_rng);
 		st.stack = TakePurse(st.id, s.pkNpcBuyIn);
+		st.boughtIn = st.stack;
 		log::info("poker: {} ({:08X}) sits in at seat {} with {} caps", st.name, st.id, seat, st.stack);
 		PkSay(std::format("{} SITS IN WITH {}", Upper(st.name), st.stack));
 		PkGreet(st);
@@ -1258,6 +1259,15 @@ namespace fr
 			st.stack = _pk.hand.players[st.hi].stack;
 			_pk.hand.players[st.hi].stack = 0;
 		}
+		// the card room's cut of what they're up (to the settlement, if the table's built in one)
+		if (auto table = _pk.table.get(); table && st.boughtIn > 0 && st.stack > st.boughtIn && EarnsIncome(table.get())) {
+			const int cut = (st.stack - st.boughtIn) * Settings::Get().pokerRake / 100;
+			if (cut > 0) {
+				st.stack -= cut;
+				HouseTake(table.get(), cut, "poker (the card room's cut)");
+			}
+		}
+		st.boughtIn = 0;
 		AddToPurse(st.id, st.stack);
 		auto  ref = st.actor.get();
 		auto* actor = ref ? ref->As<RE::Actor>() : nullptr;
@@ -1471,6 +1481,11 @@ namespace fr
 			}
 		}
 		_pk.hand.Start(std::move(players), next, s.pkSmallBlind, s.pkBigBlind, _rng);
+		for (const auto& st : _pk.seats) {
+			if (st.used && st.you && st.hi >= 0 && LuckSmiles("poker: the next two cards, if they're better")) {
+				log::info("luck: poker: {}", _pk.hand.Favour(st.hi) ? "better hole cards" : "yours were better already");
+			}
+		}
 		_pk.inHand = true;
 		_pk.phase = PkPhase::kDealing;
 		_pk.boardShown = 0;

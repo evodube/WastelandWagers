@@ -43,6 +43,23 @@ namespace bj
 		std::size_t       cut{ 0 };
 		void Shuffle(std::mt19937& a_rng);
 		Card Draw(std::mt19937& a_rng);  // (an empty shoe shuffles itself)
+		// the next card, unless it isn't a_good: then the first that is of the next few, swapped to the front
+		template <class F>
+		Card DrawFavoured(std::mt19937& a_rng, F a_good, std::size_t a_look = 12)
+		{
+			if (next >= cards.size()) {
+				Shuffle(a_rng);
+			}
+			if (!a_good(cards[next])) {
+				for (std::size_t k = 1; k < a_look && next + k < cards.size(); ++k) {
+					if (a_good(cards[next + k])) {
+						std::swap(cards[next], cards[next + k]);
+						break;
+					}
+				}
+			}
+			return cards[next++];
+		}
 		bool PastCut() const { return next >= cut; }
 		std::size_t Left() const { return cards.size() - next; }
 	};

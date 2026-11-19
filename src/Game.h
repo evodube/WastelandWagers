@@ -328,6 +328,13 @@ namespace fr
 		void PollKeys();
 		static bool IsGamePaused();
 		static void Notify(const std::string& a_message);
+		// your Luck (SPECIAL), and the settlements' takings (Luck.cpp)
+		float              LuckChance() const;                  // how often a game is tilted your way (0..0.4)
+		bool               LuckSmiles(const char* a_what);      // rolled now: luck's with you (logged)
+		RE::TESObjectREFR* Workbench(RE::TESObjectREFR* a_table) const;  // the settlement's a table's built in, or none
+		bool               EarnsIncome(RE::TESObjectREFR* a_table) const;
+		void               HouseTake(RE::TESObjectREFR* a_table, int a_caps, const char* a_game);  // + the house won
+		void               TickIncome();
 		void        Say(const std::string& a_text, int a_tone = 0);  // the HUD log (and a corner message with bNotifications)
 
 		// tables
@@ -466,6 +473,7 @@ namespace fr
 			Seat::Step          step{ Seat::Step::kWalking };
 			bool                held{ false };
 			int                 stack{ 0 };
+			int                 boughtIn{ 0 };   // what they sat down with (the card room's cut is of what they're up)
 			int                 hands{ 0 };      // hands left before they go
 			float               atSpot{ 0.0f };
 			pk::Style           style;
@@ -961,6 +969,9 @@ namespace fr
 		bool                              _haveLast{ false };
 		bool                              _lifted{ false };      // BeforeSave took our things off; AfterSave puts them back
 		std::mt19937                      _rng{ std::random_device{}() };
+		std::unordered_map<RE::TESFormID, int> _houseOwed;      // per workbench: what the house paid out more than it took
+		int                               _houseMade{ 0 };       // put in workbenches since it was last said
+		std::chrono::steady_clock::time_point _houseSaid{};
 		int                               _appliedWheel{ -1 };   // the setting the tables' nodes were last shown for
 		std::vector<RE::TESFormID>        _appliedTables;
 		std::vector<RE::ObjectRefHandle>  _nearTables;

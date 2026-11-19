@@ -73,6 +73,15 @@ namespace fr::SettingsMenu
 						{ L"Table", L"iMaxBet", "Most on one bet", Kind::kInt, &s.maxBet, 1, 100000, nullptr, "caps" },
 						{ L"Table", L"fActiveDistance", "Table in play within", Kind::kFloat, &s.activeDistance, 500.0f, 20000.0f, "%.0f",
 							"NPCs come to a table this close to you" },
+						{ L"Table", L"fLuck", "Luck counts", Kind::kFloat, &s.luck, 0.0f, 3.0f, "%.1fx",
+							"how much your Luck (SPECIAL) tilts every game your way: 0 not at all, 1 as made (Luck 10: about one "
+							"game in six goes your way that wouldn't have)" },
+						{ L"Income", L"bIncome", "Settlement income", Kind::kBool, &s.income, 0, 0, nullptr,
+							"the house's take from settlers gambling at a table built in a settlement goes into that settlement's workbench" },
+						{ L"Income", L"fShare", "House take to the workbench", Kind::kFloat, &s.incomeShare, 0.0f, 100.0f, "%.0f%%",
+							"of what the house wins from settlers (what it pays out to them comes off first)" },
+						{ L"Income", L"iPokerRake", "Card room's cut (poker)", Kind::kInt, &s.pokerRake, 0, 50, nullptr,
+							"percent of what a settler leaves the poker table up (poker has no house: this is its income)" },
 					} },
 				{ "Camera", "The view while you're at the table.",
 					{

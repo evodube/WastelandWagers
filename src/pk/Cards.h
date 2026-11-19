@@ -48,6 +48,7 @@ namespace pk
 		Card Deal() { return _cards[_next++]; }
 		void Burn() { ++_next; }
 		void Remove(Card a_c);  // (for working out odds: cards already seen)
+		Card& Peek(int a_k) { return _cards[static_cast<std::size_t>(_next + a_k)]; }  // a card still to come
 		int  Left() const { return kDeck - _next; }
 
 	private:

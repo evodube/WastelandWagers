@@ -98,7 +98,8 @@ namespace rl
 	// Throws the ball. The winning pocket is drawn first, fairly, from a_rng; the physics is then run with
 	// randomised throws until one ends in that pocket (so the result is exactly uniform whatever the physics
 	// does), and that run is what's shown.
-	SpinPlan PlanSpin(WheelType a_type, const SpinParams& a_base, std::mt19937& a_rng);
+	// a_pocket >= 0: that pocket, drawn already (by the caller: your Luck's second draw, Game.cpp)
+	SpinPlan PlanSpin(WheelType a_type, const SpinParams& a_base, std::mt19937& a_rng, int a_pocket = -1);
 
 	// One run of the physics with these exact parameters and this noise (the plan's tries).
 	SpinPlan SimulateSpin(WheelType a_type, const SpinParams& a_params, std::mt19937& a_noise);

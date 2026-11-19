@@ -1245,7 +1245,14 @@ namespace fr
 		switch (a_move) {
 		case bj::Move::kHit:
 			{
-				const int card = _bj.shoe.Draw(_rng);
+				// (your Luck: now and then a card that would bust you is passed over for one that doesn't)
+				const int card = st.you && LuckSmiles("blackjack: a hit that doesn't bust") ?
+				                     _bj.shoe.DrawFavoured(_rng, [&](bj::Card c) {
+                                         auto cs = hand.cards;
+                                         cs.push_back(c);
+                                         return bj::Count(cs).value <= 21;
+                                     }) :
+				                     _bj.shoe.Draw(_rng);
 				hand.cards.push_back(card);
 				hand.refs.push_back(BjDeal(card, CardAt(i, _bj.turnHand, static_cast<int>(st.hands.size()), static_cast<int>(hand.cards.size()) - 1),
 					CardYaw(i), true, 0.0f));
@@ -1275,7 +1282,14 @@ namespace fr
 				hand.chips.insert(hand.chips.end(), more.begin(), more.end());
 				hand.bet *= 2;
 				hand.doubled = true;
-				const int card = _bj.shoe.Draw(_rng);
+				const int card = st.you && LuckSmiles("blackjack: a good card to double on") ?
+				                     _bj.shoe.DrawFavoured(_rng, [&](bj::Card c) {
+                                         auto cs = hand.cards;
+                                         cs.push_back(c);
+                                         const int v = bj::Count(cs).value;
+                                         return v >= 17 && v <= 21;
+                                     }) :
+				                     _bj.shoe.Draw(_rng);
 				hand.cards.push_back(card);
 				hand.refs.push_back(BjDeal(card, CardAt(i, _bj.turnHand, static_cast<int>(st.hands.size()), static_cast<int>(hand.cards.size()) - 1),
 					CardYaw(i) + 1.5708f, true, 0.0f));  // (the double's card across the others)
@@ -1348,7 +1362,24 @@ namespace fr
 			}
 		}
 		if (live && bj::Count(_bj.dealer).value < 17) {
-			const int card = _bj.shoe.Draw(_rng);
+			// your best hand still in: your Luck now and then passes over a card that would have the dealer beat it
+			int yourBest = 0;
+			for (const auto& st : _bj.seats) {
+				for (const auto& h : st.hands) {
+					const int v = bj::Count(h.cards).value;
+					if (st.you && v <= 21) {
+						yourBest = std::max(yourBest, v);
+					}
+				}
+			}
+			const int card = yourBest > 0 && LuckSmiles("blackjack: the dealer's card") ?
+			                     _bj.shoe.DrawFavoured(_rng, [&](bj::Card c) {
+                                     auto cs = _bj.dealer;
+                                     cs.push_back(c);
+                                     const int v = bj::Count(cs).value;
+                                     return v > 21 || v < 17 || v < yourBest;
+                                 }) :
+			                     _bj.shoe.Draw(_rng);
 			_bj.dealer.push_back(card);
 			_bj.dealerRefs.push_back(BjDeal(card, DealerCardAt(static_cast<int>(_bj.dealer.size()) - 1), 0.0f, true, 0.0f));
 			BjSay(std::format("THE DEALER DRAWS · {}", ValueText(_bj.dealer, false)));
@@ -1368,6 +1399,7 @@ namespace fr
 		}
 		int  youNet = 0;
 		bool youIn = false;
+		int  settlersNet = 0;  // (the house's take is what they lose: to the settlement, if the table's built in one)
 		for (int i = 0; i < kBjSeats; ++i) {
 			auto& st = _bj.seats[i];
 			if (st.hands.empty()) {
@@ -1433,7 +1465,12 @@ namespace fr
 			if (st.you) {
 				youIn = true;
 				youNet = net;
+			} else {
+				settlersNet += net;
 			}
+		}
+		if (auto table = _bj.table.get()) {
+			HouseTake(table.get(), -settlersNet, "blackjack");
 		}
 		if (youIn) {
 			_bj.bannerTitle = youNet > 0 ? std::format("YOU WIN {}", youNet) : youNet < 0 ? std::format("YOU LOSE {}", -youNet) : std::string("PUSH");

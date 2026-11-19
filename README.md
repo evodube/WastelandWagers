@@ -93,6 +93,19 @@ pull; at less than 25 they pay 100 times the bet), three BARs 50 times the bet, 
 oranges 10, lemons 8, two cherries 4, one cherry your bet back. Settlers sit down at free machines and play too
 (`[Slots]` in the ini, or the Slots page). The plugin turns the reels itself, so they stop on the drawn symbols.
 
+### Luck and settlement income
+
+- **Luck** (SPECIAL) counts. Every game is still drawn fairly, then now and then (more often the luckier you are:
+  about 2% a point of Luck over 1, so roughly one game in six at Luck 10) it gives you a second chance: roulette draws
+  a second number and keeps the one that pays you more, a losing slot pull is pulled again, a blackjack card that
+  would bust you (or have the dealer beat you) is passed over for one a few cards on in the shoe, and your poker hole
+  cards are swapped for the next two in the deck when those are better. `[Table] fLuck` (or the Table page) sets how
+  much it counts: 0 not at all, up to 3.
+- **Income**: a table or slot machine built in a settlement earns for it. What the house wins from settlers playing
+  there (less what it pays out to them) goes into the settlement's workbench, and at poker, which has no house, the
+  card room takes a cut (10%) of what a settler leaves the table up. A corner message says what the tables made now
+  and then. `[Income]`: `bIncome`, `fShare` (how much of the take, %), `iPokerRake`. Kit tables earn nothing.
+
 ### Used tables
 
 Every piece has a **Used** version beside it in the workshop menu (Used Roulette Table, Used Poker Table, Used

@@ -331,10 +331,10 @@ namespace rl
 		return plan;
 	}
 
-	SpinPlan PlanSpin(WheelType a_type, const SpinParams& a_base, std::mt19937& a_rng)
+	SpinPlan PlanSpin(WheelType a_type, const SpinParams& a_base, std::mt19937& a_rng, int a_pocket)
 	{
 		const int n = PocketCount(a_type);
-		const int target = std::uniform_int_distribution<int>(0, n - 1)(a_rng);
+		const int target = a_pocket >= 0 && a_pocket < n ? a_pocket : std::uniform_int_distribution<int>(0, n - 1)(a_rng);
 		std::uniform_real_distribution<double> U(0.0, 1.0);
 		SpinPlan last;
 		SpinPlan fallback;  // the best run that ended in the drawn pocket, if none bounced about long enough

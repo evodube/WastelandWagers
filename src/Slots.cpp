@@ -657,8 +657,22 @@ namespace fr
 		sp.bet = a_bet;
 		sp.you = a_you;
 		std::discrete_distribution<int> reel(kWeights.begin(), kWeights.end());
+		std::array<int, 3>              res{};
+		for (auto& x : res) {
+			x = reel(_rng);
+		}
+		// your Luck: now and then a pull that lost is pulled again (and kept if that one wins)
+		if (a_you && Pays(res) == 0 && LuckSmiles("slots: a losing pull pulled again")) {
+			std::array<int, 3> again{};
+			for (auto& x : again) {
+				x = reel(_rng);
+			}
+			if (Pays(again) != 0) {
+				res = again;
+			}
+		}
 		for (int r = 0; r < 3; ++r) {
-			sp.result[r] = reel(_rng);
+			sp.result[r] = res[r];
 			sp.from[r] = m.angle[r];
 			sp.speed[r] = 1000.0f - 50.0f * static_cast<float>(r);
 			sp.stopAt[r] = 1.45f + 0.5f * static_cast<float>(r) + std::uniform_real_distribution<float>(0.0f, 0.15f)(_rng);
@@ -728,6 +742,10 @@ namespace fr
 		} else if (m.id != 0) {
 			if (won > 0) {
 				AddToPurse(m.id, won);
+			}
+			// the house's take (to the settlement, if the machine's built in one)
+			if (auto machine = m.ref.get()) {
+				HouseTake(machine.get(), sp.bet - won, "slots");
 			}
 			auto  ref = m.actor.get();
 			auto* actor = ref ? ref->As<RE::Actor>() : nullptr;
