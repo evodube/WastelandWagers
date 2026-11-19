@@ -581,7 +581,7 @@ namespace fr
 		// the tables in play: up to two, the nearest within reach; one already in play stays so a little further out
 		auto distanceTo = [&](const Slot& a_slot) {
 			auto* t = a_slot.table.get().get();
-			const bool loaded = t && t->Get3D() && !t->IsDisabled() && std::ranges::find(found, t) != found.end();
+			const bool loaded = t && t->Get3D() && !t->IsDisabled() && !t->IsDeleted() && std::ranges::find(found, t) != found.end();
 			return loaded ? (t->data.location - player->data.location).Length() : std::numeric_limits<float>::max();
 		};
 		for (int k = 0; k < 2; ++k) {

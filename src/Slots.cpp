@@ -288,7 +288,7 @@ namespace fr
 		// the ones gone or left behind
 		for (int i = static_cast<int>(_sl.size()) - 1; i >= 0; --i) {
 			auto       ref = _sl[i].ref.get();
-			const bool gone = !ref || ref->IsDisabled() || !ref->Get3D();
+			const bool gone = !ref || ref->IsDisabled() || ref->IsDeleted() || !ref->Get3D();
 			if (!gone && (ref->data.location - player->data.location).Length() <= s.activeDistance + 400.0f) {
 				continue;
 			}

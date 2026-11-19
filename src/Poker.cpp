@@ -390,8 +390,11 @@ namespace fr
 				return RE::BSContainer::ForEachResult::kContinue;
 			});
 		});
-		if (auto current = _pk.table.get()) {
-			const bool gone = current->IsDisabled() || !current->Get3D();
+		// (scrapped in the workshop, the table's handle stays set but finds nothing: gone too. Missed, the game never
+		// ended: its players and dealer held where they stood)
+		if (_pk.table) {
+			auto       current = _pk.table.get();
+			const bool gone = !current || current->IsDisabled() || current->IsDeleted() || !current->Get3D();
 			const float d = gone ? 1e9f : (current->data.location - player->data.location).Length();
 			if (gone || d > s.activeDistance + 400.0f) {
 				PkEnd(gone ? "the table's gone" : "you walked away");
