@@ -5,6 +5,7 @@
 #include "Game.h"
 
 #include "Forms.h"
+#include "MenuWatch.h"
 #include "Npc.h"
 #include "Settings.h"
 #include "Util.h"
@@ -565,12 +566,14 @@ namespace fr
 			}
 		}
 		const float d = a_chair ? std::hypot(a_actor->data.location.x - a_chair->data.location.x, a_actor->data.location.y - a_chair->data.location.y) : -1.0f;
+		// (the menus from the menu events (MenuWatch.h), never UI::GetMenuOpen: asking the UI holds the menu, and the
+		// workshop menu torn down on our thread crashed the game on the way out of build mode)
 		std::string menu;
-		if (auto* ui = RE::UI::GetSingleton()) {
-			for (const char* m : { "PipboyMenu", "WorkshopMenu", "SleepWaitMenu", "DialogueMenu", "PauseMenu", "Console", "LoadingMenu" }) {
-				if (ui->GetMenuOpen(m)) {
-					menu += menu.empty() ? m : std::string(", ") + m;
-				}
+		for (const auto& [id, m] : { std::pair{ menus::kPipboy, "PipboyMenu" }, std::pair{ menus::kWorkshop, "WorkshopMenu" },
+				 std::pair{ menus::kDialogue, "DialogueMenu" }, std::pair{ menus::kPause, "PauseMenu" }, std::pair{ menus::kConsole, "Console" },
+				 std::pair{ menus::kLoading, "LoadingMenu" } }) {
+			if (menus::Open(id)) {
+				menu += menu.empty() ? m : std::string(", ") + m;
 			}
 		}
 		log::info("[sit] {}: {} {} -> {} (package {}, in {}, {:.0f} from their chair{}{}{})", a_table, a_name, a_was < 0 ? "starts" : name(a_was),
