@@ -105,6 +105,10 @@ oranges 10, lemons 8, two cherries 4, one cherry your bet back. Settlers sit dow
   there (less what it pays out to them) goes into the settlement's workbench, and at poker, which has no house, the
   card room takes a cut (10%) of what a settler leaves the table up. A corner message says what the tables made now
   and then. `[Income]`: `bIncome`, `fShare` (how much of the take, %), `iPokerRake`. Kit tables earn nothing.
+- **While you're away** (the tables only play with you near them) each settlement's tables and slot machines still
+  earn: a day's takings each, by how many settlers live there: `fAwayPerSettler` (2) caps a game day for each table,
+  for each settler (a slot machine half), give or take a quarter, paid into the workbench every six game hours you're
+  away (up to 30 days at once). Ten settlers and a roulette table: about 20 caps a day. `bAway=0` turns it off.
 
 ### Used tables
 
