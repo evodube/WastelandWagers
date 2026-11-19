@@ -3,7 +3,7 @@
 includes("lib/commonlibf4")
 
 set_project("WastelandWagers")
-set_version("1.0.12")
+set_version("1.0.13")
 set_license("GPL-3.0")
 set_languages("c++23")
 set_warnings("allextra")
