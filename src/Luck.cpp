@@ -12,6 +12,8 @@
 // earn nothing.
 
 #include "Game.h"
+#include "Forms.h"
+#include "Settings.h"
 
 namespace fr
 {
