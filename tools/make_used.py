@@ -8,7 +8,7 @@ Reads the clean textures in <Data>\\Textures\\WastelandWagers and writes, beside
     varnish worn through and water rings, the padded rails cracked and patched with tape, metal rusted and chipped
   - <name>_used_n.dds (BC7) for the ones with their own normal map: the scratches, cracks and dents in it too
   - <name>_used_s.dds (BC1): duller, blotchy
-  - used_n.dds (1K, BC7): a scratched, dented normal for the parts that had none (flat_n)
+  - used_n.dds (2K, BC7): a scratched, dented normal for the parts that had none (flat_n)
 ...and in <Data>\\Meshes\\WastelandWagers the Used models (RouletteTableUsed.nif, PokerTableUsed.nif,
 BlackjackTableUsed.nif, SlotMachineUsed.nif): the clean ones with those textures. The slot machine's go through its
 materials: <Data>\\Materials\\WastelandWagers\\SlotMachineUsed.BGSM, SlotStoolUsed.BGSM and SlotStandUsed.BGSM (its
@@ -200,9 +200,207 @@ def col(r, g, b):
 # ---------------------------------------------------------------- the weathering, by kind of surface
 
 
-def weather(c, kind, seed):
+
+# ---------------------------------------------------------------- wood and leather, made to look real
+
+def gblur(a, sigma):
+    """A Gaussian blur that wraps round (tileable)."""
+    import cv2
+    pad = int(sigma * 3) + 1
+    big = np.pad(a, ((pad, pad), (pad, pad)) + ((0, 0),) * (a.ndim - 2), mode="wrap")
+    out = cv2.GaussianBlur(big.astype(np.float32), (0, 0), sigma, borderType=cv2.BORDER_REFLECT)
+    return out[pad:-pad, pad:-pad].astype(np.float64)
+
+
+def voronoi(size, cell, seed, warp=0.0):
+    """Cells about `cell` pixels across, tileable: (distance to the nearest point, to the second nearest, its index,
+    how many points). warp: the cells' edges wobbled by that much of a cell."""
+    from scipy.spatial import cKDTree
+    h, w = size
+    rng = np.random.default_rng(seed)
+    n = max(4, int(h * w / (cell * cell)))
+    pts = rng.uniform(0, 1, (n, 2)) * np.array([h, w])
+    tree = cKDTree(pts, boxsize=[h, w])
+    yy, xx = np.mgrid[0:h, 0:w].astype(np.float64)
+    if warp:
+        yy += (fbm(size, cell * 1.5, 3, seed + 1) - 0.5) * cell * warp * 4
+        xx += (fbm(size, cell * 1.5, 3, seed + 2) - 0.5) * cell * warp * 4
+    q = np.stack([np.mod(yy, h).ravel(), np.mod(xx, w).ravel()], 1)
+    d, i = tree.query(q, k=2, workers=-1)
+    return d[:, 0].reshape(size), d[:, 1].reshape(size), i[:, 0].reshape(size), n
+
+
+def grain_angle(lum_img):
+    """The way the grain runs (radians, image x right / y down): across the strongest gradients."""
+    gy, gx = np.gradient(gblur(lum_img, 1.5))
+    jxx, jyy, jxy = (gx * gx).mean(), (gy * gy).mean(), (gx * gy).mean()
+    return 0.5 * np.arctan2(2 * jxy, jxx - jyy) + np.pi / 2
+
+
+def streaks(size, scale, seed, angle, octaves=4):
+    """Noise drawn out along the grain (horizontal or vertical, whichever's nearer: tileable that way)."""
+    along_x = abs(np.cos(angle)) >= abs(np.sin(angle))
+    if along_x:
+        return fbm(size, scale, octaves, seed, aspect=0.08)
+    t = fbm(size[::-1], scale, octaves, seed, aspect=0.08)
+    return t.T
+
+
+def grain_lines(size, count, length, width, seed, angle, spread=0.03, alpha=(150, 255)):
+    """Drying checks and splits: thin cracks along the grain, wavering a little, drawn wrapped round."""
+    rng = np.random.default_rng(seed)
+    h, w = size
+    img = Image.new("L", (w, h), 0)
+    dr = ImageDraw.Draw(img)
+    for _ in range(count):
+        x0, y0 = rng.uniform(0, w), rng.uniform(0, h)
+        a0 = angle + rng.normal(0, spread)
+        L = rng.uniform(0.3, 1.0) * length
+        n = max(3, int(L / 8))
+        pts = []
+        off = 0.0
+        for k in range(n):
+            t = k / (n - 1)
+            off += rng.normal(0, 0.6)
+            px = x0 + np.cos(a0) * L * t - np.sin(a0) * off
+            py = y0 + np.sin(a0) * L * t + np.cos(a0) * off
+            pts.append((px, py))
+        a = int(rng.uniform(*alpha))
+        # tapering: thick in the middle, a hair at the ends
+        wd = rng.uniform(0.6, 1.0) * width
+        seg = max(1, len(pts) // 3)
+        for ox in (-w, 0, w):
+            for oy in (-h, 0, h):
+                for j in range(len(pts) - 1):
+                    t = j / max(1, len(pts) - 2)
+                    ww = max(1, int(round(wd * (1 - abs(2 * t - 1) ** 2))))
+                    dr.line([(pts[j][0] + ox, pts[j][1] + oy), (pts[j + 1][0] + ox, pts[j + 1][1] + oy)], fill=a, width=ww)
+    del seg
+    return np.asarray(img, dtype=np.float64) / 255.0
+
+
+def wood_dry(c, seed):
+    """Wood left out in the sun and rain: the finish gone, faded to a silvery grey-brown, the grain standing up
+    (the soft wood between worn down), split along it in drying checks, a few dark water stains and grime in the grain."""
+    size = c.shape[:2]
+    L = lum(c)
+    ang = grain_angle(L)
+    hp = L - gblur(L, 10)                       # the grain's detail
+    hp2 = L - gblur(L, 2.5)                     # ...and its finest lines
+    # faded: the colour mostly gone, lighter, the grain's contrast kept (more: the soft wood weathers away)
+    Lf = 0.47 + (L - L.mean()) * 0.9 + hp * 1.6 + hp2 * 0.8
+    sun = fbm(size, 600, 3, seed + 1)
+    Lf = Lf * (0.9 + 0.22 * sun)
+    st = streaks(size, 90, seed + 2, ang)       # grey weathering streaks along the grain
+    Lf = Lf * (0.86 + 0.28 * st)
+    silver = col(196, 186, 168) / 0.75
+    brown = col(178, 150, 116) / 0.66
+    tone = mix(silver, brown, smooth(fbm(size, 300, 3, seed + 3), 0.35, 0.75) * 0.55 + 0.15)
+    out = Lf[..., None] * tone * 1.02
+    out = mix(out, desat(c, 0.4) * 1.5 + 0.05, 0.12)   # a little of the old stain left in it
+    # drying checks along the grain, and a few long splits
+    checks = grain_lines(size, 260, 260, 2, seed + 4, ang, 0.025, (110, 230))
+    splits = grain_lines(size, 16, 900, 4, seed + 5, ang, 0.012, (200, 255))
+    crack = np.clip(checks * 0.8 + splits, 0, 1)
+    shadow = np.clip(gblur(crack, 1.2) * 1.5, 0, 1)       # the cracks' dark insides and a soft edge
+    out = out * (1 - shadow[..., None] * 0.35) * (1 - crack[..., None] * 0.6)
+    # grime settled in the grain and the cracks, water stains, a few nail holes
+    grime = smooth(-hp, 0.0, 0.06)
+    out = out * (1 - grime[..., None] * 0.25)
+    r = rings(size, 4, 30, 70, seed + 6)
+    out = out * (1 - r[..., None] * 0.14)
+    stain = smooth(fbm(size, 260, 4, seed + 7), 0.7, 0.82)   # old rain run-off, faint
+    out = mix(out, out * col(170, 150, 125), stain * 0.35)
+    holes = speckle(size, 0.00004, seed + 8, 1.6)
+    out = out * (1 - np.clip(holes, 0, 1)[..., None] * 0.7)
+    dust = fbm(size, 30, 4, seed + 9)
+    out = mix(out, out * 0.85 + col(140, 128, 108) * 0.25, smooth(dust, 0.6, 0.85) * 0.3)
+    H = hp * 10 + hp2 * 4 - crack * 2.2 - shadow * 0.5 - holes * 1.2 + (st - 0.5) * 0.6
+    dull = np.clip(0.8 + crack * 0.2, 0, 1)
+    return np.clip(out, 0, 1), H, dull
+
+
+def leather(c, seed, crack_col=None):
+    """Old leather and vinyl: dried out and faded, crazed all over into little cells, split through in a network of
+    cracks showing the paler fibres, the cells' edges curled and rubbed lighter, flaked off here and there."""
+    size = c.shape[:2]
+    rng = np.random.default_rng(seed)
+    out = mix(c, desat(c, 0.35) * 0.85 + col(38, 32, 26), 0.55)    # faded, dried out
+    out = out * (0.9 + 0.2 * fbm(size, 400, 3, seed + 1))[..., None]
+    # the big cells and their cracks
+    f1, f2, idx, n = voronoi(size, 44, seed + 2, warp=0.3)
+    edge = f2 - f1
+    worn = smooth(fbm(size, 280, 4, seed + 3), 0.3, 0.55)           # where it's crazed (most of it)
+    gap = 1.4 + 2.6 * smooth(fbm(size, 90, 3, seed + 10), 0.45, 0.75)   # some cracks opened wider than others
+    crack = smooth(-edge, -gap, -0.3) * worn
+    rim = smooth(-edge, -gap - 3.0, -gap) * (1 - crack) * worn
+    shade = rng.uniform(0.86, 1.14, n)[idx]
+    out = out * (1 + (shade - 1) * worn)[..., None]
+    # fine crazing inside the cells, where it's worst
+    g1, g2, _, _ = voronoi(size, 13, seed + 4, warp=0.45)
+    fine = smooth(-(g2 - g1), -1.3, -0.2) * smooth(fbm(size, 160, 4, seed + 5), 0.48, 0.66) * worn
+    # flaked off: a few cells' top coat gone to the rough backing
+    flaked = (rng.random(n) < 0.04)[idx] * smooth(edge, 1.0, 4.0) * worn * smooth(fbm(size, 18, 3, seed + 11), 0.42, 0.55)
+    backing = col(98, 78, 58) * (0.7 + 0.6 * fbm(size, 5, 3, seed + 6))[..., None]
+    fibre = col(92, 78, 62) if crack_col is None else crack_col
+    # rubbed: the top coat worn grey-brown where hands and arms go, cell by cell (a crack stops the wear)
+    rub = smooth(fbm(size, 200, 4, seed + 12) + (rng.random(n)[idx] - 0.5) * 0.25, 0.55, 0.68) * smooth(edge, 0.5, 3.0)
+    out = mix(out, desat(out, 0.6) * 1.55 + col(30, 26, 21), rub * 0.4)
+    out = mix(out, out * 1.15 + 0.012, rim * 0.35)
+    out = mix(out, backing, flaked * 0.85)
+    # the split: the pale fibres showing in it, a dark shadow along one side (lit from above, as the game's sun mostly is)
+    inside = fibre * (0.75 + 0.5 * fbm(size, 4, 2, seed + 7))[..., None]
+    shadow = np.roll(np.roll(crack, 1, 0), 1, 1) * (1 - crack)
+    out = mix(out, out * 0.45, shadow * 0.8)
+    out = mix(out, inside, crack * 0.9)
+    out = mix(out, out * 0.62 + fibre * 0.15, fine * 0.6)
+    # scuffs and dust
+    sc = lines(size, 120, 140, 2, seed + 8, 0.3, (40, 140))
+    out = mix(out, out * 1.4 + 0.04, sc * 0.4)
+    dust = fbm(size, 30, 4, seed + 9)
+    out = mix(out, out * 0.85 + col(130, 120, 102) * 0.2, smooth(dust, 0.6, 0.85) * 0.3)
+    dome = np.clip(edge / 22.0, 0, 1) ** 0.5
+    H = dome * 1.2 * worn - crack * 1.6 - fine * 0.5 - flaked * 0.5 + sc * 0.2
+    dull = np.clip(0.55 + crack * 0.4 + flaked * 0.4 - dome * 0.2, 0, 1)
+    return np.clip(out, 0, 1), H, dull
+
+
+def masks(c):
+    """For the atlases: where it's wood (warm browns), black leather (dark and grey), red leather."""
+    mx, mn = c.max(-1), c.min(-1)
+    sat = (mx - mn) / (mx + 1e-6)
+    L = lum(c)
+    r, g, b = c[..., 0], c[..., 1], c[..., 2]
+    wood = smooth(sat, 0.25, 0.4) * (r > g) * (g > b) * smooth(L, 0.05, 0.1) * (1 - smooth(L, 0.55, 0.7)) * (r - b > 0.08)
+    dark = (1 - smooth(L, 0.3, 0.42)) * (1 - smooth(sat, 0.35, 0.55))
+    red = smooth(sat, 0.45, 0.6) * (r > 1.6 * g) * (r > 1.6 * b) * smooth(L, 0.05, 0.1)
+    soft = lambda m: np.clip(gblur(m.astype(np.float64), 1.0), 0, 1)
+    return soft(wood), soft(dark), soft(red)
+
+def weather(c, kind, seed, atlas=True):
     """c: HxWx3 in 0..1, at 2K. Returns (colour, height (dents and scratches, 0 = untouched), dull (0..1, more =
     less shine))."""
+    if kind == "wood":
+        return wood_dry(c, seed)
+    if kind == "rail":
+        return leather(c, seed)
+    if atlas and kind in ("dark", "props", "stool"):
+        # atlases: their wood made dry wood, their leather cracked leather, the rest weathered as before
+        base, H0, d0 = weather(c, "metal" if kind == "stool" else kind, seed, atlas=False)
+        wm, dm, rm = masks(c)
+        if kind == "stool":
+            lm = rm  # the red seat (its black bits are the stool's metal)
+            wm = wm * 0
+        else:
+            lm = dm
+            rm = rm * 0
+        if wm.max() > 0.01:
+            wc, wH, wd = wood_dry(c, seed + 50)
+            base, H0, d0 = mix(base, wc, wm), H0 + (wH - H0) * wm, d0 + (wd - d0) * wm
+        if lm.max() > 0.01:
+            lc, lH, ld = leather(c, seed + 60)
+            base, H0, d0 = mix(base, lc, lm), H0 + (lH - H0) * lm, d0 + (ld - d0) * lm
+        return base, H0, d0
     size = c.shape[:2]
     H = np.zeros(size)
     dull = np.zeros(size)
@@ -235,44 +433,10 @@ def weather(c, kind, seed):
         H -= nap * 0.3
         dull += 0.3
 
-    elif kind == "wood":
-        c = desat(c, 0.25)
-        c = mix(c, c * col(255, 225, 185), 0.35)
-        worn = smooth(fbm(size, 160, 5, seed + 4), 0.58, 0.70)        # varnish worn through to grey wood
-        bare = desat(c, 0.75) * 1.55 + col(30, 26, 20)
-        c = mix(c, bare, worn * 0.7)
-        sc = lines(size, 700, 260, 2, seed + 5)
-        deep = lines(size, 60, 500, 3, seed + 6, 0.15)
-        c = mix(c, desat(c, 0.6) * 1.6 + 0.08, np.clip(sc * 0.55 + deep * 0.8, 0, 1))
-        r = rings(size, 14, 24, 55, seed + 7)
-        c = c * (1 - r[..., None] * 0.5)
-        core, halo = spots(size, 6, 5, 9, seed + 8)
-        c = mix(c, col(15, 12, 9), np.maximum(core, halo * 0.6))
-        c = c * (1 - blotch[..., None] * 0.45)
-        c = mix(c, c * 0.55, smooth(fbm(size, 90, 4, seed + 9), 0.64, 0.74))   # dark grime ground in
-        H -= sc * 0.6 + deep * 1.2 + core * 0.6
-        H += (fbm(size, 50, 3, seed + 10) - 0.5) * 0.8                          # dented
-        dull += worn * 0.8 + 0.25
-
-    elif kind == "rail":  # black padded vinyl
-        c = c * 0.75 + col(34, 29, 22)                                # faded black to a dusty brown-grey
-        c = mix(c, c * 1.6 + 0.05, smooth(sun, 0.55, 0.8) * 0.5)
-        cr = cracks(size, 70, seed + 4)
-        foam = col(176, 150, 92)                                      # split through to the yellow foam
-        c = mix(c, foam, smooth(cr, 0.35, 0.8) * 0.75)
-        sc = lines(size, 300, 200, 2, seed + 5, 0.3)
-        c = mix(c, c * 1.8 + 0.06, sc * 0.5)
-        t = tape(size, 7, seed + 6)
-        tc = col(128, 126, 118) * (0.85 + 0.3 * fbm(size, 20, 3, seed + 7))[..., None]
-        tc = tc * (1 - lines(size, 120, 60, 1, seed + 8, 0.0, (60, 160))[..., None] * 0.25)
-        c = mix(c, tc, t)
-        c = c * (1 - blotch[..., None] * 0.3)
-        H -= cr * 1.2 + sc * 0.4
-        H += t * 0.6 + (fbm(size, 60, 3, seed + 9) - 0.5) * 1.0
-        dull += 0.5 - t * 0.2
-
     elif kind in ("metal", "slot", "stool", "wheel", "dark", "props", "print"):
         heavy = {"metal": 1.0, "slot": 1.0, "stool": 0.9, "wheel": 0.6, "dark": 0.7, "props": 0.5, "print": 0.6}[kind]
+        # rust and chipped paint only on metal (not the poker table's padding, the clay chips, the paper sign)
+        metal = {"metal": 1.0, "slot": 1.0, "stool": 0.9, "wheel": 0.5, "dark": 0.0, "props": 0.3, "print": 0.0}[kind]
         c = desat(c, 0.3 * heavy)
         c = mix(c, c * col(255, 232, 196), 0.35 * heavy)              # yellowed, nicotine and dust
         if kind == "print":
@@ -281,10 +445,10 @@ def weather(c, kind, seed):
         rmask = smooth(fbm(size, 120, 5, seed + 4, aspect=0.6), 0.6 - 0.06 * heavy, 0.72)
         rust = col(110, 52, 24) * (0.6 + 0.8 * fbm(size, 12, 3, seed + 5))[..., None]
         rust = mix(rust, col(160, 92, 40), smooth(fbm(size, 25, 3, seed + 6), 0.5, 0.7))
-        c = mix(c, rust, rmask * 0.9 * heavy)
+        c = mix(c, rust, rmask * 0.9 * metal)
         # paint chipped off to grey metal, at the edges of the blotches
         chips = smooth(fbm(size, 22, 4, seed + 7), 0.66, 0.70) * smooth(grime, 0.4, 0.6)
-        c = mix(c, col(118, 116, 110) * (0.8 + 0.4 * dust)[..., None], chips * 0.85 * heavy)
+        c = mix(c, col(118, 116, 110) * (0.8 + 0.4 * dust)[..., None], chips * 0.85 * metal)
         pits = speckle(size, 0.004 * heavy, seed + 8, 0.9)
         c = c * (1 - pits[..., None] * 0.45)
         sc = lines(size, int(400 * heavy), 160, 2, seed + 9, 0.3)
@@ -294,9 +458,9 @@ def weather(c, kind, seed):
             cr = cracks(size, 60, seed + 10)
             c = mix(c, c * 1.4 + col(40, 32, 20), smooth(cr, 0.3, 0.8) * 0.6)
             H -= cr * 1.0
-        H -= pits * 0.8 + sc * 0.5 + chips * 0.4
-        H += rmask * (fbm(size, 6, 2, seed + 11) - 0.5) * 2.0 + (fbm(size, 70, 3, seed + 12) - 0.5) * 0.9
-        dull += rmask * 0.9 + chips * 0.3 + 0.3
+        H -= pits * 0.8 + sc * 0.5 + chips * 0.4 * metal
+        H += rmask * metal * (fbm(size, 6, 2, seed + 11) - 0.5) * 2.0 + (fbm(size, 70, 3, seed + 12) - 0.5) * 0.9
+        dull += (rmask * 0.9 + chips * 0.3) * metal + 0.3
 
     # dust over everything, settled in the low spots
     c = mix(c, c * 0.8 + col(120, 110, 90) * 0.35, smooth(dust, 0.55, 0.8) * 0.35)
@@ -363,14 +527,14 @@ def make_textures(tex):
         save(c, os.path.join(tex, name + "_used_d.dds"), "DXT1")
         if own_n:
             n_src = os.path.join(tex, name + "_n.dds")
-            nw, nh = Image.open(n_src).size
+            nw, nh = size  # (2K, as the colour)
             n = load(n_src, (nw, nh))
             Hs = np.asarray(Image.fromarray(((H - H.min()) / (np.ptp(H) + 1e-9) * 65535).astype(np.uint16)).resize(
                 (nw, nh), Image.BILINEAR), dtype=np.float64) / 65535.0 * np.ptp(H)
             save(bump(n, Hs, 6.0 * nw / S), os.path.join(tex, name + "_used_n.dds"), "BC7")
         if own_s:
             s_src = os.path.join(tex, name + "_s.dds")
-            sw, sh = Image.open(s_src).size
+            sw, sh = size
             s = load(s_src, (sw, sh))
             d = np.asarray(Image.fromarray((dull * 255).astype(np.uint8)).resize((sw, sh), Image.BILINEAR),
                            dtype=np.float64) / 255.0
@@ -380,8 +544,8 @@ def make_textures(tex):
     _, _, dull = weather(load(os.path.join(tex, "wheel_eu_d.dds"), (S, S)), "wheel", 1212)
     d = np.asarray(Image.fromarray((dull * 255).astype(np.uint8)).resize(s.shape[1::-1], Image.BILINEAR)) / 255.0
     save(s * (0.75 - 0.6 * d)[..., None], os.path.join(tex, "wheel_used_s.dds"), "DXT1")
-    size = (1024, 1024)
-    H = -lines(size, 260, 160, 1, 77) * 0.6 - speckle(size, 0.003, 78, 0.8) * 0.6 + (fbm(size, 40, 3, 79) - 0.5) * 1.2
+    size = (S, S)
+    H = -lines(size, 520, 320, 2, 77) * 0.6 - speckle(size, 0.003, 78, 1.0) * 0.6 + (fbm(size, 80, 3, 79) - 0.5) * 1.2
     flat = np.zeros(size + (3,)) + np.array([0.5, 0.5, 1.0])
     save(bump(flat, H, 4.0), os.path.join(tex, "used_n.dds"), "BC7")
 

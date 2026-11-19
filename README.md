@@ -10,7 +10,7 @@ Since 0.7.0, a **blackjack table**: you and up to six settlers against the deale
 Every table has a dealer: a settler walks over and stands behind it (at roulette they spin the wheel, by the chip tray
 at poker).
 
-**Status: 1.0.14.**
+**Status: 1.0.15.**
 
 ## Requirements
 
@@ -114,8 +114,9 @@ oranges 10, lemons 8, two cherries 4, one cherry your bet back. Settlers sit dow
 
 Every piece has a **Used** version beside it in the workshop menu (Used Roulette Table, Used Poker Table, Used
 Blackjack Table, Used Slot Machine): the same thing, played just the same, but post-war. Felt faded, stained, burnt
-and worn bald; wood scratched with its varnish worn through and rings from bottles; the rails cracked to the foam and
-patched with duct tape; the metal and the machine rusted and chipped. Salvaged, they cost less to build.
+and worn bald; the wood dried out in the weather, faded silver-grey, its grain raised and split along it in drying
+checks; the leather (the rails, the poker table's padding, the stool's seat) dried and crazed into cracks, rubbed and
+flaked in places; the metal and the machine rusted and chipped. 2K throughout. Salvaged, they cost less to build.
 (`tools/make_used.py` makes their textures from the clean ones and the models from theirs.)
 
 ### European or American
