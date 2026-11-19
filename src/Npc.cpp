@@ -228,6 +228,32 @@ namespace fr::Npc
 		CallQuest("Leave", what, logged, FormArg(a_actor), FormArg(Forms::LinkKeyword()));
 	}
 
+	bool LinkedToUs(RE::Actor* a_actor)
+	{
+		auto* keyword = Forms::LinkKeyword();
+		return a_actor && keyword && a_actor->GetLinkedRef(keyword) != nullptr;
+	}
+
+	bool InOurQuest(RE::Actor* a_actor)
+	{
+		auto* quest = Forms::Quest();
+		auto* extra = a_actor ? a_actor->extraList.get() : nullptr;
+		auto* aliases = extra ? extra->GetByType<RE::ExtraAliasInstanceArray>() : nullptr;
+		if (!quest || !aliases) {
+			return false;
+		}
+		aliases->aliasArrayLock.lock_read();
+		bool ours = false;
+		for (const auto& a : aliases->aliasArray) {
+			if (a.quest == quest) {
+				ours = true;
+				break;
+			}
+		}
+		aliases->aliasArrayLock.unlock_read();
+		return ours;
+	}
+
 	void ClearAll(const std::vector<std::int32_t>& a_keep)
 	{
 		{

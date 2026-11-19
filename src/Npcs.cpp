@@ -946,4 +946,74 @@ namespace fr
 			log::info("{} leaves the table: {}", a_seat.name, a_why);
 		}
 	}
+
+	// Anyone still ours (linked to one of our markers, or in the quest's aliases) who isn't at a table any more: let go
+	// again, and said in the log. Each one who stops playing is let go (Npc::Leave) as they go; this is the check that
+	// it took, and the mend if it didn't. Every 20 s, the settlers within reach; seen so twice running (a moment between
+	// tables, or a load's roster not yet taken back, isn't it), and once a minute at most for each.
+	void Game::TickStrays(float a_dt)
+	{
+		_strayScan -= a_dt;
+		if (_strayScan > 0.0f) {
+			return;
+		}
+		_strayScan = 20.0f;
+		auto* player = RE::PlayerCharacter::GetSingleton();
+		if (!player || !player->GetParentCell() || !Npc::Ready() || Npc::Clearing()) {
+			return;
+		}
+		std::unordered_set<RE::TESFormID> playing;
+		for (const Slot* t : { &_t, &_other }) {
+			playing.insert(t->croupier.id);
+			for (const auto& seat : t->seats) {
+				playing.insert(seat.id);
+			}
+		}
+		playing.insert(_pk.croupier.id);
+		for (const auto& st : _pk.seats) {
+			playing.insert(st.id);
+		}
+		playing.insert(_bj.dealerId);
+		for (const auto& st : _bj.seats) {
+			playing.insert(st.id);
+		}
+		for (const auto& m : _sl) {
+			playing.insert(m.id);
+		}
+		for (const auto id : RosterKeep()) {
+			playing.insert(static_cast<RE::TESFormID>(id));
+		}
+		static std::unordered_set<RE::TESFormID> seenOnce;
+		std::unordered_set<RE::TESFormID>        seenNow;
+		std::vector<RE::Actor*>                  free;
+		util::ForEachLoadedCell([&](RE::TESObjectCELL* a_cell) {
+			a_cell->ForEachReferenceInRange(player->data.location, 8000.0f, [&](RE::TESObjectREFR* a_ref) {
+				auto* actor = a_ref ? a_ref->As<RE::Actor>() : nullptr;
+				if (!actor || actor == player || playing.contains(actor->GetFormID())) {
+					return RE::BSContainer::ForEachResult::kContinue;
+				}
+				const bool linked = Npc::LinkedToUs(actor);
+				const bool aliased = Npc::InOurQuest(actor);
+				if (linked || aliased) {
+					seenNow.insert(actor->GetFormID());
+					if (seenOnce.contains(actor->GetFormID())) {
+						const auto now = std::chrono::steady_clock::now();
+						auto       it = _strayFreed.find(actor->GetFormID());
+						if (it == _strayFreed.end() || now - it->second > std::chrono::minutes(1)) {
+							_strayFreed[actor->GetFormID()] = now;
+							log::warn("still ours, at no table: {} ({:08X}){}{}: let go again", actor->GetDisplayFullName() ? actor->GetDisplayFullName() : "?",
+								actor->GetFormID(), linked ? " linked to our marker" : "", aliased ? " in our quest's aliases" : "");
+							free.push_back(actor);
+						}
+					}
+				}
+				return RE::BSContainer::ForEachResult::kContinue;
+			});
+		});
+		seenOnce = std::move(seenNow);
+		for (auto* actor : free) {
+			Npc::SetRestrained(actor, false);
+			Npc::Leave(actor);
+		}
+	}
 }

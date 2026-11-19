@@ -88,11 +88,12 @@ Function Arrived(Int aiActor, Int aiLink)
 EndFunction
 
 ; out of both collections: their own AI again
-Function Leave(Int aiActor, Int aiLink)
+; (what it did, for the log: out of every collection, the link gone)
+String Function Leave(Int aiActor, Int aiLink)
 	Actor akActor = Game.GetForm(aiActor) as Actor
 	Keyword akLink = Game.GetForm(aiLink) as Keyword
 	if akActor == None
-		return
+		return "no such actor"
 	endif
 	Dealers.RemoveRef(akActor)
 	Bettors.RemoveRef(akActor)
@@ -103,6 +104,17 @@ Function Leave(Int aiActor, Int aiLink)
 		akActor.SetLinkedRef(None, akLink)
 	endif
 	akActor.EvaluatePackage()
+	String still = ""
+	if Dealers.Find(akActor) >= 0 || Bettors.Find(akActor) >= 0 || (Sitters && Sitters.Find(akActor) >= 0)
+		still += " STILL IN A COLLECTION"
+	endif
+	if akLink && akActor.GetLinkedRef(akLink)
+		still += " STILL LINKED"
+	endif
+	if still == ""
+		return "out (no collection, no link)"
+	endif
+	return "out?" + still
 EndFunction
 
 ; everyone out (a save loaded: the plugin doesn't know who's in them)

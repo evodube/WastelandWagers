@@ -19,6 +19,10 @@ namespace fr::Npc
 	void Arrived(RE::Actor* a_actor);
 	// out of both collections, unlinked: their own AI again
 	void Leave(RE::Actor* a_actor);
+	// still ours: linked to one of our markers (the link keyword), or in one of our quest's aliases (its Dealers,
+	// Bettors, Sitters). For finding anyone left so after they stopped playing (Game::TickStrays)
+	bool LinkedToUs(RE::Actor* a_actor);
+	bool InOurQuest(RE::Actor* a_actor);
 	// everyone out (a save loaded: whoever the collections hold, the plugin doesn't know)
 	void ClearAll(const std::vector<std::int32_t>& a_keep = {});  // a_keep: who stays in the quest (back at a table after the load)
 

@@ -335,6 +335,9 @@ namespace fr
 		bool               EarnsIncome(RE::TESObjectREFR* a_table) const;
 		void               HouseTake(RE::TESObjectREFR* a_table, int a_caps, const char* a_game);  // + the house won
 		void               TickIncome(float a_dt);
+		void               TickStrays(float a_dt);  // anyone still linked to us, not at a table: let go again (Npcs.cpp)
+		float              _strayScan{ 20.0f };
+		std::unordered_map<RE::TESFormID, std::chrono::steady_clock::time_point> _strayFreed;
 		static void        SaveIncome(const F4SE::SerializationInterface* a_intfc);
 		static void        LoadIncome(const F4SE::SerializationInterface* a_intfc, std::uint32_t a_version);
 		static void        RevertIncome();
