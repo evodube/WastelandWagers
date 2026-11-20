@@ -93,6 +93,12 @@ pull; at less than 25 they pay 100 times the bet), three BARs 50 times the bet, 
 oranges 10, lemons 8, two cherries 4, one cherry your bet back. Settlers sit down at free machines and play too
 (`[Slots]` in the ini, or the Slots page). The plugin turns the reels itself, so they stop on the drawn symbols.
 
+### Settlement happiness
+
+Every table and slot machine built in a settlement adds **+10 happiness** to it (as the Vault-Tec Workshop's slot
+machines do: a workshop resource with a happiness bonus). Only pieces built at a settlement's workbench count; a kit
+table put down anywhere adds nothing.
+
 ### The Steam overlay
 
 Fallout 4 runs on under the Steam overlay (Shift+Tab). With `[Table] bPauseOnOverlay=1` (the default) the game's

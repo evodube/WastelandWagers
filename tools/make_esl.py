@@ -251,6 +251,15 @@ def quest_vmad(quest_id: int, quest_script: str, alias_properties: list[tuple[st
 
 
 
+DLC06 = 0x01000000  # DLCworkshop03.esm: our second master (its forms are 01xxxxxx here)
+
+# Settlement happiness, as the Vault-Tec Workshop's slot machines give it (their PRPS): a workshop resource object
+# (WorkshopResourceObject 1) with WorkshopRatingBonusHappiness. Counted only for a piece built in a settlement (linked
+# to its workbench): a kit table put down anywhere adds nothing. (Not the DLC's third property, its power need.)
+HAPPINESS = 10.0
+RATINGS = subrecord(b"PRPS", struct.pack("<IfIf", 0x00129A8C, 1.0, 0x0012722C, HAPPINESS))
+
+
 def activator(form_id: int, editor_id: str, name: str, mesh: str, bounds: tuple, verb: str, preview: int) -> bytes:
     """An activator with no script: activating it is what the plugin listens for (TESActivateEvent). preview: the
     TRNS that frames it in the workshop menu (PTRN)."""
@@ -263,12 +272,12 @@ def activator(form_id: int, editor_id: str, name: str, mesh: str, bounds: tuple,
         + subrecord(b"PTRN", struct.pack("<I", preview))
         + subrecord(b"FULL", zstring(name))
         + subrecord(b"MODL", zstring(mesh))
+        + RATINGS
         + subrecord(b"ATTX", zstring(verb))
         + subrecord(b"FNAM", struct.pack("<H", 0)),
     )
 
 
-DLC06 = 0x01000000  # DLCworkshop03.esm: our second master (its forms are 01xxxxxx here)
 
 
 def slot_machine(form_id: int, editor_id: str = "WastelandWagersSlotMachine", name: str = "Slot Machine",
@@ -291,6 +300,7 @@ def slot_machine(form_id: int, editor_id: str = "WastelandWagersSlotMachine", na
         + subrecord(b"MODL", zstring(mesh))
         + subrecord(b"KSIZ", struct.pack("<I", len(keywords)))
         + subrecord(b"KWDA", b"".join(struct.pack("<I", k) for k in keywords))
+        + RATINGS
         + subrecord(b"PNAM", struct.pack("<I", 0))
         + subrecord(b"FNAM", struct.pack("<H", 0))
         + subrecord(b"MNAM", bytes.fromhex("01000040"))

@@ -50,21 +50,17 @@ namespace fr
 			return cal && cal->gameDaysPassed ? cal->gameDaysPassed->value : -1.0f;
 		}
 
+		// the settlement's population: Fallout4.esm's WorkshopRatingPopulation (looked for by an editor id "Population"
+		// before, which there's no such: every settlement counted none, and earned nothing away)
 		RE::ActorValueInfo* PopulationAV()
 		{
 			static RE::ActorValueInfo* av = nullptr;
 			static bool                looked = false;
 			if (!looked) {
 				looked = true;
-				if (auto* data = RE::TESDataHandler::GetSingleton()) {
-					for (auto* f : data->GetFormArray<RE::ActorValueInfo>()) {
-						if (f && std::string_view(f->formEditorID.c_str() ? f->formEditorID.c_str() : "") == "Population") {
-							av = f;
-							break;
-						}
-					}
-				}
-				log::info("income: the Population rating {}", av ? std::format("is {:08X}", av->GetFormID()) : std::string("wasn't found"));
+				auto* f = RE::TESForm::GetFormByID(0x0012723E);
+				av = f ? f->As<RE::ActorValueInfo>() : nullptr;
+				log::info("income: WorkshopRatingPopulation {}", av ? "found" : "not found");
 			}
 			return av;
 		}
