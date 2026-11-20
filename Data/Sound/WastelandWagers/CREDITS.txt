@@ -1,0 +1,3 @@
+roll, rattle, tick and settle: cut from a roulette recording by Maxwell Dufresne, gfxsounds.com (https://gfxsounds.com), Standard licence.
+The other sounds are synthesised by tools/make_sounds.py.
+card_*, slide_*: "Casino Audio" by Kenney (kenney.nl), CC0 (cardPlace1-4, cardSlide1-6).
