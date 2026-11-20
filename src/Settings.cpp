@@ -99,6 +99,7 @@ namespace fr
 		maxBet = std::clamp(static_cast<int>(ReadInt(L"Table", L"iMaxBet", maxBet)), 1, 100000);
 		activeDistance = std::clamp(ReadFloat(L"Table", L"fActiveDistance", activeDistance), 500.0f, 20000.0f);
 		luck = std::clamp(ReadFloat(L"Table", L"fLuck", luck), 0.0f, 3.0f);
+		pauseOnOverlay = ReadBool(L"Table", L"bPauseOnOverlay", pauseOnOverlay);
 		income = ReadBool(L"Income", L"bIncome", income);
 		incomeShare = std::clamp(ReadFloat(L"Income", L"fShare", incomeShare), 0.0f, 100.0f);
 		pokerRake = std::clamp(static_cast<int>(ReadInt(L"Income", L"iPokerRake", pokerRake)), 0, 50);

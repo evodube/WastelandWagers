@@ -93,6 +93,11 @@ pull; at less than 25 they pay 100 times the bet), three BARs 50 times the bet, 
 oranges 10, lemons 8, two cherries 4, one cherry your bet back. Settlers sit down at free machines and play too
 (`[Slots]` in the ini, or the Slots page). The plugin turns the reels itself, so they stop on the drawn symbols.
 
+### The Steam overlay
+
+Fallout 4 runs on under the Steam overlay (Shift+Tab). With `[Table] bPauseOnOverlay=1` (the default) the game's
+pause menu opens with the overlay, so everything stops (the world, the NPCs, the tables), and closes again with it.
+
 ### Luck and settlement income
 
 - **Luck** (SPECIAL) counts. Every game is still drawn fairly, then now and then (more often the luckier you are:

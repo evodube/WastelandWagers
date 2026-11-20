@@ -5,6 +5,7 @@
 #include "Game.h"
 #include "Hook.h"
 #include "Hud.h"
+#include "SteamOverlay.h"
 #include "MenuWatch.h"
 #include "Settings.h"
 
@@ -31,6 +32,7 @@ namespace
 			fr::Audio::Init();
 			fr::menus::Watch();
 			fr::Game::Listen();
+			fr::overlay::Listen();
 			fr::Game::Get().SetUpKit();
 			fr::Forms::AddWorkshopMenu();
 			break;

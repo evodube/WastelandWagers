@@ -36,6 +36,7 @@ namespace fr
 		float spinDelay{ 15.0f };          // the wheel spins itself this long after the round's first bet
 		int   maxBet{ 500 };               // caps on one bet
 		float activeDistance{ 3000.0f };   // a table this close to you is played at (NPCs come)
+		bool  pauseOnOverlay{ true };      // the Steam overlay (Shift+Tab) pauses the game (its pause menu) while it's up
 		float luck{ 1.0f };                // how much your Luck (SPECIAL) tilts the games your way: 0 not at all, 1 as made
 		bool  income{ true };              // the house's take from settlers' play goes to the settlement's workbench
 		float incomeShare{ 100.0f };       // ...this much of it (%)

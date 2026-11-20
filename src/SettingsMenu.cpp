@@ -73,6 +73,8 @@ namespace fr::SettingsMenu
 						{ L"Table", L"iMaxBet", "Most on one bet", Kind::kInt, &s.maxBet, 1, 100000, nullptr, "caps" },
 						{ L"Table", L"fActiveDistance", "Table in play within", Kind::kFloat, &s.activeDistance, 500.0f, 20000.0f, "%.0f",
 							"NPCs come to a table this close to you" },
+						{ L"Table", L"bPauseOnOverlay", "Pause under the Steam overlay", Kind::kBool, &s.pauseOnOverlay, 0, 0, nullptr,
+							"Shift+Tab opens the game's pause menu with it, so the world (and the tables) stop until you close it" },
 						{ L"Table", L"fLuck", "Luck counts", Kind::kFloat, &s.luck, 0.0f, 3.0f, "%.1fx",
 							"how much your Luck (SPECIAL) tilts every game your way: 0 not at all, 1 as made (Luck 10: about one "
 							"game in six goes your way that wouldn't have)" },

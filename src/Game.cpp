@@ -2,6 +2,7 @@
 // You at the table (the camera, the cursor) are in Seat.cpp; the settlers who bet in Npcs.cpp; the
 // co-save in Save.cpp.
 
+#include "SteamOverlay.h"
 #include "Game.h"
 #include "MenuWatch.h"
 
@@ -431,6 +432,9 @@ namespace fr
 		}
 		// talking to someone doesn't stop the world (or the wheel): the game counts the conversation as a menu, so
 		// with only that open, menu mode is ignored
+		if (overlay::Open()) {
+			return true;  // (the Steam overlay up: the game's paused under it, or should be)
+		}
 		if (ui->freezeFramePause != 0 || (ui->menuMode != 0 && !menus::Open(menus::kDialogue))) {
 			return true;
 		}
