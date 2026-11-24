@@ -1,3 +1,4 @@
+#include "Pieces.h"
 #include "Cleanup.h"
 #include "Audio.h"
 #include "CameraHook.h"
@@ -33,6 +34,7 @@ namespace
 			fr::menus::Watch();
 			fr::Game::Listen();
 			fr::overlay::Listen();
+			fr::pieces::Listen();
 			fr::Game::Get().SetUpKit();
 			fr::Forms::AddWorkshopMenu();
 			// (and again here: a player's log had no PostPostLoad at all, something in their load order keeping it from
@@ -57,6 +59,7 @@ namespace
 			fr::Hook::Install();  // no-op if already hooked
 			fr::CameraHook::Install();
 			fr::Hud::Install();   // (as at game data ready)
+			fr::pieces::Reseed();  // (once, at the load: anything the load's events came before us for)
 			fr::Game::Get().StockKit();
 			break;
 		default:

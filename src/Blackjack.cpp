@@ -10,6 +10,7 @@
 // The cards are the 52 card models, slid out of the shoe onto the card boxes and turned over; the bets are chip stacks
 // on the circles.
 
+#include "Pieces.h"
 #include "Game.h"
 
 #include "Audio.h"
@@ -225,7 +226,7 @@ namespace fr
 		const auto&        s = Settings::Get();
 		RE::TESObjectREFR* nearest = nullptr;
 		float              nearestD = s.activeDistance;
-		util::ForEachLoadedCell([&](RE::TESObjectCELL* a_cell) {
+		pieces::ForEachKnown([&](pieces::Known* a_cell) {
 			a_cell->ForEachReferenceInRange(player->data.location, s.activeDistance + 500.0f, [&](RE::TESObjectREFR* a_ref) {
 				if (a_ref && Forms::IsBlackjackTable(a_ref) && !a_ref->IsDisabled() && a_ref->Get3D() && !IsKitPreview(a_ref)) {
 					const float d = (a_ref->data.location - player->data.location).Length();

@@ -2,6 +2,7 @@
 // Walking them there is WastelandWagers.esl's quest package (Npc.h); once there they're held with SetRestrained and
 // kept facing the table.
 
+#include "Pieces.h"
 #include "Game.h"
 
 #include "Forms.h"
@@ -960,6 +961,11 @@ namespace fr
 		_strayScan = 20.0f;
 		auto* player = RE::PlayerCharacter::GetSingleton();
 		if (!player || !player->GetParentCell() || !Npc::Ready() || Npc::Clearing()) {
+			return;
+		}
+		// (none of ours loaded, no game going: no one could be left from one here. Not a look through every actor
+		// near you every 20 s for nothing)
+		if (pieces::Empty() && !_t.table && !_other.table && !_pk.table && !_bj.table && _sl.empty()) {
 			return;
 		}
 		std::unordered_set<RE::TESFormID> playing;

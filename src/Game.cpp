@@ -2,6 +2,7 @@
 // You at the table (the camera, the cursor) are in Seat.cpp; the settlers who bet in Npcs.cpp; the
 // co-save in Save.cpp.
 
+#include "Pieces.h"
 #include "SteamOverlay.h"
 #include "Game.h"
 #include "MenuWatch.h"
@@ -558,7 +559,7 @@ namespace fr
 		RE::TESObjectREFR* nearest = nullptr;
 		float              nearestD = std::numeric_limits<float>::max();
 		std::vector<RE::TESObjectREFR*> found;
-		ForEachLoadedCell([&](RE::TESObjectCELL* a_cell) {
+		pieces::ForEachKnown([&](pieces::Known* a_cell) {
 			a_cell->ForEachReferenceInRange(player->data.location, s.activeDistance + 3000.0f, [&](RE::TESObjectREFR* a_ref) {
 				if (a_ref && Forms::IsTable(a_ref) && !a_ref->IsDisabled() && a_ref->Get3D() && std::ranges::find(found, a_ref) == found.end()) {
 					found.push_back(a_ref);

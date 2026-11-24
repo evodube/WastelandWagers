@@ -6,6 +6,7 @@
 // The table's space (tools/build_poker.py): X across (the chip tray, where a dealer would sit, at +X), Y along, Z up;
 // the felt 53 up, a stadium 20 across its middle and 63 to each end; the padded rail round it out to 45 / 89.
 
+#include "Pieces.h"
 #include "Game.h"
 
 #include "Audio.h"
@@ -378,7 +379,7 @@ namespace fr
 		const auto&       s = Settings::Get();
 		RE::TESObjectREFR* nearest = nullptr;
 		float             nearestD = s.activeDistance;
-		util::ForEachLoadedCell([&](RE::TESObjectCELL* a_cell) {
+		pieces::ForEachKnown([&](pieces::Known* a_cell) {
 			a_cell->ForEachReferenceInRange(player->data.location, s.activeDistance + 500.0f, [&](RE::TESObjectREFR* a_ref) {
 				if (a_ref && Forms::IsPokerTable(a_ref) && !a_ref->IsDisabled() && a_ref->Get3D() && !IsKitPreview(a_ref)) {
 					const float d = (a_ref->data.location - player->data.location).Length();

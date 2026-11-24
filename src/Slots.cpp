@@ -25,6 +25,7 @@
 // is the game's own get-up (ActionInteractionExit), asked for again if it doesn't take, never a move off it. In power
 // armour you can't sit: you play it standing, as before, the lever on its own.
 
+#include "Pieces.h"
 #include "Game.h"
 
 #include "Audio.h"
@@ -307,7 +308,7 @@ namespace fr
 			}
 		}
 		// the new ones
-		util::ForEachLoadedCell([&](RE::TESObjectCELL* a_cell) {
+		pieces::ForEachKnown([&](pieces::Known* a_cell) {
 			a_cell->ForEachReferenceInRange(player->data.location, s.activeDistance, [&](RE::TESObjectREFR* a_ref) {
 				if (a_ref && Forms::IsSlotMachine(a_ref) && !a_ref->IsDisabled() && a_ref->Get3D() && !IsKitPreview(a_ref) &&
 					std::ranges::none_of(_sl, [&](const SlotMachine& m) { return m.ref.get().get() == a_ref; })) {

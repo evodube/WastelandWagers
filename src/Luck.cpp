@@ -17,6 +17,7 @@
 // Each settlement's pieces are noted when you're near them (and kept in the co-save, 'INCM'), counted again each time
 // (scrapped ones dropped), and paid every six game hours you're away, up to 30 days at a time.
 
+#include "Pieces.h"
 #include "Game.h"
 #include "Forms.h"
 #include "Settings.h"
@@ -152,7 +153,7 @@ namespace fr
 			if (player && player->GetParentCell() && today >= 0.0f && s.income) {
 				// the pieces near you, noted by settlement
 				std::vector<std::pair<RE::TESFormID, std::pair<RE::TESFormID, std::uint8_t>>> seen;
-				util::ForEachLoadedCell([&](RE::TESObjectCELL* a_cell) {
+				pieces::ForEachKnown([&](pieces::Known* a_cell) {
 					a_cell->ForEachReferenceInRange(player->data.location, kScanRange, [&](RE::TESObjectREFR* a_ref) {
 						if (!a_ref || a_ref->IsDisabled() || a_ref->IsDeleted() || IsKitPreview(a_ref)) {
 							return RE::BSContainer::ForEachResult::kContinue;
