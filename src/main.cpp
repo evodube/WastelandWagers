@@ -35,6 +35,9 @@ namespace
 			fr::overlay::Listen();
 			fr::Game::Get().SetUpKit();
 			fr::Forms::AddWorkshopMenu();
+			// (and again here: a player's log had no PostPostLoad at all, something in their load order keeping it from
+			// us, so no HUD and no settings pages. A no-op once it's in)
+			fr::Hud::Install();
 			break;
 		case F4SE::MessagingInterface::kPreLoadGame:
 			fr::Game::Get().Forget();
@@ -53,6 +56,7 @@ namespace
 			}
 			fr::Hook::Install();  // no-op if already hooked
 			fr::CameraHook::Install();
+			fr::Hud::Install();   // (as at game data ready)
 			fr::Game::Get().StockKit();
 			break;
 		default:

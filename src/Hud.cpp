@@ -1328,7 +1328,12 @@ namespace fr::Hud
 			return;
 		}
 		if (!F4SEMenuFramework::IsInstalled()) {
-			log::warn("F4SE Menu Framework not found: no HUD on screen (results come as notifications)");
+			// (said once: asked again at game data ready and each load)
+			static bool said = false;
+			if (!said) {
+				said = true;
+				log::warn("F4SE Menu Framework not found: no HUD on screen (results come as notifications)");
+			}
 			return;
 		}
 		g_element = F4SEMenuFramework::AddHudElement(Draw);
