@@ -44,6 +44,9 @@ Form IDs (src/Forms.h expects these):
     xx000856  ACTI WastelandWagersPokerTableUsed  Used Poker Table, 857 its COBJ
     xx000858  ACTI WastelandWagersBlackjackTableUsed  Used Blackjack Table, 859 its COBJ
     xx00085A  FURN WastelandWagersSlotMachineUsed  Used Slot Machine (SlotMachineUsed.nif), 85B its COBJ
+    xx00085C  KYWD EvodubeGamesWorkshopMenu  "Evodube Games": the shared submenu of Furniture (its name)
+    xx00085D  ARTO EvodubeGamesWorkshopMenuArt  its picture
+    xx00085E  FLST EvodubeGamesWorkshopMenuList  the submenu: [its keyword, the Wasteland Wagers category]
     xx000852  IDLE WastelandWagersSlotPullIdle  sat at a slot machine: the hand to the lever and a pull (the DLC's own
                                            pull, PoseA_IdleFlavor1: its furnitureIdleFlavor1Slave is the lever going down)
 
@@ -143,6 +146,11 @@ def menu_keyword(form_id: int, editor_id: str, name: str) -> bytes:
         subrecord(b"EDID", zstring(editor_id)) + subrecord(b"CNAM", bytes.fromhex("ffffff00")) + subrecord(b"TNAM", struct.pack("<I", 9))
         + subrecord(b"FULL", zstring(name)),
     )
+
+
+def form_list(form_id: int, editor_id: str, forms: list) -> bytes:
+    return record(b"FLST", 0, form_id, subrecord(b"EDID", zstring(editor_id))
+                  + b"".join(subrecord(b"LNAM", struct.pack("<I", f)) for f in forms))
 
 
 def menu_art(form_id: int, editor_id: str, keyword_id: int, mesh: str, preview: int, bounds: tuple) -> bytes:
@@ -479,6 +487,17 @@ def build() -> bytes:
     art = [menu_art(own | (FIRST_ID + 0x51), "WastelandWagersWorkshopMenuArt", menu, "WastelandWagers\\RouletteTable.nif",
                     0x001A03DD, (-118, -62, 0, 118, 62, 81))]
 
+    # Evodube Games: a submenu of Furniture shared by evodube's mods (Furniture > Evodube Games > Wasteland Wagers).
+    # A workshop submenu is a form list whose first entry is the keyword naming it (as Fallout4.esm's
+    # WorkshopMenu01Furniture starts with WorkshopRecipeFilterFurniture). Every mod of evodube's carries its own copy
+    # (the same editor ids); the plugin puts the first one found in the Furniture menu and each mod's category into
+    # that one (Forms.h AddWorkshopMenu), so there's only ever one Evodube Games
+    games = own | (FIRST_ID + 0x5C)
+    keywords.append(menu_keyword(games, "EvodubeGamesWorkshopMenu", "Evodube Games"))
+    art.append(menu_art(own | (FIRST_ID + 0x5D), "EvodubeGamesWorkshopMenuArt", games, "WastelandWagers\\RouletteTable.nif",
+                        0x001A03DD, (-118, -62, 0, 118, 62, 81)))
+    lists = [form_list(own | (FIRST_ID + 0x5E), "EvodubeGamesWorkshopMenuList", [games, menu])]
+
     # a pull at the machine (the DLC's: the hand to the lever)
     # ...and you sat still at it: its plain sitting loop, looping (a dyn_ActivationLoop: the slot machine's sitting
     # behaviour, WorkbenchFurnitureBehavior, has that and dyn_Flavor, no dyn_FlavorLooping), our copy of the loop
@@ -489,12 +508,12 @@ def build() -> bytes:
                        "Actors\\Character\\Animations\\WastelandWagers\\SlotMachineHold.hkx")]
 
     count = (len(acti) + len(stats) + len(keywords) + len(packages) + len(quests) + len(recipes) + len(potions)
-             + len(furniture) + len(art) + len(idles))
+             + len(furniture) + len(art) + len(idles) + len(lists))
     header = record(
         b"TES4",
         FLAG_MASTER | FLAG_LIGHT,
         0,
-        subrecord(b"HEDR", struct.pack("<fiI", 1.0, count, FIRST_ID + 0x5C))
+        subrecord(b"HEDR", struct.pack("<fiI", 1.0, count, FIRST_ID + 0x5F))
         + subrecord(b"CNAM", zstring("evodube"))
         + subrecord(b"SNAM", zstring("Wasteland Wagers: playable roulette, poker and blackjack tables, and slot machines"))
         + subrecord(b"MAST", zstring("Fallout4.esm"))
@@ -511,6 +530,7 @@ def build() -> bytes:
         + group(b"FURN", b"".join(furniture))
         + group(b"ALCH", b"".join(potions))
         + group(b"QUST", b"".join(quests))
+        + group(b"FLST", b"".join(lists))
         + group(b"IDLE", b"".join(idles))
         + group(b"PACK", b"".join(packages))
         + group(b"ARTO", b"".join(art))

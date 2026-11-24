@@ -22,7 +22,7 @@ at poker).
 
 ## Playing
 
-1. **Get a table**: build one in a settlement (workshop menu, Furniture > Wasteland Wagers > Roulette Table), or use a
+1. **Get a table**: build one in a settlement (workshop menu, Furniture > Evodube Games > Wasteland Wagers > Roulette Table), or use a
    **Roulette Table Kit** anywhere: Vadim sells them at the Dugout Inn, and you can make one at a chem station
    (Utility). Use the kit from the Pip-Boy, aim where the table should go, Left/Right to turn it, activate to set it
    down (X puts the kit away). Sitting at a kit table, **P** packs it back into the kit. Up to two tables near you
@@ -46,7 +46,7 @@ The HUD shows while you're sitting at the table.
 
 ### Poker
 
-Build a **Poker Table** (Furniture > Wasteland Wagers) or use a **Poker Table Kit** (Vadim, or a chem station) the same way as the
+Build a **Poker Table** (Furniture > Evodube Games > Wasteland Wagers) or use a **Poker Table Kit** (Vadim, or a chem station) the same way as the
 roulette kit. Activate the table to sit in: your buy-in (500 caps by default) comes out of your pocket and goes back
 when you get up. Settlers nearby take the other seats (up to five, 300 caps each from their own purse) and play by
 their own style: some tight, some loose, some who bluff. The dealer deals the cards onto the felt, chips go out for
@@ -67,7 +67,7 @@ deals itself as soon as you and at least one settler are seated.
 
 ### Blackjack
 
-Build a **Blackjack Table** (Furniture > Wasteland Wagers) or use a **Blackjack Table Kit** (Vadim, or a chem station). Activate
+Build a **Blackjack Table** (Furniture > Evodube Games > Wasteland Wagers) or use a **Blackjack Table Kit** (Vadim, or a chem station). Activate
 it to take the place nearest you; settlers take the others with their own caps, and one stands behind the chip rack
 and deals (with nobody free, the table deals itself). Put a bet down on your circle, and the cards come out of the shoe
 onto the card boxes once you press DEAL or the betting time runs out.
